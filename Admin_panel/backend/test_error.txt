@@ -1,0 +1,6 @@
+Error Message: Failed to generate content from AI: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent: [403 Forbidden] Method doesn't allow unregistered callers (callers without established identity). Please use API Key or other form of API consumer identity to call this API.
+Stack: Error: Failed to generate content from AI: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent: [403 Forbidden] Method doesn't allow unregistered callers (callers without established identity). Please use API Key or other form of API consumer identity to call this API.
+    at generateMarathiNews (D:\code\Admin_panel\backend\services\geminiService.js:88:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async testService (D:\code\Admin_panel\backend\testGeminiService.js:12:24)
+Response: {}
