@@ -7,25 +7,43 @@ Zero API cost. Zero paid services.
 
 ---
 
+## 📖 Documentation
+
+- **[SETUP.md](SETUP.md)** ← **START HERE** - Complete setup instructions
+- **[FIXES_SUMMARY.md](FIXES_SUMMARY.md)** - Recent improvements & security fixes
+- **[IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md)** - Architecture & API reference
+- **[verify_system.py](verify_system.py)** - System health check tool
+- **[install_deps.py](install_deps.py)** - Automated dependency installer
+
+---
+
 ## ⚡ Quick Start
 
 ```bash
 cd /home/kaivalya/Desktop/nashik-headlines/manus_agents
 
-# Activate environment
-source .venv/bin/activate  # or: .\.venv\Scripts\activate (Windows)
+# 1. Install dependencies
+python3 install_deps.py
+
+# 2. Configure environment (edit .env with your API keys per SETUP.md)
+
+# 3. Initialize database
+python3 tools/init_db.py
+
+# 4. Verify system
+python3 verify_system.py
 
 # Terminal 1 — Start Ollama
 ollama serve
 
 # Terminal 2 — Check system health
-python monitor.py
+python3 monitor.py
 
 # Terminal 3 — Run the system
-python run_agents.py --once          # Single cycle test
-python run_agents.py --loop          # Continuous (every 30 min)
-python run_agents.py --api           # Admin API @ http://localhost:8002
-python run_agents.py --api --loop    # API + continuous loop
+python3 run_agents.py --once          # Single cycle test
+python3 run_agents.py --loop          # Continuous (every 30 min)
+python3 run_agents.py --api           # Admin API @ http://localhost:8002
+python3 run_agents.py --api --loop    # API + continuous loop
 ```
 
 ---

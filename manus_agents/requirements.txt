@@ -9,3 +9,12 @@ aiofiles
 pydantic
 mysql-connector-python
 Pillow
+newspaper3k
+
+# Optional: For local Stable Diffusion XL image generation
+# Uncomment to enable local SDXL:
+# torch
+# diffusers
+# transformers
+# safetensors
+# accelerate

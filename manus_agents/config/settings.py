@@ -25,12 +25,12 @@ MYSQL_PORT     = int(os.getenv("MYSQL_PORT", "3306"))
 # ── Image Generation ───────────────────────────────────────────────────────────
 # Stable Diffusion XL Configuration
 USE_LOCAL_SDXL = False  # Use local SDXL if torch/diffusers available; else use cloud API
-STABILITY_API_KEY = "sk-JOWoMDfuZ7kBmsbl45OvEvi7k5F8okz3pGKAitPU0Bxf8DXt"  # Get from stability.ai
+STABILITY_API_KEY = os.getenv("STABILITY_API_KEY", "")  # Get from stability.ai or .env
 
 # Unsplash Configuration (secondary fallback)
-UNSPLASH_ACCESS_KEY = "LaSxwPKjoOoUhlzi7-R6buc1n3JTEDE5nRIORx68VpA"  # Access key for authenticated requests
-UNSPLASH_APP_ID = 897160  # Application ID
-UNSPLASH_SECRET_KEY = "ZRNECMcC9HrS14SbYI5RObB9iXlKKCsdkPB6AIqRAhg"  # Secret key for OAuth (optional)
+UNSPLASH_ACCESS_KEY = os.getenv("UNSPLASH_ACCESS_KEY", "")  # Access key for authenticated requests
+UNSPLASH_APP_ID = int(os.getenv("UNSPLASH_APP_ID", "0")) or 897160  # Application ID
+UNSPLASH_SECRET_KEY = os.getenv("UNSPLASH_SECRET_KEY", "")  # Secret key for OAuth (optional)
 
 # Fallback image source (always available)
 # - Local SDXL: Fastest, full control, requires GPU

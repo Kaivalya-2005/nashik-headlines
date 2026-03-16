@@ -7,10 +7,11 @@ from .classify_category     import classify_category
 from .generate_seo_metadata import generate_seo_metadata
 from .generate_image_prompts import generate_image_prompts
 from .generate_images        import generate_images
-from .store_article          import store_article, fetch_articles
+from .store_article          import store_article, fetch_articles, update_article_status
 
 __all__ = [
     "scrape_news", "extract_article", "rewrite_article",
     "generate_summary", "classify_category", "generate_seo_metadata",
     "generate_image_prompts", "generate_images", "store_article", "fetch_articles",
+    "update_article_status",
 ]
