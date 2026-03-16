@@ -1,109 +1,124 @@
 """
 tools/store_article.py
-Tool: store_article(article: dict) -> dict
-Writes processed article to SQLite with status='draft'.
-Auto-creates the table on first run.
+Writes processed article to MySQL.
+Now includes source_id foreign key mapping for processed_articles.
 """
 
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-import sqlite3, json
+import mysql.connector
 from datetime import datetime
-from config.settings import DB_PATH
-from memory.store import mark_processed, log_error
+from config.settings import MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DB, MYSQL_PORT
+from memory.store import log_error
 
 
-def init_db():
-    """Ensure the articles table exists."""
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS articles (
-            id               INTEGER PRIMARY KEY AUTOINCREMENT,
-            url              TEXT    UNIQUE NOT NULL,
-            source           TEXT,
-            title            TEXT,
-            rewritten_body   TEXT,
-            summary          TEXT,
-            category         TEXT DEFAULT 'local',
-            slug             TEXT,
-            meta_title       TEXT,
-            meta_description TEXT,
-            keywords         TEXT,
-            image_prompt     TEXT,
-            image_url        TEXT,
-            status           TEXT DEFAULT 'draft',
-            created_at       TEXT
-        )
-    """)
-    conn.commit()
-    conn.close()
+def _get_conn():
+    return mysql.connector.connect(
+        host=MYSQL_HOST, user=MYSQL_USER, password=MYSQL_PASSWORD,
+        database=MYSQL_DB, port=MYSQL_PORT
+    )
 
 
 def store_article(article: dict) -> dict:
-    """
-    Input:  fully processed article dict
-    Output: same dict + 'db_id' (int, -1 on failure)
-    """
     url = article.get("url", "")
-    if not url:
-        return {**article, "db_id": -1}
+    if not url: return {**article, "db_id": -1}
 
     try:
-        init_db()
-        conn = sqlite3.connect(DB_PATH)
-        cur = conn.execute("""
-            INSERT OR IGNORE INTO articles
-              (url, source, title, rewritten_body, summary, category,
-               slug, meta_title, meta_description, keywords,
-               image_prompt, image_url, status, created_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        conn = _get_conn()
+        cur = conn.cursor()
+
+        # Insert into processed_articles using source_id
+        cur.execute("""
+            INSERT INTO processed_articles
+              (title, summary, content, category_id, source_id, original_url, slug,
+               status, meta_title, meta_description, created_at)
+            VALUES (%s,%s,%s,%s,%s,%s,  %s,%s,%s,%s,%s)
         """, (
-            url,
-            article.get("source", ""),
             article.get("title", ""),
-            article.get("rewritten_body", ""),
             article.get("summary", ""),
-            article.get("category", "local"),
+            article.get("rewritten_body", ""),
+            article.get("category_id", 10),
+            article.get("source_id", None),  # Pass the FK fetched by Scraper
+            article.get("url", ""),          # original_url (the url fetched)
             article.get("slug", ""),
+            "draft",
             article.get("meta_title", ""),
             article.get("meta_description", ""),
-            json.dumps(article.get("keywords", [])),
-            article.get("image_prompt", ""),
-            article.get("image_url", ""),
-            "draft",
-            datetime.utcnow().isoformat(),
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         ))
+        
+        proc_id = cur.lastrowid
+        
+        # Insert tags
+        keywords = article.get("keywords", [])
+        for kw in keywords:
+            kw = kw.strip().lower()
+            if not kw: continue
+            cur.execute("INSERT IGNORE INTO tags (name) VALUES (%s)", (kw,))
+            cur.execute("SELECT id FROM tags WHERE name = %s", (kw,))
+            row = cur.fetchone()
+            if row:
+                cur.execute("INSERT IGNORE INTO article_tags (article_id, tag_id) VALUES (%s, %s)", (proc_id, row[0]))
+
+        # Insert article_images
+        prompts = article.get("image_prompts", [])
+        image_paths = [article.get("image1"), article.get("image2"), article.get("image3")]
+        
+        for idx in range(3):
+            path = image_paths[idx] if idx < len(image_paths) else None
+            if not path: continue
+            
+            alt = prompts[idx].get("alt_text", "") if idx < len(prompts) else ""
+            cap = prompts[idx].get("caption", "") if idx < len(prompts) else ""
+                
+            cur.execute("""
+                INSERT INTO article_images (article_id, image_url, alt_text, caption, position)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (proc_id, path, alt, cap, idx + 1))
+
         conn.commit()
-        db_id = cur.lastrowid or -1
+        cur.close()
         conn.close()
-        mark_processed(url)
-        print(f"[store_article] ✓ Saved id={db_id} status=draft")
-        return {**article, "db_id": db_id}
-    except sqlite3.Error as exc:
+        print(f"[store_article] ✓ Saved id={proc_id} status=draft")
+        return {**article, "db_id": proc_id}
+
+    except mysql.connector.Error as exc:
         log_error("publisher_agent", str(exc))
         print(f"[store_article] ✗ DB error: {exc}")
         return {**article, "db_id": -1}
 
 
-def fetch_articles(limit: int = 20, category: str | None = None, status: str | None = None) -> list[dict]:
-    """Read articles back from DB for admin panel / API."""
+def fetch_articles(limit=20, category_id=None, status=None):
     try:
-        init_db()
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
+        conn = _get_conn()
+        cur = conn.cursor(dictionary=True)
         where, params = [], []
-        if category:
-            where.append("category=?"); params.append(category)
+        if category_id:
+            where.append("category_id=%s"); params.append(category_id)
         if status:
-            where.append("status=?");   params.append(status)
+            where.append("status=%s"); params.append(status)
         clause = ("WHERE " + " AND ".join(where)) if where else ""
-        rows = conn.execute(
-            f"SELECT * FROM articles {clause} ORDER BY id DESC LIMIT ?",
-            (*params, limit)
-        ).fetchall()
+        cur.execute(f"SELECT * FROM processed_articles {clause} ORDER BY id DESC LIMIT %s", (*params, limit))
+        rows = cur.fetchall()
+        cur.close()
         conn.close()
-        return [dict(r) for r in rows]
-    except sqlite3.Error as exc:
+        return rows
+    except mysql.connector.Error as exc:
         log_error("publisher_agent", str(exc))
         return []
+
+
+def update_article_status(article_id: int, status: str) -> bool:
+    try:
+        conn = _get_conn()
+        cur = conn.cursor()
+        cur.execute("UPDATE processed_articles SET status=%s WHERE id=%s", (status, article_id))
+        affected = cur.rowcount
+        conn.commit()
+        cur.close()
+        conn.close()
+        return affected > 0
+    except mysql.connector.Error as exc:
+        log_error("publisher_agent", str(exc))
+        return False

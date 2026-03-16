@@ -1,6 +1,6 @@
 """
 publisher_agent/agent.py
-PublisherAgent – stores the fully processed article with status='draft'.
+PublisherAgent – stores the fully processed article in MySQL with status='draft'.
 """
 
 import sys, os
@@ -14,10 +14,10 @@ class PublisherAgent:
     name = "PublisherAgent"
 
     def run(self, article: dict) -> dict:
-        log_task(self.name, "started", article.get("url", ""))
+        log_task(self.name, f"started: {article.get('url', '')}")
         try:
             article = store_article(article)
-            log_task(self.name, "completed", f"db_id={article.get('db_id')}")
+            log_task(self.name, f"completed: db_id={article.get('db_id')}")
             return article
         except Exception as exc:
             log_error(self.name, str(exc))

@@ -1,7 +1,7 @@
 """
 editor_agent/agent.py
-EditorAgent – rewrites the article, generates a summary, and
-              generates an improved headline using the local LLM.
+EditorAgent – rewrites the article, generates a summary, headline,
+              and classifies category using the local LLM.
 """
 
 import sys, os
@@ -21,7 +21,7 @@ Write one punchy, factual news headline (max 12 words) for:
 TITLE: {title}
 SUMMARY: {summary}
 
-Respond with ONLY the headline text."""
+Respond with ONLY the headline text. No quotes, no labels."""
 
 
 class EditorAgent:
@@ -39,7 +39,10 @@ class EditorAgent:
                 timeout=OLLAMA_TIMEOUT,
             )
             resp.raise_for_status()
-            return resp.json().get("response", "").strip()
+            headline = resp.json().get("response", "").strip()
+            # Clean up: remove quotes if LLM wrapped it
+            headline = headline.strip('"').strip("'")
+            return headline or article.get("title", "")
         except Exception as exc:
             log_error(self.name, f"headline LLM: {exc}")
             return article.get("title", "")
@@ -47,17 +50,17 @@ class EditorAgent:
     def run(self, article: dict) -> dict:
         """
         Input:  article dict with 'body'
-        Output: article enriched with rewritten_body, summary, category, headline
+        Output: article enriched with rewritten_body, summary, category, category_id, title
         """
-        log_task(self.name, "started", article.get("url", ""))
+        log_task(self.name, f"started: {article.get('url', '')}")
         try:
             article = rewrite_article(article)
             article = generate_summary(article)
             article = classify_category(article)
             headline = self._improved_headline(article)
-            article = {**article, "headline": headline}
-            log_task(self.name, "completed", article.get("url", ""))
-            print(f"[{self.name}] ✓ headline='{headline[:60]}'")
+            article = {**article, "title": headline}
+            log_task(self.name, f"completed: {article.get('url', '')}")
+            print(f"[{self.name}] ✓ title='{headline[:60]}'")
             return article
         except Exception as exc:
             log_error(self.name, str(exc))

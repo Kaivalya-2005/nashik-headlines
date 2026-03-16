@@ -1,13 +1,13 @@
 """
 master_agent/agent.py
-MasterAgent – the orchestrator that coordinates the entire pipeline.
-
-Pipeline:
-  ScraperAgent → ExtractorAgent → EditorAgent → SEOAgent → ImageAgent → PublisherAgent
+MasterAgent – orchestrares workflow, grabs raw_articles, passes source_id.
 """
 
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+import mysql.connector
+from config.settings import MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DB, MYSQL_PORT
 
 from scraper_agent.agent    import ScraperAgent
 from extractor_agent.agent  import ExtractorAgent
@@ -15,19 +15,10 @@ from editor_agent.agent     import EditorAgent
 from seo_agent.agent        import SEOAgent
 from image_agent.agent      import ImageAgent
 from publisher_agent.agent  import PublisherAgent
-from memory.store import log_task, log_error, get_snapshot
+from memory.store import log_task, log_error
 
 
 class MasterAgent:
-    """
-    Controls the entire news-processing workflow.
-
-    Usage:
-        master = MasterAgent()
-        master.run()             # full pipeline (scrape → publish)
-        master.process(stub)     # process one article stub directly
-    """
-
     name = "MasterAgent"
 
     def __init__(self):
@@ -38,113 +29,100 @@ class MasterAgent:
         self.image     = ImageAgent()
         self.publisher = PublisherAgent()
 
-    # ── Internal ──────────────────────────────────────────────────────────────
+    def _get_conn(self):
+        return mysql.connector.connect(
+            host=MYSQL_HOST, user=MYSQL_USER, password=MYSQL_PASSWORD,
+            database=MYSQL_DB, port=MYSQL_PORT
+        )
 
     def _banner(self, msg: str):
-        width = 64
-        print(f"\n{'═'*width}")
-        print(f"  {msg}")
-        print(f"{'═'*width}")
+        print(f"\n{'═'*64}\n  {msg}\n{'═'*64}")
 
     def _step(self, step: int, name: str, url: str = ""):
         short = url[:55] + "…" if len(url) > 55 else url
         print(f"\n  ┌─ Step {step}: {name}")
-        if short:
-            print(f"  │  {short}")
+        if short: print(f"  │  {short}")
 
-    # ── Pipeline ──────────────────────────────────────────────────────────────
+    def _update_raw_status(self, raw_id: int, status: str):
+        try:
+            conn = self._get_conn()
+            cur = conn.cursor()
+            cur.execute("UPDATE raw_articles SET status=%s WHERE id=%s", (status, raw_id))
+            conn.commit()
+            cur.close()
+            conn.close()
+        except: pass
 
     def process(self, stub: dict) -> dict:
-        """
-        Run the full processing pipeline on a single article stub.
-
-        Parameters
-        ----------
-        stub : {title, url, source}
-
-        Returns
-        -------
-        Fully enriched article dict.
-        """
         url = stub.get("url", "unknown")
+        raw_id = stub.get("id")
+        
         self._banner(f"Processing: {url[:55]}")
-        log_task(self.name, "pipeline_start", url)
+        log_task(self.name, f"pipeline_start: raw_id={raw_id}", raw_id)
 
-        # Step 1 – Extract
-        self._step(1, "ExtractorAgent", url)
-        article = self.extractor.run(stub)
-        if not article.get("body"):
-            print("  │  ⚠ No body extracted — skipping article.")
-            log_task(self.name, "skipped_no_body", url)
+        try:
+            self._step(1, "ExtractorAgent", url)
+            article = self.extractor.run(stub)
+            if not article.get("body"):
+                print("  │  ⚠ No body extracted — skipping.")
+                if raw_id: self._update_raw_status(raw_id, "rejected")
+                return article
+
+            self._step(2, "EditorAgent")
+            article = self.editor.run(article)
+
+            self._step(3, "SEOAgent")
+            article = self.seo.run(article)
+
+            self._step(4, "ImageAgent")
+            article = self.image.run(article)
+
+            self._step(5, "PublisherAgent")
+            article = self.publisher.run(article)
+
+            if raw_id:
+                if article.get("db_id", -1) > 0:
+                    self._update_raw_status(raw_id, "processed")
+                else:
+                    self._update_raw_status(raw_id, "rejected")
+
+            log_task(self.name, "pipeline_complete", article.get("db_id"))
+            print(f"\n  ✅ Saved id={article.get('db_id')} drafted")
             return article
-
-        # Step 2 – Edit (rewrite + summary + classify + headline)
-        self._step(2, "EditorAgent")
-        article = self.editor.run(article)
-
-        # Step 3 – SEO
-        self._step(3, "SEOAgent")
-        article = self.seo.run(article)
-
-        # Step 4 – Image
-        self._step(4, "ImageAgent")
-        article = self.image.run(article)
-
-        # Step 5 – Publish
-        self._step(5, "PublisherAgent")
-        article = self.publisher.run(article)
-
-        log_task(self.name, "pipeline_complete", f"db_id={article.get('db_id')}")
-        print(f"\n  ✅ Article saved  id={article.get('db_id')}  status=draft")
-        return article
+            
+        except Exception as exc:
+            log_error(self.name, f"Process failure {url}: {exc}")
+            if raw_id: self._update_raw_status(raw_id, "rejected")
+            return stub
 
     def run(self) -> int:
-        """
-        Full cycle: scrape all sources, then process each new article.
-
-        Returns
-        -------
-        Number of articles successfully saved.
-        """
         self._banner("MasterAgent — Starting Scrape Cycle")
-        log_task(self.name, "cycle_start")
 
-        # Step 0 – Scrape
-        stubs = self.scraper.run()
-        if not stubs:
-            print("[MasterAgent] No new articles found.")
-            log_task(self.name, "cycle_complete", "0 articles")
+        self.scraper.run()
+
+        pending = []
+        try:
+            conn = self._get_conn()
+            cur = conn.cursor(dictionary=True)
+            # Retrieve source_id instead of source string
+            cur.execute("SELECT id, title, url, source_id FROM raw_articles WHERE status='pending' LIMIT 10")
+            pending = cur.fetchall()
+            cur.close()
+            conn.close()
+        except Exception as exc:
+            log_error(self.name, f"Fetch pending fail: {exc}")
+
+        if not pending:
             return 0
 
         saved = 0
-        for i, stub in enumerate(stubs, 1):
-            print(f"\n[MasterAgent] Article {i}/{len(stubs)}")
-            try:
-                result = self.process(stub)
-                if result.get("db_id", -1) > 0:
-                    saved += 1
-            except Exception as exc:
-                log_error(self.name, f"Unhandled error on {stub.get('url')}: {exc}")
-                print(f"[MasterAgent] ✗ Error: {exc}")
-
-        self._banner(f"Cycle Complete — {saved}/{len(stubs)} articles saved")
-        log_task(self.name, "cycle_complete", f"{saved} saved")
+        for i, stub in enumerate(pending, 1):
+            result = self.process(stub)
+            if result.get("db_id", -1) > 0:
+                saved += 1
         return saved
 
     def dry_run(self) -> dict:
-        """
-        Smoke-test: verify all agents can be instantiated and the DB initialised.
-        No network calls, no LLM calls.
-        """
-        from tools.store_article import init_db
+        from tools.init_db import init_db
         init_db()
-        snapshot = get_snapshot()
-        return {
-            "agents": [
-                self.scraper.name, self.extractor.name, self.editor.name,
-                self.seo.name, self.image.name, self.publisher.name,
-            ],
-            "memory_urls": len(snapshot["processed_urls"]),
-            "db": "OK",
-            "status": "dry_run_passed",
-        }
+        return {"status": "dry_run_passed"}

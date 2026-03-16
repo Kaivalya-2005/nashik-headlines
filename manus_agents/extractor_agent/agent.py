@@ -18,10 +18,10 @@ class ExtractorAgent:
         Receives a stub {title, url, source}.
         Returns the stub enriched with 'body'.
         """
-        log_task(self.name, "started", stub.get("url", ""))
+        log_task(self.name, f"started: {stub.get('url', '')}")
         try:
             article = extract_article(stub)
-            log_task(self.name, "completed", f"{len(article.get('body',''))} chars")
+            log_task(self.name, f"completed: {len(article.get('body',''))} chars")
             return article
         except Exception as exc:
             log_error(self.name, str(exc))

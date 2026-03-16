@@ -4,8 +4,9 @@ run_agents.py
 Entry point for the manus_agents multi-agent system.
 
 Usage:
-  python run_agents.py              → continuous loop
+  python run_agents.py              → continuous loop (every 30 min)
   python run_agents.py --once       → single scrape-process cycle and exit
+  python run_agents.py --loop       → continuous loop
   python run_agents.py --api        → start admin API only (port 8002)
   python run_agents.py --api --loop → API + automation loop concurrently
   python run_agents.py --dry-run    → sanity check without any network/LLM calls

@@ -1,63 +1,75 @@
 """
 memory/store.py
----------------
-Persistent agent memory backed by a JSON file.
-Tracks processed URLs, task events, and error logs.
+Tracks system state and logs agent actions.
+Now relies on the MySQL 'agent_logs' and 'raw_articles' tables directly.
 """
 
-import json
-from datetime import datetime
-from pathlib import Path
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-_MEMORY_FILE = Path(__file__).parent / "data.json"
+import mysql.connector
+from config.settings import MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DB, MYSQL_PORT
 
-
-def _load() -> dict:
-    try:
-        with open(_MEMORY_FILE) as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {"processed_urls": [], "task_log": [], "error_log": []}
-
-
-def _save(data: dict):
-    with open(_MEMORY_FILE, "w") as f:
-        json.dump(data, f, indent=2)
-
-
-# ── Public API ─────────────────────────────────────────────────────────────────
+def _get_conn():
+    return mysql.connector.connect(
+        host=MYSQL_HOST,
+        user=MYSQL_USER,
+        password=MYSQL_PASSWORD,
+        database=MYSQL_DB,
+        port=MYSQL_PORT,
+    )
 
 def is_processed(url: str) -> bool:
-    return url in _load()["processed_urls"]
+    """Check if the URL exists in the database already (either raw or processed)."""
+    try:
+        conn = _get_conn()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT 1 FROM raw_articles WHERE url = %s", (url,)
+        )
+        exists = cur.fetchone() is not None
+        cur.close()
+        conn.close()
+        return exists
+    except Exception:
+        return False
 
+def log_task(agent_name: str, message: str, article_id: int = None):
+    """Log an event to the agent_logs table."""
+    try:
+        conn = _get_conn()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO agent_logs (agent_name, message, article_id) VALUES (%s, %s, %s)",
+            (agent_name, message, article_id)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as exc:
+        print(f"Log Error: {exc}")
 
-def mark_processed(url: str):
-    mem = _load()
-    if url not in mem["processed_urls"]:
-        mem["processed_urls"].append(url)
-    _save(mem)
-
-
-def log_task(agent: str, status: str, detail: str = ""):
-    mem = _load()
-    mem["task_log"].append({
-        "agent": agent, "status": status,
-        "detail": detail,
-        "ts": datetime.utcnow().isoformat(),
-    })
-    mem["task_log"] = mem["task_log"][-100:]
-    _save(mem)
-
-
-def log_error(agent: str, error: str):
-    mem = _load()
-    mem["error_log"].append({
-        "agent": agent, "error": error,
-        "ts": datetime.utcnow().isoformat(),
-    })
-    mem["error_log"] = mem["error_log"][-50:]
-    _save(mem)
-
+def log_error(agent_name: str, error_msg: str, article_id: int = None):
+    """Log an error to the agent_logs table."""
+    log_task(agent_name, f"ERROR: {error_msg}", article_id)
 
 def get_snapshot() -> dict:
-    return _load()
+    """Return memory statistics."""
+    try:
+        conn = _get_conn()
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT COUNT(*) AS total FROM raw_articles")
+        raw_count = cur.fetchone()["total"]
+        cur.execute("SELECT COUNT(*) AS total FROM processed_articles")
+        proc_count = cur.fetchone()["total"]
+        cur.execute("SELECT COUNT(*) AS total FROM agent_logs")
+        logs_count = cur.fetchone()["total"]
+        cur.close()
+        conn.close()
+        return {
+            "raw_articles_count": raw_count,
+            "processed_articles_count": proc_count,
+            "total_logs": logs_count
+        }
+    except Exception:
+        return {}

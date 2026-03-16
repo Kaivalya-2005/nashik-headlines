@@ -4,7 +4,8 @@ requests
 beautifulsoup4
 lxml
 feedparser
-ollama
 python-dotenv
 aiofiles
 pydantic
+mysql-connector-python
+Pillow

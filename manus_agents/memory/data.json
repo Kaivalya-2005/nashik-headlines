@@ -1,173 +1,924 @@
 {
   "processed_urls": [
-    "https://timesofindia.indiatimes.com/city/aurangabad"
+    "https://timesofindia.indiatimes.com/city/aurangabad",
+    "https://timesofindia.indiatimes.com/city/nashik/mla-seeks-underpass-and-flyover-to-ease-traffic-on-nashik-road-dwarka-corridor/articleshow/129561486.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/activists-seek-nmcs-stand-on-tapovan-tree-felling-opposition-for-land-acquisition-in-trimbakeshwar/articleshow/129520694.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/maha-cong-president-demands-modi-face-public-as-fuel-shortage-hits-households-and-hotels/articleshow/129564203.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/5-injured-in-jalgaon-hit-run-fake-regn-number-plates-found/articleshow/129563427.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/nashik-sambhajinagar-collectors-review-situation-act-to-avert-lpg-diversion-focus-on-households/articleshow/129562075.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/nashik-temples-continue-to-run-mass-meal-services-annachhatra-operators-at-kolhapurs-mahalaxmi-temple-feel-the-pinch/articleshow/129520071.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/nashik-civic-body-issues-heat-advisory-as-city-hits-38-5c/articleshow/129519532.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/case-of-cheating-against-over-150-landowners-developers/articleshow/129474323.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/tourism-dept-plans-to-develop-mice-hub-in-nashik/articleshow/129474166.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/nashik-court-disposes-of-defamation-case-against-rahul-gandhi/articleshow/129473769.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/menus-shrink-at-hotels-restaurants-in-nashik-amid-curbs-on-commercial-lpg-supply/articleshow/129473668.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/at-least-30-injured-in-bee-swarm-attack-at-parking-of-ajanta-caves/articleshow/129473426.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/mahajan-calls-for-faster-execution-of-kumbh-works/articleshow/129473640.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/nashik-police-appeal-to-citizens-to-install-cctv-cameras/articleshow/129416243.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/outer-ring-road-kumbh-mela-authority-approves-rs3954-crore-for-civil-works/articleshow/129416026.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/science-exhibition-at-st-lawrence-high-school/articleshow/129413380.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/contractors-warn-of-indefinite-strike-from-april-6-over-unpaid-bills/articleshow/129413038.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/8000-hotels-600-industrial-units-in-nashik-stare-at-uncertainty-as-commercial-lpg-supply-dries-up/articleshow/129412238.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/construction-tdr-to-boost-land-acquisition/articleshow/129411716.cms",
+    "https://timesofindia.indiatimes.com/city/mumbai/over-100-lpg-cylinders-seized-from-black-market-sellers-in-mumbai-by-food-distribution-department/articleshow/129568555.cms",
+    "https://timesofindia.indiatimes.com/city/mumbai/the-suicidal-ship-who-was-mumbai-engineer-deonandan-prasad-singh-killed-in-tanker-attack-near-iraq/articleshow/129568118.cms",
+    "https://timesofindia.indiatimes.com/city/mumbai/mumbai-doctor-found-dead-in-her-cabin-at-railway-hospital/articleshow/129567679.cms",
+    "https://timesofindia.indiatimes.com/city/aurangabad/massajog-sarpanch-murder-co-accused-attends-post-death-ritual-of-his-brother/articleshow/129562273.cms",
+    "https://timesofindia.indiatimes.com/city/aurangabad/industries-seek-relief-from-minister-samant-as-flow-meter-shortage-stalls-piped-gas-connections-in-waluj-midc-amid-fuel-crisis/articleshow/129562140.cms",
+    "https://timesofindia.indiatimes.com/city/aurangabad/mess-services-at-hostels-pgs-shut-amid-curbs-on-commercial-lpg-supply-students-in-chhatrapati-sambhajinagar-scramble-for-meals/articleshow/129562071.cms",
+    "https://timesofindia.indiatimes.com/city/kolhapur/encroachments-on-city-roads-result-in-traffic-congestion/articleshow/129564176.cms",
+    "https://timesofindia.indiatimes.com/city/kolhapur/garbhagriha-of-mahalaxmi-temple-to-remain-closed-between-march-14-to-17-for-conservation-works/articleshow/129562622.cms",
+    "https://timesofindia.indiatimes.com/city/kolhapur/kanda-lasoon-masala-turns-dearer-as-less-supply-lpg-curbs-push-up-spice-prices/articleshow/129562178.cms",
+    "https://timesofindia.indiatimes.com/city/nagpur/lpg-supply-woes-hit-ramzan-kitchens-disrupt-iftar-prep-in-nagpur/articleshow/129564309.cms",
+    "https://timesofindia.indiatimes.com/city/nagpur/customers-queue-up-since-4am-lpg-booking-system-failure-chaos-continues/articleshow/129563475.cms",
+    "https://timesofindia.indiatimes.com/city/nagpur/ships-stranded-at-hormuz-indias-biggest-lpg-bottler-buys-from-us-at-hefty-premium/articleshow/129563454.cms",
+    "https://timesofindia.indiatimes.com/city/navi-mumbai/woman-arrested-for-kidnapping-robbing-sr-citizen-fb-friend/articleshow/129545601.cms",
+    "https://timesofindia.indiatimes.com/city/navi-mumbai/leopard-movement-near-residential-areas-sparks-call-for-ecological-safeguards-in-navi-mumbai/articleshow/128834611.cms",
+    "https://timesofindia.indiatimes.com/city/navi-mumbai/4-forge-documents-sell-dead-israeli-siblings-land-to-builder-for-rs-2-3-cr-panvel-city-police-look-for-2-estate-agents-2-landowners/articleshow/128589977.cms",
+    "https://timesofindia.indiatimes.com/city/pune/govt-to-set-up-new-it-park-near-proposed-purandar-airport/articleshow/129564158.cms",
+    "https://timesofindia.indiatimes.com/city/pune/traditional-cooking-keeps-ramzan-food-stalls-running-in-pune-despite-lpg-shortage/articleshow/129563858.cms",
+    "https://timesofindia.indiatimes.com/city/pune/baramati-hoteliers-urge-deputy-cm-sunetra-pawar-to-push-for-rationing-of-commercial-lpg-cylinders-instead-of-total-suspension-in-supply/articleshow/129563856.cms",
+    "https://timesofindia.indiatimes.com/city/thane/man-strangles-wife-after-domestic-dispute-confesses-to-nashik-police-station/articleshow/129567928.cms",
+    "https://timesofindia.indiatimes.com/city/thane/upset-with-gf-man-hurls-stones-at-train/articleshow/129563363.cms",
+    "https://timesofindia.indiatimes.com/city/thane/smoke-from-bapgaon-fire-pushes-aqi-to-347-hazardous-level-in-kalyan-west/articleshow/129494835.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/nmc-seeks-rs500cr-to-strengthen-basic-infrastructure-in-city/articleshow/129473763.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/with-20-more-days-to-go-this-fiscal-nashik-municipal-corporation-records-all-time-high-property-tax-collection/articleshow/129411646.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/kolhapur-district-supply-officer-urge-residents-to-not-fall-for-rumours-amid-long-queues-outside-gas-agencies-commercial-establishments-stare-at-bleak-future/articleshow/129411467.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/two-get-10-yr-ri-in-ganja-smuggling-case-of-2020/articleshow/129410949.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/civil-hospital-doctor-booked-for-abetting-suicide-of-his-wife-after-sister-in-law-files-complaint/articleshow/129351598.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/nmc-green-bonds-on-nse-bse-oversubscribed-5-24x/articleshow/129348704.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/rescuer-drowns-with-girl-in-bhadgaon-of-jalgaon-district-in-girna-river/articleshow/129347242.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/ahilyanagars-kolgaon-village-passes-resolution-to-penalise-people-uttering-mother-and-sister-related-abuses/articleshow/129346569.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/nashik-municipal-corporation-plans-to-rope-in-citizens-for-garden-maintenance-across-city/articleshow/129346399.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/ndcc-bank-eyes-rs-230-crore-relief-via-govt-announced-loan-waiver/articleshow/129232468.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/murder-convict-escapes-from-dhule-prison-rearrested/articleshow/129232481.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/3-of-a-family-killed-in-accident-near-umrane-on-mumbai-agra-highway/articleshow/129228865.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/ayurveda-practitioner-found-dead-at-her-home-by-psychiatrist-husband-children/articleshow/129228847.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/14k-crore-allocated-for-phase-2-of-shirur-sambhajinagar-expressway/articleshow/129174984.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/state-to-set-up-commissionerate-for-msmes-to-boost-sector/articleshow/129170494.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/nashik-sambhajinagar-are-centres-new-growth-hubs/articleshow/129173390.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/water-informatics-centre-in-nashik/articleshow/129172400.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/no-breakthrough-yet-in-jamkhed-firing-that-grievously-injured-criminal-on-police-records-sagar-moholkar/articleshow/129170717.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/three-held-in-samruddhi-robbery-case/articleshow/129110787.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/over-1-2l-beneficiaries-register-for-maharashtra-state-road-transport-corporations-mobility-card/articleshow/129109835.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/pimplaner-police-arrest-man-for-murder-after-scuffle-in-dhule-village/articleshow/129107284.cms",
+    "https://timesofindia.indiatimes.com/city/nashik/8am-10pm-ban-on-pvt-bus-movement-till-end-of-may/articleshow/129045761.cms",
+    "admin-generated-9d19f144",
+    "admin-generated-962a5318",
+    "admin-generated-17599305"
   ],
   "task_log": [
     {
-      "agent": "MasterAgent",
-      "status": "cycle_start",
-      "detail": "",
-      "ts": "2026-03-13T09:05:45.004644"
-    },
-    {
-      "agent": "ScraperAgent",
-      "status": "started",
-      "detail": "",
-      "ts": "2026-03-13T09:05:45.005021"
-    },
-    {
-      "agent": "ScraperAgent",
-      "status": "completed",
-      "detail": "125 articles found",
-      "ts": "2026-03-13T09:05:46.442817"
-    },
-    {
-      "agent": "MasterAgent",
-      "status": "pipeline_start",
-      "detail": "https://timesofindia.indiatimes.com/city/aurangabad",
-      "ts": "2026-03-13T09:05:46.465960"
-    },
-    {
       "agent": "ExtractorAgent",
       "status": "started",
-      "detail": "https://timesofindia.indiatimes.com/city/aurangabad",
-      "ts": "2026-03-13T09:05:46.466680"
-    },
-    {
-      "agent": "MasterAgent",
-      "status": "cycle_start",
-      "detail": "",
-      "ts": "2026-03-13T10:20:32.208875"
-    },
-    {
-      "agent": "ScraperAgent",
-      "status": "started",
-      "detail": "",
-      "ts": "2026-03-13T10:20:32.210254"
-    },
-    {
-      "agent": "ScraperAgent",
-      "status": "completed",
-      "detail": "139 articles found",
-      "ts": "2026-03-13T10:20:41.855999"
-    },
-    {
-      "agent": "MasterAgent",
-      "status": "pipeline_start",
-      "detail": "https://timesofindia.indiatimes.com/city/aurangabad",
-      "ts": "2026-03-13T10:20:41.858337"
-    },
-    {
-      "agent": "ExtractorAgent",
-      "status": "started",
-      "detail": "https://timesofindia.indiatimes.com/city/aurangabad",
-      "ts": "2026-03-13T10:20:41.858442"
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/nashik-sambhajinagar-are-centres-new-growth-hubs/articleshow/129173390.cms",
+      "ts": "2026-03-14T13:18:31.273840"
     },
     {
       "agent": "ExtractorAgent",
       "status": "completed",
-      "detail": "12165 chars",
-      "ts": "2026-03-13T10:20:43.062437"
+      "detail": "2264 chars",
+      "ts": "2026-03-14T13:18:31.855528"
     },
     {
       "agent": "EditorAgent",
       "status": "started",
-      "detail": "https://timesofindia.indiatimes.com/city/aurangabad",
-      "ts": "2026-03-13T10:20:43.062648"
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/nashik-sambhajinagar-are-centres-new-growth-hubs/articleshow/129173390.cms",
+      "ts": "2026-03-14T13:18:31.856230"
     },
     {
       "agent": "EditorAgent",
       "status": "completed",
-      "detail": "https://timesofindia.indiatimes.com/city/aurangabad",
-      "ts": "2026-03-13T10:26:05.016199"
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/nashik-sambhajinagar-are-centres-new-growth-hubs/articleshow/129173390.cms",
+      "ts": "2026-03-14T13:18:31.870908"
     },
     {
       "agent": "SEOAgent",
       "status": "started",
-      "detail": "https://timesofindia.indiatimes.com/city/aurangabad",
-      "ts": "2026-03-13T10:26:05.019862"
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/nashik-sambhajinagar-are-centres-new-growth-hubs/articleshow/129173390.cms",
+      "ts": "2026-03-14T13:18:31.871837"
     },
     {
       "agent": "SEOAgent",
       "status": "completed",
-      "detail": "chhatrapati-sambhajinagar",
-      "ts": "2026-03-13T10:28:05.233995"
+      "detail": "nashik-sambhajinagar-are-centres-new-growth-hubs",
+      "ts": "2026-03-14T13:18:31.875842"
     },
     {
       "agent": "ImageAgent",
       "status": "started",
-      "detail": "https://timesofindia.indiatimes.com/city/aurangabad",
-      "ts": "2026-03-13T10:28:05.235223"
-    },
-    {
-      "agent": "ImageAgent",
-      "status": "completed",
-      "detail": "Photorealistic news photograph: Makariye's victory celebrati",
-      "ts": "2026-03-13T10:28:37.474163"
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/nashik-sambhajinagar-are-centres-new-growth-hubs/articleshow/129173390.cms",
+      "ts": "2026-03-14T13:18:31.876730"
     },
     {
       "agent": "PublisherAgent",
       "status": "started",
-      "detail": "https://timesofindia.indiatimes.com/city/aurangabad",
-      "ts": "2026-03-13T10:28:37.479668"
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/nashik-sambhajinagar-are-centres-new-growth-hubs/articleshow/129173390.cms",
+      "ts": "2026-03-14T13:18:31.878455"
     },
     {
       "agent": "PublisherAgent",
       "status": "completed",
       "detail": "db_id=-1",
-      "ts": "2026-03-13T10:28:37.493213"
+      "ts": "2026-03-14T13:18:31.882336"
     },
     {
       "agent": "MasterAgent",
       "status": "pipeline_complete",
       "detail": "db_id=-1",
-      "ts": "2026-03-13T10:28:37.493672"
+      "ts": "2026-03-14T13:18:31.882929"
     },
     {
       "agent": "MasterAgent",
       "status": "pipeline_start",
-      "detail": "https://timesofindia.indiatimes.com/city/nashik/case-of-cheating-against-over-150-landowners-developers/articleshow/129474323.cms",
-      "ts": "2026-03-13T10:28:37.494001"
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/water-informatics-centre-in-nashik/articleshow/129172400.cms",
+      "ts": "2026-03-14T13:18:31.883502"
     },
     {
       "agent": "ExtractorAgent",
       "status": "started",
-      "detail": "https://timesofindia.indiatimes.com/city/nashik/case-of-cheating-against-over-150-landowners-developers/articleshow/129474323.cms",
-      "ts": "2026-03-13T10:28:37.494333"
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/water-informatics-centre-in-nashik/articleshow/129172400.cms",
+      "ts": "2026-03-14T13:18:31.884041"
     },
     {
       "agent": "ExtractorAgent",
       "status": "completed",
-      "detail": "2098 chars",
-      "ts": "2026-03-13T10:28:38.104452"
+      "detail": "1561 chars",
+      "ts": "2026-03-14T13:18:32.427703"
     },
     {
       "agent": "EditorAgent",
       "status": "started",
-      "detail": "https://timesofindia.indiatimes.com/city/nashik/case-of-cheating-against-over-150-landowners-developers/articleshow/129474323.cms",
-      "ts": "2026-03-13T10:28:38.104702"
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/water-informatics-centre-in-nashik/articleshow/129172400.cms",
+      "ts": "2026-03-14T13:18:32.428319"
+    },
+    {
+      "agent": "EditorAgent",
+      "status": "completed",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/water-informatics-centre-in-nashik/articleshow/129172400.cms",
+      "ts": "2026-03-14T13:18:32.441612"
+    },
+    {
+      "agent": "SEOAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/water-informatics-centre-in-nashik/articleshow/129172400.cms",
+      "ts": "2026-03-14T13:18:32.442518"
+    },
+    {
+      "agent": "SEOAgent",
+      "status": "completed",
+      "detail": "water-informatics-centre-in-nashik",
+      "ts": "2026-03-14T13:18:32.445824"
+    },
+    {
+      "agent": "ImageAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/water-informatics-centre-in-nashik/articleshow/129172400.cms",
+      "ts": "2026-03-14T13:18:32.446718"
+    },
+    {
+      "agent": "PublisherAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/water-informatics-centre-in-nashik/articleshow/129172400.cms",
+      "ts": "2026-03-14T13:18:32.447920"
+    },
+    {
+      "agent": "PublisherAgent",
+      "status": "completed",
+      "detail": "db_id=-1",
+      "ts": "2026-03-14T13:18:32.451329"
+    },
+    {
+      "agent": "MasterAgent",
+      "status": "pipeline_complete",
+      "detail": "db_id=-1",
+      "ts": "2026-03-14T13:18:32.451878"
+    },
+    {
+      "agent": "MasterAgent",
+      "status": "pipeline_start",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/no-breakthrough-yet-in-jamkhed-firing-that-grievously-injured-criminal-on-police-records-sagar-moholkar/articleshow/129170717.cms",
+      "ts": "2026-03-14T13:18:32.452489"
+    },
+    {
+      "agent": "ExtractorAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/no-breakthrough-yet-in-jamkhed-firing-that-grievously-injured-criminal-on-police-records-sagar-moholkar/articleshow/129170717.cms",
+      "ts": "2026-03-14T13:18:32.453030"
+    },
+    {
+      "agent": "ExtractorAgent",
+      "status": "completed",
+      "detail": "2521 chars",
+      "ts": "2026-03-14T13:18:32.990903"
+    },
+    {
+      "agent": "EditorAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/no-breakthrough-yet-in-jamkhed-firing-that-grievously-injured-criminal-on-police-records-sagar-moholkar/articleshow/129170717.cms",
+      "ts": "2026-03-14T13:18:32.991599"
+    },
+    {
+      "agent": "EditorAgent",
+      "status": "completed",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/no-breakthrough-yet-in-jamkhed-firing-that-grievously-injured-criminal-on-police-records-sagar-moholkar/articleshow/129170717.cms",
+      "ts": "2026-03-14T13:18:33.002803"
+    },
+    {
+      "agent": "SEOAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/no-breakthrough-yet-in-jamkhed-firing-that-grievously-injured-criminal-on-police-records-sagar-moholkar/articleshow/129170717.cms",
+      "ts": "2026-03-14T13:18:33.003366"
+    },
+    {
+      "agent": "SEOAgent",
+      "status": "completed",
+      "detail": "no-breakthrough-yet-in-jamkhed-firing-that-grievously-injure",
+      "ts": "2026-03-14T13:18:33.005757"
+    },
+    {
+      "agent": "ImageAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/no-breakthrough-yet-in-jamkhed-firing-that-grievously-injured-criminal-on-police-records-sagar-moholkar/articleshow/129170717.cms",
+      "ts": "2026-03-14T13:18:33.006314"
+    },
+    {
+      "agent": "PublisherAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/no-breakthrough-yet-in-jamkhed-firing-that-grievously-injured-criminal-on-police-records-sagar-moholkar/articleshow/129170717.cms",
+      "ts": "2026-03-14T13:18:33.007386"
+    },
+    {
+      "agent": "PublisherAgent",
+      "status": "completed",
+      "detail": "db_id=-1",
+      "ts": "2026-03-14T13:18:33.011054"
+    },
+    {
+      "agent": "MasterAgent",
+      "status": "pipeline_complete",
+      "detail": "db_id=-1",
+      "ts": "2026-03-14T13:18:33.011622"
+    },
+    {
+      "agent": "MasterAgent",
+      "status": "pipeline_start",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/three-held-in-samruddhi-robbery-case/articleshow/129110787.cms",
+      "ts": "2026-03-14T13:18:33.012175"
+    },
+    {
+      "agent": "ExtractorAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/three-held-in-samruddhi-robbery-case/articleshow/129110787.cms",
+      "ts": "2026-03-14T13:18:33.012703"
+    },
+    {
+      "agent": "ExtractorAgent",
+      "status": "completed",
+      "detail": "1267 chars",
+      "ts": "2026-03-14T13:18:33.550057"
+    },
+    {
+      "agent": "EditorAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/three-held-in-samruddhi-robbery-case/articleshow/129110787.cms",
+      "ts": "2026-03-14T13:18:33.550765"
+    },
+    {
+      "agent": "EditorAgent",
+      "status": "completed",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/three-held-in-samruddhi-robbery-case/articleshow/129110787.cms",
+      "ts": "2026-03-14T13:18:33.560986"
+    },
+    {
+      "agent": "SEOAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/three-held-in-samruddhi-robbery-case/articleshow/129110787.cms",
+      "ts": "2026-03-14T13:18:33.561661"
+    },
+    {
+      "agent": "SEOAgent",
+      "status": "completed",
+      "detail": "three-held-in-samruddhi-robbery-case",
+      "ts": "2026-03-14T13:18:33.565016"
+    },
+    {
+      "agent": "ImageAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/three-held-in-samruddhi-robbery-case/articleshow/129110787.cms",
+      "ts": "2026-03-14T13:18:33.565965"
+    },
+    {
+      "agent": "PublisherAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/three-held-in-samruddhi-robbery-case/articleshow/129110787.cms",
+      "ts": "2026-03-14T13:18:33.567791"
+    },
+    {
+      "agent": "PublisherAgent",
+      "status": "completed",
+      "detail": "db_id=115",
+      "ts": "2026-03-14T13:18:33.572903"
+    },
+    {
+      "agent": "MasterAgent",
+      "status": "pipeline_complete",
+      "detail": "db_id=115",
+      "ts": "2026-03-14T13:18:33.573782"
+    },
+    {
+      "agent": "MasterAgent",
+      "status": "pipeline_start",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/over-1-2l-beneficiaries-register-for-maharashtra-state-road-transport-corporations-mobility-card/articleshow/129109835.cms",
+      "ts": "2026-03-14T13:18:33.574713"
+    },
+    {
+      "agent": "ExtractorAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/over-1-2l-beneficiaries-register-for-maharashtra-state-road-transport-corporations-mobility-card/articleshow/129109835.cms",
+      "ts": "2026-03-14T13:18:33.575321"
+    },
+    {
+      "agent": "ExtractorAgent",
+      "status": "completed",
+      "detail": "2346 chars",
+      "ts": "2026-03-14T13:18:34.217039"
+    },
+    {
+      "agent": "EditorAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/over-1-2l-beneficiaries-register-for-maharashtra-state-road-transport-corporations-mobility-card/articleshow/129109835.cms",
+      "ts": "2026-03-14T13:18:34.217663"
+    },
+    {
+      "agent": "EditorAgent",
+      "status": "completed",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/over-1-2l-beneficiaries-register-for-maharashtra-state-road-transport-corporations-mobility-card/articleshow/129109835.cms",
+      "ts": "2026-03-14T13:18:34.227137"
+    },
+    {
+      "agent": "SEOAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/over-1-2l-beneficiaries-register-for-maharashtra-state-road-transport-corporations-mobility-card/articleshow/129109835.cms",
+      "ts": "2026-03-14T13:18:34.227749"
+    },
+    {
+      "agent": "SEOAgent",
+      "status": "completed",
+      "detail": "over-12l-beneficiaries-register-for-maharashtra-state-road-t",
+      "ts": "2026-03-14T13:18:34.230449"
+    },
+    {
+      "agent": "ImageAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/over-1-2l-beneficiaries-register-for-maharashtra-state-road-transport-corporations-mobility-card/articleshow/129109835.cms",
+      "ts": "2026-03-14T13:18:34.231032"
+    },
+    {
+      "agent": "PublisherAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/over-1-2l-beneficiaries-register-for-maharashtra-state-road-transport-corporations-mobility-card/articleshow/129109835.cms",
+      "ts": "2026-03-14T13:18:34.232098"
+    },
+    {
+      "agent": "PublisherAgent",
+      "status": "completed",
+      "detail": "db_id=116",
+      "ts": "2026-03-14T13:18:34.236404"
+    },
+    {
+      "agent": "MasterAgent",
+      "status": "pipeline_complete",
+      "detail": "db_id=116",
+      "ts": "2026-03-14T13:18:34.236973"
+    },
+    {
+      "agent": "MasterAgent",
+      "status": "pipeline_start",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/pimplaner-police-arrest-man-for-murder-after-scuffle-in-dhule-village/articleshow/129107284.cms",
+      "ts": "2026-03-14T13:18:34.237546"
+    },
+    {
+      "agent": "ExtractorAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/pimplaner-police-arrest-man-for-murder-after-scuffle-in-dhule-village/articleshow/129107284.cms",
+      "ts": "2026-03-14T13:18:34.238129"
+    },
+    {
+      "agent": "ExtractorAgent",
+      "status": "completed",
+      "detail": "2022 chars",
+      "ts": "2026-03-14T13:18:34.635361"
+    },
+    {
+      "agent": "EditorAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/pimplaner-police-arrest-man-for-murder-after-scuffle-in-dhule-village/articleshow/129107284.cms",
+      "ts": "2026-03-14T13:18:34.636013"
+    },
+    {
+      "agent": "EditorAgent",
+      "status": "completed",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/pimplaner-police-arrest-man-for-murder-after-scuffle-in-dhule-village/articleshow/129107284.cms",
+      "ts": "2026-03-14T13:18:34.646547"
+    },
+    {
+      "agent": "SEOAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/pimplaner-police-arrest-man-for-murder-after-scuffle-in-dhule-village/articleshow/129107284.cms",
+      "ts": "2026-03-14T13:18:34.647151"
+    },
+    {
+      "agent": "SEOAgent",
+      "status": "completed",
+      "detail": "pimplaner-police-arrest-man-for-murder-after-scuffle-in-dhul",
+      "ts": "2026-03-14T13:18:34.649471"
+    },
+    {
+      "agent": "ImageAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/pimplaner-police-arrest-man-for-murder-after-scuffle-in-dhule-village/articleshow/129107284.cms",
+      "ts": "2026-03-14T13:18:34.650017"
+    },
+    {
+      "agent": "PublisherAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/pimplaner-police-arrest-man-for-murder-after-scuffle-in-dhule-village/articleshow/129107284.cms",
+      "ts": "2026-03-14T13:18:34.651133"
+    },
+    {
+      "agent": "PublisherAgent",
+      "status": "completed",
+      "detail": "db_id=117",
+      "ts": "2026-03-14T13:18:34.655378"
+    },
+    {
+      "agent": "MasterAgent",
+      "status": "pipeline_complete",
+      "detail": "db_id=117",
+      "ts": "2026-03-14T13:18:34.655934"
+    },
+    {
+      "agent": "MasterAgent",
+      "status": "pipeline_start",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/8am-10pm-ban-on-pvt-bus-movement-till-end-of-may/articleshow/129045761.cms",
+      "ts": "2026-03-14T13:18:34.656481"
+    },
+    {
+      "agent": "ExtractorAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/8am-10pm-ban-on-pvt-bus-movement-till-end-of-may/articleshow/129045761.cms",
+      "ts": "2026-03-14T13:18:34.657014"
+    },
+    {
+      "agent": "ExtractorAgent",
+      "status": "completed",
+      "detail": "1876 chars",
+      "ts": "2026-03-14T13:18:35.069232"
+    },
+    {
+      "agent": "EditorAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/8am-10pm-ban-on-pvt-bus-movement-till-end-of-may/articleshow/129045761.cms",
+      "ts": "2026-03-14T13:18:35.069864"
+    },
+    {
+      "agent": "EditorAgent",
+      "status": "completed",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/8am-10pm-ban-on-pvt-bus-movement-till-end-of-may/articleshow/129045761.cms",
+      "ts": "2026-03-14T13:18:35.080564"
+    },
+    {
+      "agent": "SEOAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/8am-10pm-ban-on-pvt-bus-movement-till-end-of-may/articleshow/129045761.cms",
+      "ts": "2026-03-14T13:18:35.081161"
+    },
+    {
+      "agent": "SEOAgent",
+      "status": "completed",
+      "detail": "8am-10pm-ban-on-pvt-bus-movement-till-end-of-may",
+      "ts": "2026-03-14T13:18:35.083514"
+    },
+    {
+      "agent": "ImageAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/8am-10pm-ban-on-pvt-bus-movement-till-end-of-may/articleshow/129045761.cms",
+      "ts": "2026-03-14T13:18:35.084069"
+    },
+    {
+      "agent": "PublisherAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/8am-10pm-ban-on-pvt-bus-movement-till-end-of-may/articleshow/129045761.cms",
+      "ts": "2026-03-14T13:18:35.085143"
+    },
+    {
+      "agent": "PublisherAgent",
+      "status": "completed",
+      "detail": "db_id=118",
+      "ts": "2026-03-14T13:18:35.089653"
+    },
+    {
+      "agent": "MasterAgent",
+      "status": "pipeline_complete",
+      "detail": "db_id=118",
+      "ts": "2026-03-14T13:18:35.090202"
+    },
+    {
+      "agent": "MasterAgent",
+      "status": "pipeline_start",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/it-park-logistics-hub-among-mayors-priorities-but-budget-allocation-remains-minimal/articleshow/129045561.cms",
+      "ts": "2026-03-14T13:18:35.090755"
+    },
+    {
+      "agent": "ExtractorAgent",
+      "status": "started",
+      "detail": "https://timesofindia.indiatimes.com/city/nashik/it-park-logistics-hub-among-mayors-priorities-but-budget-allocation-remains-minimal/articleshow/129045561.cms",
+      "ts": "2026-03-14T13:18:35.091280"
+    },
+    {
+      "agent": "EditorAgent",
+      "status": "started",
+      "detail": "admin-generated-9d19f144",
+      "ts": "2026-03-14T13:20:25.422243"
+    },
+    {
+      "agent": "EditorAgent",
+      "status": "completed",
+      "detail": "admin-generated-9d19f144",
+      "ts": "2026-03-14T13:20:25.433207"
+    },
+    {
+      "agent": "SEOAgent",
+      "status": "started",
+      "detail": "admin-generated-9d19f144",
+      "ts": "2026-03-14T13:20:25.434247"
+    },
+    {
+      "agent": "SEOAgent",
+      "status": "completed",
+      "detail": "nashik-municipal-corporation-decides-to-plant-1000",
+      "ts": "2026-03-14T13:20:25.438121"
+    },
+    {
+      "agent": "ImageAgent",
+      "status": "started",
+      "detail": "admin-generated-9d19f144",
+      "ts": "2026-03-14T13:20:25.439307"
+    },
+    {
+      "agent": "PublisherAgent",
+      "status": "started",
+      "detail": "admin-generated-9d19f144",
+      "ts": "2026-03-14T13:20:25.441081"
+    },
+    {
+      "agent": "PublisherAgent",
+      "status": "completed",
+      "detail": "db_id=119",
+      "ts": "2026-03-14T13:20:25.446524"
+    },
+    {
+      "agent": "EditorAgent",
+      "status": "started",
+      "detail": "admin-generated-962a5318",
+      "ts": "2026-03-14T13:31:34.332703"
+    },
+    {
+      "agent": "EditorAgent",
+      "status": "completed",
+      "detail": "admin-generated-962a5318",
+      "ts": "2026-03-14T13:31:34.352464"
+    },
+    {
+      "agent": "SEOAgent",
+      "status": "started",
+      "detail": "admin-generated-962a5318",
+      "ts": "2026-03-14T13:31:34.353200"
+    },
+    {
+      "agent": "SEOAgent",
+      "status": "completed",
+      "detail": "nashik-municipal-corporation-decides-to-plant-1000",
+      "ts": "2026-03-14T13:31:34.355596"
+    },
+    {
+      "agent": "ImageAgent",
+      "status": "started",
+      "detail": "admin-generated-962a5318",
+      "ts": "2026-03-14T13:31:34.356314"
+    },
+    {
+      "agent": "PublisherAgent",
+      "status": "started",
+      "detail": "admin-generated-962a5318",
+      "ts": "2026-03-14T13:31:34.357449"
+    },
+    {
+      "agent": "PublisherAgent",
+      "status": "completed",
+      "detail": "db_id=120",
+      "ts": "2026-03-14T13:31:34.362840"
+    },
+    {
+      "agent": "EditorAgent",
+      "status": "started",
+      "detail": "admin-generated-17599305",
+      "ts": "2026-03-14T13:32:16.537571"
+    },
+    {
+      "agent": "EditorAgent",
+      "status": "completed",
+      "detail": "admin-generated-17599305",
+      "ts": "2026-03-14T13:32:16.551566"
+    },
+    {
+      "agent": "SEOAgent",
+      "status": "started",
+      "detail": "admin-generated-17599305",
+      "ts": "2026-03-14T13:32:16.552490"
+    },
+    {
+      "agent": "SEOAgent",
+      "status": "completed",
+      "detail": "nashik-municipal-corporation-decides-to-plant-1000",
+      "ts": "2026-03-14T13:32:16.558914"
+    },
+    {
+      "agent": "ImageAgent",
+      "status": "started",
+      "detail": "admin-generated-17599305",
+      "ts": "2026-03-14T13:32:16.559607"
+    },
+    {
+      "agent": "ImageAgent",
+      "status": "completed",
+      "detail": "A photorealistic news photograph representing: Nashik munici",
+      "ts": "2026-03-14T13:32:16.562246"
+    },
+    {
+      "agent": "PublisherAgent",
+      "status": "started",
+      "detail": "admin-generated-17599305",
+      "ts": "2026-03-14T13:32:16.562807"
+    },
+    {
+      "agent": "PublisherAgent",
+      "status": "completed",
+      "detail": "db_id=121",
+      "ts": "2026-03-14T13:32:16.566440"
     }
   ],
   "error_log": [
     {
-      "agent": "scraper_agent",
-      "error": "HTML scrape failed https://www.ndtv.com/topic/nashik: 403 Client Error: Forbidden for url: https://www.ndtv.com/topic/nashik",
-      "ts": "2026-03-13T09:05:46.439680"
-    },
-    {
-      "agent": "scraper_agent",
-      "error": "HTML scrape failed https://www.ndtv.com/topic/nashik: 403 Client Error: Forbidden for url: https://www.ndtv.com/topic/nashik",
-      "ts": "2026-03-13T10:20:41.855306"
+      "agent": "editor_agent",
+      "error": "summary LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:32.998455"
     },
     {
       "agent": "editor_agent",
-      "error": "rewrite LLM call failed: HTTPConnectionPool(host='localhost', port=11434): Read timed out. (read timeout=120)",
-      "ts": "2026-03-13T10:22:43.178068"
+      "error": "classify LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:33.000374"
+    },
+    {
+      "agent": "EditorAgent",
+      "error": "headline LLM: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:33.002129"
     },
     {
       "agent": "seo_agent",
-      "error": "SEO LLM call failed: HTTPConnectionPool(host='localhost', port=11434): Read timed out. (read timeout=120)",
-      "ts": "2026-03-13T10:28:05.215848"
+      "error": "SEO LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:33.005099"
+    },
+    {
+      "agent": "ImageAgent",
+      "error": "'\\n  \"prompt\"'",
+      "ts": "2026-03-14T13:18:33.006862"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "rewrite LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:33.555120"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "summary LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:33.557224"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "classify LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:33.558804"
+    },
+    {
+      "agent": "EditorAgent",
+      "error": "headline LLM: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:33.560317"
+    },
+    {
+      "agent": "seo_agent",
+      "error": "SEO LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:33.563922"
+    },
+    {
+      "agent": "ImageAgent",
+      "error": "'\\n  \"prompt\"'",
+      "ts": "2026-03-14T13:18:33.566875"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "rewrite LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:34.220737"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "summary LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:34.222544"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "classify LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:34.224528"
+    },
+    {
+      "agent": "EditorAgent",
+      "error": "headline LLM: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:34.226362"
+    },
+    {
+      "agent": "seo_agent",
+      "error": "SEO LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:34.229762"
+    },
+    {
+      "agent": "ImageAgent",
+      "error": "'\\n  \"prompt\"'",
+      "ts": "2026-03-14T13:18:34.231569"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "rewrite LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:34.640573"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "summary LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:34.642508"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "classify LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:34.644261"
+    },
+    {
+      "agent": "EditorAgent",
+      "error": "headline LLM: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:34.645784"
+    },
+    {
+      "agent": "seo_agent",
+      "error": "SEO LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:34.648808"
+    },
+    {
+      "agent": "ImageAgent",
+      "error": "'\\n  \"prompt\"'",
+      "ts": "2026-03-14T13:18:34.650557"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "rewrite LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:35.074503"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "summary LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:35.076603"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "classify LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:35.078240"
+    },
+    {
+      "agent": "EditorAgent",
+      "error": "headline LLM: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:35.079900"
+    },
+    {
+      "agent": "seo_agent",
+      "error": "SEO LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:18:35.082839"
+    },
+    {
+      "agent": "ImageAgent",
+      "error": "'\\n  \"prompt\"'",
+      "ts": "2026-03-14T13:18:35.084608"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "rewrite LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:20:25.426135"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "summary LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:20:25.428356"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "classify LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:20:25.430110"
+    },
+    {
+      "agent": "EditorAgent",
+      "error": "headline LLM: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:20:25.432108"
+    },
+    {
+      "agent": "seo_agent",
+      "error": "SEO LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:20:25.436772"
+    },
+    {
+      "agent": "ImageAgent",
+      "error": "'\\n  \"prompt\"'",
+      "ts": "2026-03-14T13:20:25.440364"
+    },
+    {
+      "agent": "image_agent",
+      "error": "image prompt LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:20:43.873821"
+    },
+    {
+      "agent": "image_agent",
+      "error": "image prompt LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:22:13.859430"
+    },
+    {
+      "agent": "image_agent",
+      "error": "image prompt LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate | Output: N/A",
+      "ts": "2026-03-14T13:31:17.080664"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "rewrite LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:31:34.345413"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "summary LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:31:34.347967"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "classify LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:31:34.350090"
+    },
+    {
+      "agent": "EditorAgent",
+      "error": "headline LLM: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:31:34.351843"
+    },
+    {
+      "agent": "seo_agent",
+      "error": "SEO LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:31:34.354807"
+    },
+    {
+      "agent": "ImageAgent",
+      "error": "'\\n  \"prompt\"'",
+      "ts": "2026-03-14T13:31:34.356901"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "rewrite LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:32:16.541987"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "summary LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:32:16.544954"
+    },
+    {
+      "agent": "editor_agent",
+      "error": "classify LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:32:16.547758"
+    },
+    {
+      "agent": "EditorAgent",
+      "error": "headline LLM: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:32:16.550593"
+    },
+    {
+      "agent": "seo_agent",
+      "error": "SEO LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate",
+      "ts": "2026-03-14T13:32:16.557306"
+    },
+    {
+      "agent": "image_agent",
+      "error": "image prompt LLM call failed: 404 Client Error: Not Found for url: http://localhost:11434/api/generate | Output: N/A",
+      "ts": "2026-03-14T13:32:16.561555"
     }
   ]
 }

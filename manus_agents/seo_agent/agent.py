@@ -14,10 +14,10 @@ class SEOAgent:
     name = "SEOAgent"
 
     def run(self, article: dict) -> dict:
-        log_task(self.name, "started", article.get("url", ""))
+        log_task(self.name, f"started: {article.get('url', '')}")
         try:
             article = generate_seo_metadata(article)
-            log_task(self.name, "completed", article.get("slug", ""))
+            log_task(self.name, f"completed: {article.get('slug', '')}")
             return article
         except Exception as exc:
             log_error(self.name, str(exc))
