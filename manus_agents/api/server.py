@@ -15,8 +15,8 @@ from pydantic import BaseModel
 from tools.rewrite_article       import rewrite_article
 from tools.generate_summary      import generate_summary
 from tools.generate_seo_metadata import generate_seo_metadata
-from tools.generate_image_prompts import generate_image_prompts
-from tools.generate_images       import generate_images
+# from tools.generate_image_prompts import generate_image_prompts  # IMAGE GENERATION DISABLED
+# from tools.generate_images       import generate_images  # IMAGE GENERATION DISABLED
 from tools.store_article         import fetch_articles, update_article_status
 from master_agent.agent          import MasterAgent
 from memory.store                import get_snapshot
@@ -88,7 +88,7 @@ def api_generate_article(req: TextRequest):
 
         article = EditorAgent().run(stub)
         article = SEOAgent().run(article)
-        article = ImageAgent().run(article)
+        # article = ImageAgent().run(article)  # IMAGE GENERATION DISABLED
         article = PublisherAgent().run(article)
 
         return {k: article.get(k) for k in
@@ -115,19 +115,19 @@ def api_seo(req: TextRequest):
     return {k: result.get(k) for k in ("slug", "meta_title", "meta_description", "keywords")}
 
 
-@app.post("/ai/generate-images")
-def api_generate_images(req: TextRequest):
-    if not req.text.strip(): raise HTTPException(400, "text required")
-    dummy = {
-        "title": req.title or req.text[:60],
-        "body": req.text,
-        "rewritten_body": req.text,
-        "slug": f"admin-img-{uuid4().hex[:8]}",
-    }
-    dummy = generate_image_prompts(dummy)
-    dummy = generate_images(dummy)
-    return {"image_prompts": dummy.get("image_prompts", []),
-            "image1": dummy.get("image1"), "image2": dummy.get("image2"), "image3": dummy.get("image3")}
+# @app.post("/ai/generate-images")  # IMAGE GENERATION DISABLED
+# def api_generate_images(req: TextRequest):
+#     if not req.text.strip(): raise HTTPException(400, "text required")
+#     dummy = {
+#         "title": req.title or req.text[:60],
+#         "body": req.text,
+#         "rewritten_body": req.text,
+#         "slug": f"admin-img-{uuid4().hex[:8]}",
+#     }
+#     dummy = generate_image_prompts(dummy)
+#     dummy = generate_images(dummy)
+#     return {"image_prompts": dummy.get("image_prompts", []),
+#             "image1": dummy.get("image1"), "image2": dummy.get("image2"), "image3": dummy.get("image3")}
 
 
 @app.post("/ai/process-url")

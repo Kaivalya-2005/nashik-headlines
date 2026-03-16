@@ -61,21 +61,21 @@ def store_article(article: dict) -> dict:
             if row:
                 cur.execute("INSERT IGNORE INTO article_tags (article_id, tag_id) VALUES (%s, %s)", (proc_id, row[0]))
 
-        # Insert article_images
-        prompts = article.get("image_prompts", [])
-        image_paths = [article.get("image1"), article.get("image2"), article.get("image3")]
-        
-        for idx in range(3):
-            path = image_paths[idx] if idx < len(image_paths) else None
-            if not path: continue
-            
-            alt = prompts[idx].get("alt_text", "") if idx < len(prompts) else ""
-            cap = prompts[idx].get("caption", "") if idx < len(prompts) else ""
-                
-            cur.execute("""
-                INSERT INTO article_images (article_id, image_url, alt_text, caption, position)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (proc_id, path, alt, cap, idx + 1))
+        # Insert article_images (IMAGE GENERATION DISABLED)
+        # prompts = article.get("image_prompts", [])
+        # image_paths = [article.get("image1"), article.get("image2"), article.get("image3")]
+        # 
+        # for idx in range(3):
+        #     path = image_paths[idx] if idx < len(image_paths) else None
+        #     if not path: continue
+        #     
+        #     alt = prompts[idx].get("alt_text", "") if idx < len(prompts) else ""
+        #     cap = prompts[idx].get("caption", "") if idx < len(prompts) else ""
+        #         
+        #     cur.execute("""
+        #         INSERT INTO article_images (article_id, image_url, alt_text, caption, position)
+        #         VALUES (%s, %s, %s, %s, %s)
+        #     """, (proc_id, path, alt, cap, idx + 1))
 
         conn.commit()
         cur.close()

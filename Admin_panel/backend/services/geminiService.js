@@ -18,27 +18,51 @@ const model = genAI.getGenerativeModel({
   generationConfig: {
     temperature: 0.6,
     topP: 0.9,
-    maxOutputTokens: 2048,
+    maxOutputTokens: 4096,
   },
 });
 
 // --- Validation Schemas (Zod) ---
 const SEOSchema = z.object({
-  meta_title: z.string().describe("SEO-friendly title, max 60 chars"),
-  meta_description: z.string().describe("SEO-friendly description, max 160 chars"),
-  focus_keywords: z.array(z.string()).describe("List of 5-8 focus keywords")
+  meta_title: z.string().describe("SEO-friendly title, max 55 chars"),
+  meta_description: z.string().describe("SEO-friendly description, max 155 chars"),
+  focus_keywords: z.array(z.string()).describe("List of 5-8 focus keywords"),
+  slug: z.string().optional().describe("URL-friendly slug")
 });
 
 const ImageMetadataSchema = z.object({
+  prompt: z.string().describe("AI image generation prompt"),
+  file_name: z.string().describe("Image filename"),
+  alt_text: z.string().describe("SEO-friendly alt text in Marathi"),
   caption: z.string().describe("Journalistic caption in Marathi"),
-  alt_text: z.string().describe("SEO-friendly alt text in Marathi")
+  description: z.string().describe("Image description")
 });
 
 const ArticleSchema = z.object({
-  title: z.string(),
-  content_html: z.string(),
+  title: z.string().describe("Article headline"),
+  subtitle: z.string().optional().describe("Article subtitle"),
+  content_html: z.string().describe("Article body with HTML subheadings"),
+  summary: z.string().optional().describe("2-3 sentence summary"),
+  focus_keyphrase: z.string().optional().describe("Main focus keyword"),
   seo: SEOSchema,
-  images: z.array(ImageMetadataSchema).optional()
+  quote_block: z.string().optional().describe("Quoted text from source"),
+  source_name: z.string().optional().describe("Article source name"),
+  source_url: z.string().optional().describe("Source URL"),
+  via_name: z.string().optional().describe("Via source name"),
+  via_url: z.string().optional().describe("Via source URL"),
+  custom_labels: z.array(z.object({
+    label: z.string(),
+    url: z.string().optional()
+  })).optional().describe("Custom article labels with optional URLs"),
+  images: z.array(z.object({
+    type: z.enum(["feature", "context", "supporting", "additional"]).describe("Image type"),
+    prompt: z.string().describe("AI image generation prompt"),
+    file_name: z.string().describe("Image filename"),
+    alt_text: z.string().describe("SEO-friendly alt text in Marathi"),
+    caption: z.string().describe("Journalistic caption in Marathi"),
+    description: z.string().describe("Image description")
+  })).optional().describe("Array of 4 article images"),
+  tags: z.array(z.string()).optional().describe("25 high-traffic news tags")
 });
 
 // --- Helper Functions ---
@@ -184,31 +208,182 @@ const generateMarathiNews = async (rawInput) => {
     const cleanInput = sanitizeInput(rawInput);
 
     const prompt = `
-            You are a senior Marathi journalist.
-            Convert the following input into a structured, SEO-optimized Marathi news article (JSON).
+Act as a professional Indian journalist and SEO expert.
 
-            INPUT: "${cleanInput}"
+Write a Marathi news article (330–350 words) in Google News friendly journalism style.
 
-            REQUIREMENTS:
-            1. Language: Formal Marathi.
-            2. Length: 400-600 words.
-            3. Structure: Headline, Lead Paragraph, Body (5-8 paras), Subheadings (<h3>).
-            4. Tone: Factual, Newspaper style.
-            
-            OUTPUT JSON SCHEMA:
-            {
-              "title": "Headline",
-              "content_html": "<p>...</p>",
-              "seo": {
-                "meta_title": "Max 60 chars",
-                "meta_description": "Max 160 chars",
-                "focus_keywords": ["k1", "k2"]
-              },
-              "images": [
-                { "caption": "Marathi caption", "alt_text": "Marathi alt text" },
-                { "caption": "Marathi caption", "alt_text": "Marathi alt text" }
-              ]
-            }
+Topic:
+${cleanInput}
+
+--------------------------------
+
+Writing Guidelines (Must Follow)
+
+• Article length must be 330 to 350 words strictly
+• Language must be simple and clear Marathi
+• Journalism style writing
+• No spelling or grammar mistakes
+• Avoid sentence repetition
+• Use passive voice where appropriate
+
+Use transition words in at least 30% of sentences such as:
+मात्र, तसेच, दरम्यान, त्यामुळे, याशिवाय, दुसरीकडे, अखेरीस, शिवाय.
+
+--------------------------------
+
+Paragraph Structure
+
+• Each paragraph must start with a clear subheading
+• Each paragraph should contain around 20–25 words
+• Paragraphs must be short and readable
+• Focus keyphrase must appear in the FIRST paragraph
+
+--------------------------------
+
+SEO Requirements
+
+Focus Keyphrase: [Identify the main focus keyphrase from the topic automatically]
+
+Focus keyphrase must appear in:
+1. SEO Title
+2. First paragraph
+3. Meta description
+4. At least 3 times in article
+
+--------------------------------
+
+SEO Metadata
+
+SEO Title (Max 55 characters):
+Slug:
+Meta Description (Max 155 characters):
+
+--------------------------------
+
+Article Structure
+
+Subtitle:
+News Article (with subheadings):
+
+Quote Block:
+Source name:
+Source url:
+Via name:
+Via url:
+Custom Label:
+Custom Label url:
+
+--------------------------------
+
+Image Generation (Important)
+
+Generate 4 different AI images related to the news topic.
+
+Rules:
+• Aspect ratio 16:9
+• Images must be realistic news style
+• All images must be different
+• No text on images
+• Suitable for news websites
+
+For each image provide:
+
+Image 1 – Feature Image  
+Image Prompt:
+File Name:
+Alt Text:
+Caption:
+Description:
+
+Image 2 – Context Image  
+Image Prompt:
+File Name:
+Alt Text:
+Caption:
+Description:
+
+Image 3 – Supporting Image  
+Image Prompt:
+File Name:
+Alt Text:
+Caption:
+Description:
+
+Image 4 – Additional Context Image  
+Image Prompt:
+File Name:
+Alt Text:
+Caption:
+Description:
+
+--------------------------------
+
+Tags
+
+Provide 25 high-traffic news tags separated by commas.
+
+--------------------------------
+
+OUTPUT AS VALID JSON WITH THIS STRUCTURE:
+{
+  "title": "Headline",
+  "subtitle": "Optional subtitle",
+  "focus_keyphrase": "Main focus keyword",
+  "content_html": "<h3>Subheading 1</h3><p>Paragraph text...</p>...",
+  "summary": "2-3 sentence summary",
+  "seo": {
+    "meta_title": "Max 55 chars",
+    "meta_description": "Max 155 chars",
+    "slug": "url-friendly-slug",
+    "focus_keywords": ["kw1", "kw2", "kw3", "kw4", "kw5"]
+  },
+  "quote_block": "Quote text",
+  "source_name": "Source name",
+  "source_url": "https://...",
+  "via_name": "Via name",
+  "via_url": "https://...",
+  "custom_labels": [
+    {"label": "label1", "url": "https://..."},
+    {"label": "label2", "url": "https://..."}
+  ],
+  "images": [
+    {
+      "type": "feature",
+      "prompt": "Image generation prompt for feature image",
+      "file_name": "feature_$(date).webp",
+      "alt_text": "Marathi alt text",
+      "caption": "Marathi caption",
+      "description": "Image description"
+    },
+    {
+      "type": "context",
+      "prompt": "Image generation prompt for context image",
+      "file_name": "context_$(date).webp",
+      "alt_text": "Marathi alt text",
+      "caption": "Marathi caption",
+      "description": "Image description"
+    },
+    {
+      "type": "supporting",
+      "prompt": "Image generation prompt for supporting image",
+      "file_name": "supporting_$(date).webp",
+      "alt_text": "Marathi alt text",
+      "caption": "Marathi caption",
+      "description": "Image description"
+    },
+    {
+      "type": "additional",
+      "prompt": "Image generation prompt for additional context image",
+      "file_name": "additional_$(date).webp",
+      "alt_text": "Marathi alt text",
+      "caption": "Marathi caption",
+      "description": "Image description"
+    }
+  ],
+  "tags": ["tag1", "tag2", "tag3", "tag4", "tag5", "tag6", "tag7", "tag8", "tag9", "tag10", "tag11", "tag12", "tag13", "tag14", "tag15", "tag16", "tag17", "tag18", "tag19", "tag20", "tag21", "tag22", "tag23", "tag24", "tag25"]
+}
+
+IMPORTANT: Return ONLY valid JSON, no markdown, no code blocks, no explanations.
         `;
 
     const responseText = await callGeminiWithRetry(context, prompt);

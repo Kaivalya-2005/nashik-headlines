@@ -13,7 +13,7 @@ from scraper_agent.agent    import ScraperAgent
 from extractor_agent.agent  import ExtractorAgent
 from editor_agent.agent     import EditorAgent
 from seo_agent.agent        import SEOAgent
-from image_agent.agent      import ImageAgent
+# from image_agent.agent      import ImageAgent  # IMAGE GENERATION DISABLED
 from publisher_agent.agent  import PublisherAgent
 from memory.store import log_task, log_error
 
@@ -26,7 +26,7 @@ class MasterAgent:
         self.extractor = ExtractorAgent()
         self.editor    = EditorAgent()
         self.seo       = SEOAgent()
-        self.image     = ImageAgent()
+        # self.image     = ImageAgent()  # IMAGE GENERATION DISABLED
         self.publisher = PublisherAgent()
 
     def _get_conn(self):
@@ -74,10 +74,10 @@ class MasterAgent:
             self._step(3, "SEOAgent")
             article = self.seo.run(article)
 
-            self._step(4, "ImageAgent")
-            article = self.image.run(article)
+            # self._step(4, "ImageAgent")
+            # article = self.image.run(article)  # IMAGE GENERATION DISABLED
 
-            self._step(5, "PublisherAgent")
+            self._step(4, "PublisherAgent")
             article = self.publisher.run(article)
 
             if raw_id:

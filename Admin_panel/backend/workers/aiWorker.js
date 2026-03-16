@@ -26,18 +26,33 @@ const processJob = async job => {
         console.log(`[Worker] Generating content for ${articleId}...`);
         const aiData = await generateMarathiNews(rawInput);
 
-        // Update Article
+        // Update Article with all AI-generated content
         article.title = aiData.title || article.title;
+        article.subtitle = aiData.subtitle || '';
         article.content = aiData.content_html || '';
+        article.summary = aiData.summary || '';
+        article.focus_keyphrase = aiData.focus_keyphrase || '';
         article.seo = aiData.seo || {};
+        article.quote_block = aiData.quote_block || '';
+        article.source_name = aiData.source_name || '';
+        article.source_url = aiData.source_url || '';
+        article.via_name = aiData.via_name || '';
+        article.via_url = aiData.via_url || '';
+        article.custom_labels = aiData.custom_labels || [];
+        article.tags = aiData.tags || [];
 
+        // Process images with extended metadata
         if (aiData.images && Array.isArray(aiData.images)) {
             const aiImages = aiData.images.map(img => ({
                 url: '',
                 path: '',
                 caption: img.caption,
                 altText: img.alt_text,
-                isFeatured: false
+                filename: img.file_name,
+                type: img.type,
+                imagePrompt: img.prompt,
+                description: img.description,
+                isFeatured: img.type === 'feature'
             }));
             article.images.push(...aiImages);
         }
