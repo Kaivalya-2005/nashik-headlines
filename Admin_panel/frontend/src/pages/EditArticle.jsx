@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Sparkles, Wand2, AlignCenter, ImagePlus } from 'lucide-react';
+import { ArrowLeft, Save, Sparkles, ImagePlus } from 'lucide-react';
 import articleService from '../api/articleService';
-import aiService from '../api/aiService';
 import toast from 'react-hot-toast';
-import ImageUpload from '../components/ImageUpload';
 
 const EditArticle = () => {
     const { id } = useParams();
@@ -12,16 +10,17 @@ const EditArticle = () => {
 
     const [article, setArticle] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [processing, setProcessing] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [generating, setGenerating] = useState(false);
 
     const [title, setTitle] = useState('');
-    const [summary, setSummary] = useState('');
+    const [subtitle, setSubtitle] = useState('');
     const [content, setContent] = useState('');
-    const [category, setCategory] = useState('');
-    const [tagsInput, setTagsInput] = useState('');
-    const [seo, setSEO] = useState({ metaTitle: '', metaDescription: '', keywords: [] });
+    const [summary, setSummary] = useState('');
+    const [seoTitle, setSeoTitle] = useState('');
+    const [seoDescription, setSeoDescription] = useState('');
+    const [status, setStatus] = useState('DRAFT');
     const [images, setImages] = useState([]);
-    const [imagePrompt, setImagePrompt] = useState('');
 
     useEffect(() => {
         loadArticle();
@@ -32,22 +31,16 @@ const EditArticle = () => {
             const data = await articleService.getArticle(id);
             setArticle(data);
             setTitle(data.title || '');
-            setSummary(data.summary || '');
+            setSubtitle(data.subtitle || '');
             setContent(data.content || '');
-            setCategory(data.category || '');
-            setTagsInput((data.tags || []).join(', '));
-            setSEO({
-                metaTitle: data.seo?.metaTitle || '',
-                metaDescription: data.seo?.metaDescription || '',
-                keywords: data.seo?.keywords || []
-            });
-            const normalizedImages = (data.images || []).map((img, idx) => ({
-                ...img,
-                id: img.id || `${idx}-${img.url || 'image'}`
-            }));
-            setImages(normalizedImages);
+            setSummary(data.summary || '');
+            setSeoTitle(data.seo_title || '');
+            setSeoDescription(data.seo_description || '');
+            setStatus(data.status || 'DRAFT');
+            setImages(data.images || []);
         } catch (error) {
             toast.error('Failed to load article');
+            console.error(error);
             navigate('/articles');
         } finally {
             setLoading(false);
@@ -55,283 +48,254 @@ const EditArticle = () => {
     };
 
     const handleSave = async () => {
-        setProcessing(true);
-        try {
-            const newFiles = images.filter(img => img.file);
-            let currentImages = images;
-
-            if (newFiles.length > 0) {
-                const formData = new FormData();
-                newFiles.forEach(img => formData.append('images', img.file));
-                currentImages = await articleService.uploadImages(id, formData);
-                currentImages = (currentImages || []).map((img, idx) => ({
-                    ...img,
-                    id: img.id || `${idx}-${img.url || 'image'}`
-                }));
-                setImages(currentImages);
-            }
-
-            const payload = {
-                title,
-                summary,
-                content,
-                category,
-                tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
-                seo,
-                images: currentImages.map(img => ({
-                    id: img.id,
-                    url: img.url,
-                    caption: img.caption,
-                    altText: img.altText,
-                    isFeatured: img.isFeatured
-                }))
-            };
-
-            const updated = await articleService.updateArticle(id, payload);
-            toast.success('Saved successfully');
-            const normalized = (updated.images || []).map((img, idx) => ({
-                ...img,
-                id: img.id || `${idx}-${img.url || 'image'}`
-            }));
-            setArticle(updated);
-            setImages(normalized);
-        } catch (error) {
-            const msg = error.response?.data?.message || 'Failed to save changes.';
-            toast.error(msg, { duration: 5000 });
-        } finally {
-            setProcessing(false);
+        if (!title.trim()) {
+            toast.error('Title is required');
+            return;
         }
-    };
 
-    const handleRewrite = async () => {
-        setProcessing(true);
+        setSaving(true);
         try {
-            const result = await aiService.rewriteArticle(id);
-            setTitle(result.title || title);
-            setContent(result.content || content);
-            setSummary(result.summary || summary);
-            toast.success('Article rewritten');
-        } catch (error) {
-            toast.error(error.response?.data?.message || 'Rewrite failed');
-        } finally {
-            setProcessing(false);
-        }
-    };
-
-    const handleGenerateSummary = async () => {
-        setProcessing(true);
-        try {
-            const result = await aiService.summarizeArticle(id);
-            setSummary(result.summary || result || '');
-            toast.success('Summary generated');
-        } catch (error) {
-            toast.error(error.response?.data?.message || 'Summary failed');
-        } finally {
-            setProcessing(false);
-        }
-    };
-
-    const handleGenerateSEO = async () => {
-        setProcessing(true);
-        try {
-            const result = await aiService.generateSEO(id);
-            setSEO({
-                metaTitle: result.metaTitle || seo.metaTitle,
-                metaDescription: result.metaDescription || seo.metaDescription,
-                keywords: result.keywords || seo.keywords || []
+            await articleService.updateArticle(id, {
+                title: title.trim(),
+                subtitle: subtitle.trim(),
+                content: content.trim(),
+                summary: summary.trim(),
+                seo_title: seoTitle.trim(),
+                seo_description: seoDescription.trim(),
+                status
             });
-            toast.success('SEO metadata generated');
+            toast.success('Article saved successfully');
         } catch (error) {
-            toast.error(error.response?.data?.message || 'SEO generation failed');
+            toast.error(error.response?.data?.message || 'Save failed');
+            console.error(error);
         } finally {
-            setProcessing(false);
+            setSaving(false);
         }
     };
 
-    const handleGenerateTags = async () => {
-        setProcessing(true);
+    const handleGenerateContent = async () => {
+        setGenerating(true);
         try {
-            const result = await aiService.generateTags(id);
-            const tags = result.tags || [];
-            setTagsInput(tags.join(', '));
-            toast.success('Tags generated');
+            const result = await articleService.generateContent(id);
+            if (result.article) {
+                setTitle(result.article.title || title);
+                setSubtitle(result.article.subtitle || subtitle);
+                setContent(result.article.content || content);
+                setSummary(result.article.summary || summary);
+                setSeoTitle(result.article.seo_title || seoTitle);
+                setSeoDescription(result.article.seo_description || seoDescription);
+            }
+            toast.success('Content generated successfully');
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Tag generation failed');
+            toast.error(error.response?.data?.message || 'Generation failed');
+            console.error(error);
         } finally {
-            setProcessing(false);
+            setGenerating(false);
         }
     };
 
-    const handleGenerateImagePrompt = async () => {
-        setProcessing(true);
+    const handleAnalyzeSEO = async () => {
         try {
-            const result = await aiService.generateImagePrompt(id);
-            setImagePrompt(result.prompt || '');
-            toast.success('Image prompt generated');
+            const result = await articleService.analyzeSEO(id);
+            toast.success(`SEO Score: ${result.seoScore || result.score || 0}/100`);
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Image prompt failed');
-        } finally {
-            setProcessing(false);
+            toast.error('SEO analysis failed');
+            console.error(error);
         }
     };
 
-    if (loading) return <div className="p-8">Loading...</div>;
+    const handleUploadImages = async (e) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        try {
+            const result = await articleService.uploadImages(id, files);
+            if (result.images) {
+                setImages(result.images);
+                toast.success('Images uploaded successfully');
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Image upload failed');
+            console.error(error);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="p-10 flex justify-center text-gray-500">
+                Loading article...
+            </div>
+        );
+    }
 
     return (
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-                <div className="flex items-center mb-4">
-                    <button onClick={() => navigate('/articles')} className="text-gray-500 hover:text-gray-700 mr-4">
-                        <ArrowLeft size={18} />
-                    </button>
-                    <h1 className="text-2xl font-bold text-gray-800">Edit Article</h1>
-                </div>
+        <div className="max-w-4xl mx-auto">
+            <button
+                onClick={() => navigate('/articles')}
+                className="flex items-center text-gray-500 hover:text-gray-700 mb-4"
+            >
+                <ArrowLeft size={18} className="mr-1" /> Back to Articles
+            </button>
 
-                <div className="bg-white p-6 rounded-lg shadow-sm space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Article Title</label>
-                        <input
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="w-full p-2 border rounded-lg text-lg font-semibold text-gray-900"
-                        />
-                    </div>
+            <h1 className="text-3xl font-bold mb-6 text-gray-800">Edit Article</h1>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Summary</label>
-                        <textarea
-                            value={summary}
-                            onChange={(e) => setSummary(e.target.value)}
-                            className="w-full h-28 p-3 border rounded-lg text-gray-900 bg-gray-50 focus:bg-white"
-                        ></textarea>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">HTML Content</label>
-                        <textarea
-                            value={content}
-                            onChange={(e) => setContent(e.target.value)}
-                            className="w-full h-[420px] p-4 border rounded-lg font-mono text-sm text-gray-900 bg-gray-50 focus:bg-white transition-colors"
-                        ></textarea>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                            <input
-                                type="text"
-                                value={category}
-                                onChange={(e) => setCategory(e.target.value)}
-                                className="w-full p-2 border rounded-lg text-gray-900"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Tags (comma separated)</label>
-                            <input
-                                type="text"
-                                value={tagsInput}
-                                onChange={(e) => setTagsInput(e.target.value)}
-                                className="w-full p-2 border rounded-lg text-gray-900"
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex justify-end">
-                    <button
-                        onClick={handleSave}
-                        disabled={processing}
-                        className="flex items-center bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-                    >
-                        <Save size={18} className="mr-2" /> Save Changes
-                    </button>
-                </div>
-
-                <div className="bg-white p-6 rounded-lg shadow-sm space-y-3">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-bold">Article Images</h3>
-                        {imagePrompt && (
-                            <span className="text-xs text-gray-500 truncate max-w-xs" title={imagePrompt}>Prompt: {imagePrompt}</span>
-                        )}
-                    </div>
-                    <ImageUpload
-                        images={images}
-                        onImagesChange={setImages}
-                        maxImages={3}
-                        articleId={id}
+            <div className="bg-white rounded-lg shadow-md p-6 space-y-6">
+                {/* Title */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Title *</label>
+                    <input
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        placeholder="Article title"
                     />
                 </div>
-            </div>
 
-            <div className="space-y-6 lg:mt-12">
-                <div className="bg-white p-6 rounded-lg shadow-sm space-y-3">
-                    <h3 className="text-lg font-bold mb-2 flex items-center text-purple-700">
-                        <Sparkles size={18} className="mr-2" /> AI Actions
-                    </h3>
-                    <button
-                        onClick={handleRewrite}
-                        disabled={processing}
-                        className="w-full flex items-center justify-center p-2 bg-purple-50 text-purple-700 rounded hover:bg-purple-100 font-medium transition-colors"
-                    >
-                        <Wand2 size={16} className="mr-2" /> Rewrite Article
-                    </button>
-                    <button
-                        onClick={handleGenerateSummary}
-                        disabled={processing}
-                        className="w-full flex items-center justify-center p-2 border border-gray-200 rounded hover:bg-gray-50 text-gray-700 font-medium transition-colors"
-                    >
-                        <AlignCenter size={16} className="mr-2" /> Generate Summary
-                    </button>
-                    <button
-                        onClick={handleGenerateSEO}
-                        disabled={processing}
-                        className="w-full flex items-center justify-center p-2 border border-gray-200 rounded hover:bg-gray-50 text-gray-700 font-medium transition-colors"
-                    >
-                        <Sparkles size={16} className="mr-2" /> Generate SEO
-                    </button>
-                    <button
-                        onClick={handleGenerateTags}
-                        disabled={processing}
-                        className="w-full flex items-center justify-center p-2 border border-gray-200 rounded hover:bg-gray-50 text-gray-700 font-medium transition-colors"
-                    >
-                        <Sparkles size={16} className="mr-2" /> Generate Tags
-                    </button>
-                    <button
-                        onClick={handleGenerateImagePrompt}
-                        disabled={processing}
-                        className="w-full flex items-center justify-center p-2 border border-gray-200 rounded hover:bg-gray-50 text-gray-700 font-medium transition-colors"
-                    >
-                        <ImagePlus size={16} className="mr-2" /> Generate Image Prompt
-                    </button>
+                {/* Subtitle */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Subtitle</label>
+                    <input
+                        type="text"
+                        value={subtitle}
+                        onChange={(e) => setSubtitle(e.target.value)}
+                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        placeholder="Article subtitle"
+                    />
                 </div>
 
-                <div className="bg-white p-6 rounded-lg shadow-sm space-y-4">
-                    <h3 className="text-lg font-bold flex items-center">
-                        <Sparkles size={18} className="mr-2 text-blue-500" /> SEO Metadata
-                    </h3>
+                {/* Content */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
+                    <textarea
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        className="w-full h-64 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        placeholder="Article content"
+                    />
+                </div>
 
-                    <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase">Meta Title</label>
-                        <p className="text-sm text-gray-800">{seo.metaTitle || 'Not set'}</p>
-                    </div>
-                    <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase">Meta Description</label>
-                        <p className="text-sm text-gray-600 line-clamp-3">{seo.metaDescription || 'Not set'}</p>
-                    </div>
-                    <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase">Keywords</label>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                            {(seo.keywords || []).map((k, i) => (
-                                <span key={i} className="text-xs bg-gray-100 text-gray-800 border border-gray-200 px-2 py-1 rounded">{k}</span>
-                            ))}
-                            {(seo.keywords || []).length === 0 && <span className="text-sm text-gray-400">None</span>}
+                {/* Summary */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Summary</label>
+                    <textarea
+                        value={summary}
+                        onChange={(e) => setSummary(e.target.value)}
+                        className="w-full h-20 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        placeholder="Brief summary of the article"
+                    />
+                </div>
+
+                {/* SEO Section */}
+                <div className="border-t pt-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">SEO Settings</h3>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Meta Title</label>
+                            <input
+                                type="text"
+                                value={seoTitle}
+                                onChange={(e) => setSeoTitle(e.target.value)}
+                                maxLength="60"
+                                className="w-full p-3 border rounded-lg text-gray-900"
+                                placeholder="SEO title (max 60 characters)"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">{seoTitle.length}/60</p>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Meta Description</label>
+                            <textarea
+                                value={seoDescription}
+                                onChange={(e) => setSeoDescription(e.target.value)}
+                                maxLength="160"
+                                rows="2"
+                                className="w-full p-3 border rounded-lg text-gray-900"
+                                placeholder="SEO description (max 160 characters)"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">{seoDescription.length}/160</p>
                         </div>
                     </div>
-                    <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase">Status</label>
-                        <p className="text-sm font-semibold capitalize">{article.status || 'draft'}</p>
+                </div>
+
+                {/* Status */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                    <select
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value)}
+                        className="w-full p-2 border rounded-lg text-gray-900"
+                    >
+                        <option value="DRAFT">Draft</option>
+                        <option value="DRAFT_EDITED">Draft (Edited)</option>
+                        <option value="DRAFT_WP">Draft (WordPress)</option>
+                        <option value="PUBLISHED">Published</option>
+                    </select>
+                </div>
+
+                {/* Images */}
+                <div className="border-t pt-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Images</h3>
+                    <div className="mb-4">
+                        <label className="flex items-center gap-2 cursor-pointer px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 w-fit">
+                            <ImagePlus size={18} />
+                            <span>Upload Images</span>
+                            <input
+                                type="file"
+                                multiple
+                                accept="image/*"
+                                onChange={handleUploadImages}
+                                className="hidden"
+                            />
+                        </label>
                     </div>
+                    {images.length > 0 && (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            {images.map((img, idx) => (
+                                <div key={idx} className="relative group">
+                                    <img
+                                        src={img.url}
+                                        alt="Article"
+                                        className="w-full h-40 object-cover rounded-lg"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Actions */}
+                <div className="border-t pt-6 flex gap-4 flex-wrap">
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="flex items-center gap-2 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
+                    >
+                        <Save size={18} />
+                        {saving ? 'Saving...' : 'Save Article'}
+                    </button>
+
+                    <button
+                        onClick={handleGenerateContent}
+                        disabled={generating}
+                        className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                    >
+                        <Sparkles size={18} />
+                        {generating ? 'Generating...' : 'Generate Content'}
+                    </button>
+
+                    <button
+                        onClick={handleAnalyzeSEO}
+                        className="flex items-center gap-2 bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700"
+                    >
+                        Analyze SEO
+                    </button>
+
+                    <button
+                        onClick={() => navigate('/articles')}
+                        className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400"
+                    >
+                        Cancel
+                    </button>
                 </div>
             </div>
         </div>
@@ -339,3 +303,4 @@ const EditArticle = () => {
 };
 
 export default EditArticle;
+

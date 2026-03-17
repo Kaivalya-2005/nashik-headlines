@@ -8,25 +8,38 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchUser = async () => {
+        const initializeUser = async () => {
             try {
-                const current = await authService.getCurrentUser();
-                setUser(current);
+                // Check localStorage first
+                const storedToken = localStorage.getItem('authToken');
+                const storedUser = localStorage.getItem('user');
+                
+                if (storedToken && storedUser) {
+                    setUser(JSON.parse(storedUser));
+                } else {
+                    setUser(null);
+                }
             } catch (error) {
+                console.error('Failed to initialize user:', error);
                 setUser(null);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchUser();
+        initializeUser();
     }, []);
 
     const login = async (email, password) => {
-        const data = await authService.login(email, password);
-        const current = await authService.getCurrentUser();
-        setUser(current || data);
-        return current || data;
+        const result = await authService.login(email, password);
+        setUser(result);
+        return result;
+    };
+
+    const register = async (email, password, name, role = 'EDITOR') => {
+        const result = await authService.register(email, password, name, role);
+        setUser(result);
+        return result;
     };
 
     const logout = async () => {
@@ -35,8 +48,9 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, register, logout, loading }}>
             {!loading && children}
         </AuthContext.Provider>
     );
 };
+

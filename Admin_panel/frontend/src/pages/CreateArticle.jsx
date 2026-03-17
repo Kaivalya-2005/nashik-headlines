@@ -1,38 +1,42 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Sparkles } from 'lucide-react';
-import aiService from '../api/aiService';
+import { ArrowLeft } from 'lucide-react';
+import articleService from '../api/articleService';
 import toast from 'react-hot-toast';
 
 const CreateArticle = () => {
     const navigate = useNavigate();
-    const [topic, setTopic] = useState('');
-    const [category, setCategory] = useState('');
-    const [tone, setTone] = useState('');
-    const [articleLength, setArticleLength] = useState('');
-    const [generating, setGenerating] = useState(false);
+    const [title, setTitle] = useState('');
+    const [content, setContent] = useState('');
+    const [status, setStatus] = useState('DRAFT');
+    const [creating, setCreating] = useState(false);
 
-    const handleGenerate = async () => {
-        if (!topic.trim() || !category.trim()) return toast.error('Topic and category are required');
+    const handleCreate = async () => {
+        if (!title.trim()) return toast.error('Title is required');
+        if (!content.trim()) return toast.error('Content is required');
 
-        setGenerating(true);
+        setCreating(true);
         try {
-            const payload = { topic, category, tone, length: articleLength };
-            const result = await aiService.generateArticle(payload);
-            const newId = result?.id || result?.articleId || result?.article?.id;
+            const result = await articleService.createArticle({ 
+                title: title.trim(), 
+                content: content.trim(),
+                status 
+            });
+            const newId = result?.article?.id || result?.id;
 
             if (!newId) {
-                toast.error('No article id returned from AI');
+                toast.error('No article id returned');
                 return;
             }
 
-            toast.success('Draft generated');
+            toast.success('Article created');
             navigate(`/articles/edit/${newId}`);
         } catch (error) {
-            const msg = error.response?.data?.message || 'Generation failed';
+            const msg = error.response?.data?.message || 'Creation failed';
             toast.error(msg, { duration: 5000 });
+            console.error(error);
         } finally {
-            setGenerating(false);
+            setCreating(false);
         }
     };
 
@@ -46,56 +50,55 @@ const CreateArticle = () => {
 
             <div className="bg-white rounded-lg shadow-md p-6 space-y-6">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Topic</label>
-                    <textarea
-                        value={topic}
-                        onChange={(e) => setTopic(e.target.value)}
-                        className="w-full h-32 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
-                        placeholder="Enter the news topic"
-                    ></textarea>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                        <input
-                            type="text"
-                            value={category}
-                            onChange={(e) => setCategory(e.target.value)}
-                            className="w-full p-2 border rounded-lg text-gray-900"
-                            placeholder="e.g., Politics"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Tone</label>
-                        <input
-                            type="text"
-                            value={tone}
-                            onChange={(e) => setTone(e.target.value)}
-                            className="w-full p-2 border rounded-lg text-gray-900"
-                            placeholder="e.g., Neutral, Informative"
-                        />
-                    </div>
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Article Length</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Title *</label>
                     <input
                         type="text"
-                        value={articleLength}
-                        onChange={(e) => setArticleLength(e.target.value)}
-                        className="w-full p-2 border rounded-lg text-gray-900"
-                        placeholder="e.g., 600 words"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        placeholder="Enter article title"
                     />
                 </div>
 
-                <button
-                    onClick={handleGenerate}
-                    disabled={generating}
-                    className="w-full flex items-center justify-center bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 disabled:opacity-50"
-                >
-                    {generating ? 'Generating...' : <><Sparkles className="mr-2" /> Generate Article</>}
-                </button>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Content *</label>
+                    <textarea
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        className="w-full h-64 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        placeholder="Enter article content"
+                    ></textarea>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                    <select
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value)}
+                        className="w-full p-2 border rounded-lg text-gray-900"
+                    >
+                        <option value="DRAFT">Draft</option>
+                        <option value="DRAFT_EDITED">Draft (Edited)</option>
+                        <option value="DRAFT_WP">Draft (WordPress)</option>
+                        <option value="PUBLISHED">Published</option>
+                    </select>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                    <button
+                        onClick={handleCreate}
+                        disabled={creating}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                        {creating ? 'Creating...' : 'Create Article'}
+                    </button>
+                    <button
+                        onClick={() => navigate('/articles')}
+                        className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400"
+                    >
+                        Cancel
+                    </button>
+                </div>
             </div>
         </div>
     );

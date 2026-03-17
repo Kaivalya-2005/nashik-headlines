@@ -18,11 +18,12 @@ const ArticleList = () => {
     const fetchArticles = async () => {
         setLoading(true);
         try {
-            const data = await articleService.getArticles(page);
-            setArticles(data.articles || data.data || []);
-            setTotalPages(Number(data.pages) || 1);
+            const data = await articleService.getArticles(page, 10);
+            setArticles(data.articles || []);
+            setTotalPages(data.pages || 1);
         } catch (error) {
             toast.error('Failed to load articles');
+            console.error(error);
         } finally {
             setLoading(false);
         }
@@ -32,40 +33,16 @@ const ArticleList = () => {
         setArticles(prev => prev.map(a => a.id === id ? { ...a, status } : a));
     };
 
-    const handleApprove = async (id) => {
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this article?')) return;
+        
         setActionId(id);
         try {
-            await articleService.approveArticle(id);
-            toast.success('Article approved');
-            updateStatusLocal(id, 'approved');
+            await articleService.deleteArticle(id);
+            setArticles(prev => prev.filter(a => a.id !== id));
+            toast.success('Article deleted');
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Approve failed');
-        } finally {
-            setActionId(null);
-        }
-    };
-
-    const handleReject = async (id) => {
-        setActionId(id);
-        try {
-            await articleService.rejectArticle(id);
-            toast.success('Article rejected');
-            updateStatusLocal(id, 'rejected');
-        } catch (error) {
-            toast.error(error.response?.data?.message || 'Reject failed');
-        } finally {
-            setActionId(null);
-        }
-    };
-
-    const handlePublish = async (id) => {
-        setActionId(id);
-        try {
-            await articleService.publishArticle(id);
-            toast.success('Article published');
-            updateStatusLocal(id, 'published');
-        } catch (error) {
-            toast.error(error.response?.data?.message || 'Publish failed');
+            toast.error(error.response?.data?.message || 'Delete failed');
         } finally {
             setActionId(null);
         }
@@ -104,51 +81,30 @@ const ArticleList = () => {
                                     <div className="text-sm font-medium text-gray-900 truncate max-w-xs">{article.title}</div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                    {article.category || '—'}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {article.source || '—'}
+                                    {article.source_name || '—'}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                        article.status === 'published'
+                                        article.status === 'PUBLISHED' || article.status === 'published'
                                             ? 'bg-green-100 text-green-800'
-                                            : article.status === 'approved'
-                                                ? 'bg-blue-100 text-blue-800'
-                                                : article.status === 'rejected'
-                                                    ? 'bg-red-100 text-red-800'
-                                                    : 'bg-yellow-100 text-yellow-800'
+                                            : article.status?.includes('DRAFT')
+                                                ? 'bg-yellow-100 text-yellow-800'
+                                                : 'bg-gray-100 text-gray-800'
                                         }`}>
-                                        {article.status?.replace('_', ' ') || 'draft'}
+                                        {article.status?.replace('_', ' ') || 'DRAFT'}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {article.createdAt ? new Date(article.createdAt).toLocaleDateString() : '—'}
+                                    {article.created_at ? new Date(article.created_at).toLocaleDateString() : '—'}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                                     <button
-                                        onClick={() => handleApprove(article.id)}
-                                        disabled={actionId === article.id || article.status === 'published'}
-                                        className="text-green-600 hover:text-green-800 disabled:opacity-50"
-                                        title="Approve"
-                                    >
-                                        <CheckCircle2 size={18} />
-                                    </button>
-                                    <button
-                                        onClick={() => handleReject(article.id)}
+                                        onClick={() => handleDelete(article.id)}
                                         disabled={actionId === article.id}
                                         className="text-red-600 hover:text-red-800 disabled:opacity-50"
-                                        title="Reject"
+                                        title="Delete"
                                     >
                                         <Ban size={18} />
-                                    </button>
-                                    <button
-                                        onClick={() => handlePublish(article.id)}
-                                        disabled={actionId === article.id || article.status === 'published'}
-                                        className="text-blue-600 hover:text-blue-800 disabled:opacity-50"
-                                        title="Publish"
-                                    >
-                                        <Rocket size={18} />
                                     </button>
                                     <Link to={`/articles/edit/${article.id}`} className="text-amber-600 hover:text-amber-900 inline-block">
                                         <Edit size={18} />
@@ -161,7 +117,6 @@ const ArticleList = () => {
             </div>
 
             {/* Simple Pagination */}
-            {/* Enhanced Pagination */}
             {totalPages > 1 && (
                 <div className="flex justify-between items-center mt-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
                     <div className="text-sm text-gray-500">

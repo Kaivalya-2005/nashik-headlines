@@ -9,17 +9,21 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
-const connectDB = require('./config/db');
+const { connectDB } = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const articleRoutes = require('./routes/articleRoutes');
+const agentRoutes = require('./routes/agentRoutes');
+
+// Initialize app
+const app = express();
 
 // Connect to database
-connectDB();
-
-// Init Worker (for dev simplicity)
-require('./workers/aiWorker');
-
-const app = express();
+connectDB().then(() => {
+    console.log('✅ Database connection initialized');
+}).catch((err) => {
+    console.error('❌ Database connection failed:', err);
+    process.exit(1);
+});
 
 // Security Middleware
 app.use(helmet());
@@ -43,6 +47,7 @@ app.use(cookieParser());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/articles', articleRoutes);
+app.use('/api/agents', agentRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/', (req, res) => {

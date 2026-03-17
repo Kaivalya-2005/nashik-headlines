@@ -29,23 +29,32 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
         try {
             setLoading(true);
-            const data = await articleService.getArticles(1);
+            const data = await articleService.getArticles(1, 10);
 
-            const articles = data.articles || data.data || [];
+            const articles = data.articles || [];
             const total = data.total ?? articles.length;
 
-            const draftCount = articles.filter(a => a.status === 'draft').length;
-            const publishedCount = articles.filter(a => a.status === 'published').length;
-            const categoryCount = new Set(articles.map(a => a.category).filter(Boolean)).size;
+            // Count by status - handle both old and new field names
+            const draftCount = articles.filter(a => 
+                a.status?.includes('DRAFT') || a.status === 'draft'
+            ).length;
+            const publishedCount = articles.filter(a => 
+                a.status === 'PUBLISHED' || a.status === 'published'
+            ).length;
 
             setStats({
                 total,
                 draft: draftCount,
                 published: publishedCount,
-                categories: categoryCount
+                categories: 0
             });
 
-            const sorted = [...articles].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            // Sort by created_at or createdAt
+            const sorted = [...articles].sort((a, b) => {
+                const dateA = new Date(a.created_at || a.createdAt);
+                const dateB = new Date(b.created_at || b.createdAt);
+                return dateB - dateA;
+            });
             setRecentArticles(sorted.slice(0, 5));
         } catch (error) {
             console.error(error);
@@ -136,11 +145,11 @@ const Dashboard = () => {
                                 recentArticles.map((article) => (
                                     <tr key={article.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4 font-medium text-gray-900 truncate max-w-xs">{article.title}</td>
-                                        <td className="px-6 py-4">{new Date(article.createdAt).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4">{new Date(article.created_at || article.createdAt).toLocaleDateString()}</td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 rounded-full text-xs font-semibold
-                                                ${article.status === 'published' ? 'bg-green-100 text-green-800' :
-                                                    article.status === 'draft' ? 'bg-yellow-100 text-yellow-800' :
+                                                ${article.status === 'PUBLISHED' || article.status === 'published' ? 'bg-green-100 text-green-800' :
+                                                    article.status?.includes('DRAFT') || article.status === 'draft' ? 'bg-yellow-100 text-yellow-800' :
                                                         'bg-gray-100 text-gray-800'}`}>
                                                 {article.status?.replace('_', ' ') || 'draft'}
                                             </span>

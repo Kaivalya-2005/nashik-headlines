@@ -1,42 +1,77 @@
-const mongoose = require('mongoose');
-const Article = require('../models/Article');
+// =========================================
+// ARTICLE CONTROLLER - SEQUELIZE VERSION
+// Works with unified MySQL database
+// =========================================
+
+const {
+    Article,
+    RawArticle,
+    User,
+    Image,
+    Category,
+    Tag,
+    AgentLog,
+    sequelize
+} = require('../models');
+const { Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
-const { generateMarathiNews, improveSEOMetadata } = require('../services/geminiService');
+const { generateMarathiNews, improveSEOMetadata } = require('../services/manusService');
 const { analyzeSEO } = require('../services/seoService');
 const { createDraftPost } = require('../services/wordpressService');
 
-// @desc    Get all articles
-// @route   GET /api/articles
-// @access  Private
-const getArticles = async (req, res) => {
+// ===== GET ALL ARTICLES =====
+exports.getArticles = async (req, res) => {
     try {
-        const pageSize = 10;
-        const page = Number(req.query.pageNumber) || 1;
+        const pageSize = parseInt(req.query.pageSize) || 10;
+        const page = parseInt(req.query.page) || 1;
+        const status = req.query.status || null;
 
-        const count = await Article.countDocuments();
-        const articles = await Article.find({})
-            .populate('createdBy', 'email role')
-            .limit(pageSize)
-            .skip(pageSize * (page - 1))
-            .sort({ updatedAt: -1 });
+        const where = {};
+        if (status) where.status = status;
 
-        res.json({ articles, page, pages: Math.ceil(count / pageSize), total: count });
+        const { count, rows } = await Article.findAndCountAll({
+            where,
+            include: [
+                { model: User, as: 'createdByUser', attributes: ['id', 'name', 'email'] },
+                { model: Image, as: 'images' }
+            ],
+            order: [['updated_at', 'DESC']],
+            limit: pageSize,
+            offset: (page - 1) * pageSize
+        });
+
+        res.status(200).json({
+            articles: rows,
+            page,
+            pageSize,
+            total: count,
+            pages: Math.ceil(count / pageSize)
+        });
+
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// @desc    Get article by ID
-// @route   GET /api/articles/:id
-// @access  Private
-const getArticleById = async (req, res) => {
+// ===== GET ARTICLE BY ID =====
+exports.getArticleById = async (req, res) => {
     try {
-        const article = await Article.findById(req.params.id).populate('createdBy', 'email');
+        const article = await Article.findByPk(req.params.id, {
+            include: [
+                { model: User, as: 'createdByUser', attributes: ['id', 'name', 'email'] },
+                { model: User, as: 'updatedByUser', attributes: ['id', 'name', 'email'] },
+                { model: User, as: 'approvedByUser', attributes: ['id', 'name', 'email'] },
+                { model: Image, as: 'images' },
+                { model: Category, as: 'categories', through: { attributes: [] } },
+                { model: Tag, as: 'tags', through: { attributes: [] } },
+                { model: RawArticle, as: 'rawArticle' }
+            ]
+        });
 
         if (article) {
-            res.json(article);
+            res.status(200).json(article);
         } else {
             res.status(404).json({ message: 'Article not found' });
         }
@@ -45,371 +80,448 @@ const getArticleById = async (req, res) => {
     }
 };
 
-// @desc    Create a new article draft
-// @route   POST /api/articles
-// @access  Private
-const createArticle = async (req, res) => {
+// ===== CREATE NEW ARTICLE =====
+exports.createArticle = async (req, res) => {
     try {
-        const { title, rawInput } = req.body;
+        const { title, subtitle, rawInput, content } = req.body;
 
         const article = await Article.create({
             title,
+            subtitle,
             rawInput,
-            createdBy: req.user._id,
-            status: 'DRAFT_LOCAL'
+            content,
+            created_by: req.user.id,
+            status: 'DRAFT_EDITED'
         });
 
-        res.status(201).json(article);
+        res.status(201).json({
+            message: 'Article created successfully',
+            article
+        });
+
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 };
 
-// @desc    Update an article
-// @route   PUT /api/articles/:id
-// @access  Private
-const updateArticle = async (req, res) => {
+// ===== UPDATE ARTICLE =====
+exports.updateArticle = async (req, res) => {
     try {
-        const { title, rawInput, content, status } = req.body;
+        const { id } = req.params;
+        const {
+            title,
+            subtitle,
+            content,
+            summary,
+            focus_keyphrase,
+            quote_block,
+            source_name,
+            source_url,
+            via_name,
+            via_url,
+            seo_title,
+            seo_description,
+            seo_slug,
+            seo_keywords,
+            tags,
+            status
+        } = req.body;
 
-        const article = await Article.findById(req.params.id);
-
-        if (article) {
-            article.title = title || article.title;
-            article.rawInput = rawInput || article.rawInput;
-            article.content = content || article.content;
-            article.status = status || article.status;
-            article.updatedBy = req.user._id;
-
-            const updatedArticle = await article.save();
-            res.json(updatedArticle);
-        } else {
-            res.status(404).json({ message: 'Article not found' });
-        }
-    } catch (error) {
-        res.status(400).json({ message: error.message });
-    }
-};
-
-// @desc    Delete an article
-// @route   DELETE /api/articles/:id
-// @access  Private/Admin
-const deleteArticle = async (req, res) => {
-    try {
-        // Check role in middleware, but double check here if needed or just rely on middleware
-        // Implementation uses findByIdAndDelete for simplicity but strictly we should check existence first
-        const article = await Article.findById(req.params.id);
-
-        if (article) {
-            await article.deleteOne();
-            res.json({ message: 'Article removed' });
-        } else {
-            res.status(404).json({ message: 'Article not found' });
-        }
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-
-const { aiQueue } = require('../config/queue');
-
-// @desc    Generate article content using AI (Async Job)
-// @route   POST /api/articles/:id/generate
-// @access  Private
-const generateArticleContent = async (req, res) => {
-    try {
-        const article = await Article.findById(req.params.id);
+        const article = await Article.findByPk(id);
 
         if (!article) {
             return res.status(404).json({ message: 'Article not found' });
         }
 
-        if (!article.rawInput) {
-            return res.status(400).json({ message: 'Raw input is required for generation' });
+        // Update basic fields
+        const updateData = {
+            title: title || article.title,
+            subtitle: subtitle || article.subtitle,
+            content: content || article.content,
+            summary: summary || article.summary,
+            focus_keyphrase: focus_keyphrase || article.focus_keyphrase,
+            quote_block: quote_block || article.quote_block,
+            source_name: source_name || article.source_name,
+            source_url: source_url || article.source_url,
+            via_name: via_name || article.via_name,
+            via_url: via_url || article.via_url,
+            seo_title: seo_title || article.seo_title,
+            seo_description: seo_description || article.seo_description,
+            seo_slug: seo_slug || article.seo_slug,
+            seo_keywords: seo_keywords || article.seo_keywords,
+            updated_by: req.user.id
+        };
+
+        // Update status if provided and user has permission
+        if (status && req.user.role === 'ADMIN') {
+            updateData.status = status;
         }
 
-        // Add Job to Queue
-        const job = await aiQueue.add('generate-news', {
-            articleId: article._id,
-            rawInput: article.rawInput
-        });
+        await article.update(updateData);
 
-        // Update Article Status
-        article.generationStatus = 'PENDING';
-        article.generationError = null;
-        article.generationStartedAt = null;
-        article.generationCompletedAt = null;
-        await article.save();
+        // Update tags if provided
+        if (tags && tags.length > 0) {
+            // Find or create tags and associate them
+            const tagInstances = await Promise.all(tags.map(async (tagName) => {
+                const [tag] = await Tag.findOrCreate({
+                    where: { name: tagName },
+                    defaults: { slug: tagName.toLowerCase().replace(/\s+/g, '-') }
+                });
+                return tag;
+            }));
 
-        res.status(202).json({
-            message: 'AI generation job queued',
-            jobId: job.id,
-            status: 'PENDING',
-            articleId: article._id
-        });
-
-    } catch (error) {
-        console.error('Queue Error:', error);
-        res.status(500).json({ message: 'Failed to queue AI job: ' + error.message });
-    }
-};
-
-// @desc    Get AI Generation Status
-// @route   GET /api/articles/:id/status
-// @access  Private
-const getArticleStatus = async (req, res) => {
-    try {
-        const article = await Article.findById(req.params.id).select('generationStatus generationError generationStartedAt generationCompletedAt');
-        if (!article) return res.status(404).json({ message: 'Article not found' });
-        res.json(article);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-
-// @desc    Analyze Article SEO
-// @route   POST /api/articles/:id/seo/analyze
-// @access  Private
-const analyzeArticleSEO = async (req, res) => {
-    try {
-        const article = await Article.findById(req.params.id);
-        if (!article) return res.status(404).json({ message: 'Article not found' });
-
-        const analysis = analyzeSEO(article);
-
-        article.seo.seoScore = analysis.score;
-        article.seo.seoReport = analysis.report;
-
-        await article.save();
-        res.json(article.seo);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-// @desc    Improve Article SEO Metadata using AI
-// @route   POST /api/articles/:id/seo/improve
-// @access  Private
-const improveArticleSEO = async (req, res) => {
-    try {
-        const article = await Article.findById(req.params.id);
-        if (!article) return res.status(404).json({ message: 'Article not found' });
-
-        // Call AI to generate better metadata
-        const improvedMetadata = await improveSEOMetadata(article);
-
-        // Update Article SEO fields
-        article.seo.meta_title = improvedMetadata.meta_title;
-        article.seo.meta_description = improvedMetadata.meta_description;
-        article.seo.focus_keywords = improvedMetadata.focus_keywords;
-
-        // Re-analyze after improvement
-        const analysis = analyzeSEO(article);
-        article.seo.seoScore = analysis.score;
-        article.seo.seoReport = analysis.report;
-
-        await article.save();
-        res.json(article.seo);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-// @desc    Push Article to WordPress as Draft
-// @route   POST /api/articles/:id/push-to-wp
-// @access  Private/Admin
-const pushToWordPress = async (req, res) => {
-    try {
-        const article = await Article.findById(req.params.id);
-        if (!article) return res.status(404).json({ message: 'Article not found' });
-
-        // Check if already published/pushed
-        if (article.wpId && article.status === 'PUBLISHED') {
-            return res.status(400).json({ message: 'Article is already published on WordPress.' });
+            await article.setTags(tagInstances);
         }
 
-        // Call WP Service
-        const wpData = await createDraftPost(article);
+        // Fetch updated article with associations
+        const updatedArticle = await Article.findByPk(id, {
+            include: [
+                { model: Image, as: 'images' },
+                { model: Tag, as: 'tags', through: { attributes: [] } }
+            ]
+        });
 
-        // Update Article with WP data
-        article.wpId = wpData.wpId;
-        article.wpUrl = wpData.wpUrl; // Draft preview URL
-        article.status = 'DRAFT_WP';
-
-        await article.save();
-
-        res.json({
-            message: 'Article pushed to WordPress successfully',
-            wpId: article.wpId,
-            wpUrl: article.wpUrl
+        res.status(200).json({
+            message: 'Article updated successfully',
+            article: updatedArticle
         });
 
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(400).json({ message: error.message });
     }
 };
 
-// Exports moved to bottom
-
-// @desc    Upload images to article
-// @route   POST /api/articles/:id/images
-// @access  Private
-const uploadArticleImages = async (req, res) => {
+// ===== DELETE ARTICLE =====
+exports.deleteArticle = async (req, res) => {
     try {
-        console.log(`[Upload] Starting upload for Article ID: ${req.params.id}`);
+        const { id } = req.params;
 
-        // 1. Validate Article ID format
-        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-            console.warn(`[Upload] Invalid Article ID format: ${req.params.id}`);
-            return res.status(400).json({ message: 'Invalid article ID format' });
-        }
+        const article = await Article.findByPk(id);
 
-        // 2. Check if files exist
-        if (!req.files || req.files.length === 0) {
-            console.warn('[Upload] No files provided in request');
-            try {
-                fs.appendFileSync(path.join(__dirname, '../debug_upload_error.txt'), new Date().toISOString() + ' [CONTROLLER 400] - No files provided (req.files: ' + JSON.stringify(req.files) + ', req.body: ' + JSON.stringify(req.body) + ')\n');
-            } catch (e) { }
-            return res.status(400).json({ message: 'No images uploaded. Please select at least one image.' });
-        }
-
-        console.log(`[Upload] Processing ${req.files.length} files...`);
-
-        // 3. Find Article
-        const article = await Article.findById(req.params.id);
         if (!article) {
-            console.warn(`[Upload] Article not found: ${req.params.id}`);
-            // Clean up uploaded files if article doesn't exist (optional but good practice)
-            req.files.forEach(file => {
-                if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+            return res.status(404).json({ message: 'Article not found' });
+        }
+
+        // Delete associated images
+        await Image.destroy({ where: { article_id: id } });
+
+        // Delete article
+        await article.destroy();
+
+        res.status(200).json({
+            message: 'Article deleted successfully'
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// ===== GENERATE ARTICLE CONTENT (AI) =====
+exports.generateArticleContent = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const article = await Article.findByPk(id);
+
+        if (!article) {
+            return res.status(404).json({ message: 'Article not found' });
+        }
+
+        // Update status to PROCESSING
+        await article.update({
+            generation_status: 'PROCESSING',
+            generation_started_at: new Date()
+        });
+
+        try {
+            // Call manus_agents to generate content
+            const generatedContent = await generateMarathiNews(article.rawInput || article.title);
+
+            // Update article with generated content
+            await article.update({
+                title: generatedContent.title,
+                subtitle: generatedContent.subtitle,
+                content: generatedContent.content_html,
+                summary: generatedContent.summary,
+                focus_keyphrase: generatedContent.focus_keyphrase,
+                seo_title: generatedContent.seo.meta_title,
+                seo_description: generatedContent.seo.meta_description,
+                seo_slug: generatedContent.seo.slug,
+                seo_keywords: generatedContent.seo.focus_keywords,
+                quote_block: generatedContent.quote_block,
+                source_name: generatedContent.source_name,
+                source_url: generatedContent.source_url,
+                via_name: generatedContent.via_name,
+                via_url: generatedContent.via_url,
+                status: 'DRAFT_EDITED',
+                generation_status: 'COMPLETED',
+                generation_completed_at: new Date()
             });
+
+            // Handle tags
+            if (generatedContent.tags && generatedContent.tags.length > 0) {
+                const tagInstances = await Promise.all(generatedContent.tags.map(async (tagName) => {
+                    const [tag] = await Tag.findOrCreate({
+                        where: { name: tagName },
+                        defaults: { slug: tagName.toLowerCase().replace(/\s+/g, '-') }
+                    });
+                    return tag;
+                }));
+                await article.setTags(tagInstances);
+            }
+
+            // Fetch updated article
+            const updatedArticle = await Article.findByPk(id, {
+                include: [{ model: Tag, as: 'tags', through: { attributes: [] } }]
+            });
+
+            res.status(200).json({
+                message: 'Content generated successfully',
+                article: updatedArticle
+            });
+
+        } catch (aiError) {
+            // Log error
+            await article.update({
+                generation_status: 'FAILED',
+                generation_error: aiError.message,
+                generation_completed_at: new Date()
+            });
+
+            res.status(500).json({
+                message: 'AI Generation failed',
+                error: aiError.message
+            });
+        }
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// ===== ANALYZE ARTICLE SEO =====
+exports.analyzeArticleSEO = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const article = await Article.findByPk(id);
+
+        if (!article) {
             return res.status(404).json({ message: 'Article not found' });
         }
 
-        // 4. Process and Optimize Images
-        const processedImages = [];
+        // Analyze SEO
+        const seoReport = await analyzeSEO({
+            title: article.seo_title,
+            description: article.seo_description,
+            slug: article.seo_slug,
+            keywords: article.seo_keywords,
+            content: article.content
+        });
 
-        for (const file of req.files) {
+        res.status(200).json({
+            seoReport,
+            seoScore: seoReport.score || 0
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// ===== IMPROVE ARTICLE SEO (AI) =====
+exports.improveArticleSEO = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const article = await Article.findByPk(id);
+
+        if (!article) {
+            return res.status(404).json({ message: 'Article not found' });
+        }
+
+        try {
+            // Call manus_agents to improve SEO
+            const improvedSEO = await improveSEOMetadata({
+                title: article.title,
+                content: article.content,
+                keywords: article.seo_keywords
+            });
+
+            // Update article with improved SEO
+            await article.update({
+                seo_title: improvedSEO.meta_title,
+                seo_description: improvedSEO.meta_description,
+                seo_keywords: improvedSEO.focus_keywords,
+                seo_slug: improvedSEO.slug
+            });
+
+            res.status(200).json({
+                message: 'SEO improved successfully',
+                seo: {
+                    title: improvedSEO.meta_title,
+                    description: improvedSEO.meta_description,
+                    keywords: improvedSEO.focus_keywords,
+                    slug: improvedSEO.slug
+                }
+            });
+
+        } catch (aiError) {
+            res.status(500).json({
+                message: 'SEO improvement failed',
+                error: aiError.message
+            });
+        }
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// ===== UPLOAD ARTICLE IMAGES =====
+exports.uploadArticleImages = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const files = req.files;
+
+        if (!files || files.length === 0) {
+            return res.status(400).json({ message: 'No files uploaded' });
+        }
+
+        const article = await Article.findByPk(id);
+
+        if (!article) {
+            return res.status(404).json({ message: 'Article not found' });
+        }
+
+        const uploadedImages = [];
+
+        for (const file of files) {
             try {
-                const start = Date.now();
-                const optimizedFilename = `${path.parse(file.filename).name}-optimized.webp`;
-                const optimizedPath = path.join(file.destination, optimizedFilename);
-                const optimizedUrl = `/uploads/${optimizedFilename}`;
+                // Optimize image with Sharp
+                const optimizedPath = path.join(
+                    __dirname,
+                    `../uploads/${Date.now()}_optimized.webp`
+                );
 
-                // Sharp Processing
-                const metadata = await sharp(file.path).metadata();
-                console.log(`[Upload] Optimizing ${file.filename} (${metadata.width}x${metadata.height})`);
+                await sharp(file.path).webp({ quality: 80 }).toFile(optimizedPath);
 
-                await sharp(file.path)
-                    .resize({ width: 1600, withoutEnlargement: true }) // Max width 1600px
-                    .toFormat('webp', { quality: 75 }) // Convert to WebP
-                    .toFile(optimizedPath);
-
-                const end = Date.now();
-                console.log(`[Upload] Optimized ${file.filename} -> ${optimizedFilename} in ${end - start}ms`);
-
-                // Get new file size
-                const stats = fs.statSync(optimizedPath);
-
-                // Delete original file
-                fs.unlinkSync(file.path);
-
-                processedImages.push({
-                    url: optimizedUrl,
-                    path: optimizedPath,
-                    filename: optimizedFilename,
-                    size: stats.size,
-                    mimetype: 'image/webp',
-                    caption: '',
-                    altText: '',
-                    isFeatured: false
+                // Create image record
+                const image = await Image.create({
+                    article_id: id,
+                    filename: file.originalname,
+                    url: `/uploads/${path.basename(optimizedPath)}`,
+                    local_path: optimizedPath,
+                    mime_type: file.mimetype,
+                    file_size: file.size,
+                    type: req.body.type || 'feature',
+                    generation_method: 'UPLOAD'
                 });
 
-            } catch (processError) {
-                console.error(`[Upload] Failed to process file ${file.filename}:`, processError);
-                try {
-                    fs.appendFileSync(path.join(__dirname, '../debug_upload_error.txt'), new Date().toISOString() + ' - SHARP ERROR: ' + processError.message + '\n' + processError.stack + '\n');
-                } catch (e) { }
-                throw new Error(`Failed to optimize image: ${file.originalname}`);
+                uploadedImages.push(image);
+            } catch (imgError) {
+                console.error('Image optimization error:', imgError);
             }
         }
 
-        // 5. Add to Article
-        article.images.push(...processedImages);
-
-        // Set featured image if none exists or if this is the first batch
-        if (article.images.length === processedImages.length) {
-            article.images[0].isFeatured = true;
-        }
-
-        await article.save();
-
-        console.log(`[Upload] Success! Added ${processedImages.length} optimized images to Article ${article._id}`);
-        res.status(200).json(article.images);
+        res.status(201).json({
+            message: 'Images uploaded successfully',
+            images: uploadedImages
+        });
 
     } catch (error) {
-        console.error('[Upload] Critical Error:', error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// ===== GENERATE IMAGE SEO =====
+exports.generateImageSEO = async (req, res) => {
+    try {
+        const { id, imageId } = req.params;
+        const { alt_text_marathi, alt_text_english, caption_marathi, caption_english } = req.body;
+
+        const image = await Image.findByPk(imageId);
+
+        if (!image) {
+            return res.status(404).json({ message: 'Image not found' });
+        }
+
+        await image.update({
+            alt_text_marathi,
+            alt_text_english,
+            caption_marathi,
+            caption_english
+        });
+
+        res.status(200).json({
+            message: 'Image SEO updated successfully',
+            image
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// ===== PUSH TO WORDPRESS =====
+exports.pushToWordPress = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const article = await Article.findByPk(id, {
+            include: [{ model: Image, as: 'images' }]
+        });
+
+        if (!article) {
+            return res.status(404).json({ message: 'Article not found' });
+        }
 
         try {
-            fs.appendFileSync(path.join(__dirname, '../debug_upload_error.txt'), new Date().toISOString() + ' - ' + error.message + '\n' + error.stack + '\n');
-        } catch (fileErr) {
-            console.error('Failed to write debug log:', fileErr);
+            // Create draft post on WordPress
+            const wpResponse = await createDraftPost(article);
+
+            // Update article with WordPress ID
+            await article.update({
+                wp_id: wpResponse.id,
+                wp_url: wpResponse.link,
+                status: 'DRAFT_WP'
+            });
+
+            res.status(200).json({
+                message: 'Article pushed to WordPress as draft',
+                wp_id: wpResponse.id,
+                wp_link: wpResponse.link
+            });
+
+        } catch (wpError) {
+            res.status(500).json({
+                message: 'Failed to push to WordPress',
+                error: wpError.message
+            });
         }
 
-        // Log stack for debugging but don't expose to user in production
-        const stack = process.env.NODE_ENV === 'production' ? null : error.stack;
-
-        res.status(500).json({
-            message: 'Server failed to process images',
-            error: error.message,
-            stack
-        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 };
 
-// @desc    Generate SEO for a specific image
-// @route   POST /api/articles/:id/images/:imageId/seo
-// @access  Private
-const generateImageSEO = async (req, res) => {
+// ===== GET ARTICLE STATUS =====
+exports.getArticleStatus = async (req, res) => {
     try {
-        const article = await Article.findById(req.params.id);
-        if (!article) return res.status(404).json({ message: 'Article not found' });
+        const { id } = req.params;
 
-        const image = article.images.id(req.params.imageId);
-        if (!image) return res.status(404).json({ message: 'Image not found' });
+        const article = await Article.findByPk(id, {
+            attributes: ['id', 'status', 'generation_status', 'generation_error', 'generation_started_at', 'generation_completed_at']
+        });
 
-        // Call AI Service
-        // Use article title/content as context
-        const context = article.title + ' ' + (article.content || article.rawInput).substring(0, 100);
-        const { generateImageMetaData } = require('../services/geminiService'); // Lazy load to avoid circular if any
+        if (!article) {
+            return res.status(404).json({ message: 'Article not found' });
+        }
 
-        const metadata = await generateImageMetaData(image.path, context);
-
-        image.caption = metadata.caption;
-        image.altText = metadata.alt_text;
-
-        await article.save();
-        res.json(image);
+        res.status(200).json(article);
 
     } catch (error) {
-        console.error("Image SEO Error:", error);
-        res.status(500).json({ message: 'Failed to generate image SEO' });
+        res.status(500).json({ message: error.message });
     }
-};
-
-module.exports = {
-    getArticles,
-    getArticleById,
-    createArticle,
-    updateArticle,
-    deleteArticle,
-    generateArticleContent,
-    analyzeArticleSEO,
-    improveArticleSEO,
-    pushToWordPress,
-    uploadArticleImages,
-    generateImageSEO,
-    getArticleStatus
 };
