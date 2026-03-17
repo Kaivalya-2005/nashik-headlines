@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
-import authService from '../services/authService';
+import authService from '../api/authService';
 
 export const AuthContext = createContext();
 
@@ -8,25 +8,29 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const storedUser = authService.getCurrentUser();
-        if (storedUser) {
-            setUser(storedUser);
-        }
-        setLoading(false);
+        const fetchUser = async () => {
+            try {
+                const current = await authService.getCurrentUser();
+                setUser(current);
+            } catch (error) {
+                setUser(null);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchUser();
     }, []);
 
     const login = async (email, password) => {
-        try {
-            const data = await authService.login(email, password);
-            setUser(data);
-            return data;
-        } catch (error) {
-            throw error;
-        }
+        const data = await authService.login(email, password);
+        const current = await authService.getCurrentUser();
+        setUser(current || data);
+        return current || data;
     };
 
-    const logout = () => {
-        authService.logout();
+    const logout = async () => {
+        await authService.logout();
         setUser(null);
     };
 

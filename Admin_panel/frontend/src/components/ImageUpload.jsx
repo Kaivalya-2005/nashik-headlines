@@ -39,18 +39,18 @@ const ImageUpload = ({ images = [], onImagesChange, onGenerateSEO, maxImages = 3
 
     const removeImage = (idToRemove) => {
         // Revoke URL if it's a blob
-        const img = images.find(i => (i._id || i.id) === idToRemove);
+        const img = images.find(i => i.id === idToRemove);
         if (img && img.file && img.url) {
             URL.revokeObjectURL(img.url);
         }
 
-        const updated = images.filter(img => (img._id || img.id) !== idToRemove);
+        const updated = images.filter(img => img.id !== idToRemove);
         onImagesChange(updated);
     };
 
     const updateMeta = (idToUpdate, field, value) => {
         const updated = images.map(img =>
-            (img._id || img.id) === idToUpdate ? { ...img, [field]: value } : img
+            img.id === idToUpdate ? { ...img, [field]: value } : img
         );
         onImagesChange(updated);
     };
@@ -58,7 +58,7 @@ const ImageUpload = ({ images = [], onImagesChange, onGenerateSEO, maxImages = 3
     const toggleFeatured = (idToToggle) => {
         const updated = images.map(img => ({
             ...img,
-            isFeatured: (img._id || img.id) === idToToggle
+            isFeatured: img.id === idToToggle
         }));
         onImagesChange(updated);
     };
@@ -99,7 +99,7 @@ const ImageUpload = ({ images = [], onImagesChange, onGenerateSEO, maxImages = 3
             {/* Image List */}
             <div className="grid grid-cols-1 gap-4">
                 {images.map((img) => {
-                    const uniqueId = img._id || img.id;
+                    const uniqueId = img.id;
                     return (
                         <div key={uniqueId} className="border rounded-lg p-4 bg-white relative shadow-sm">
                             <button

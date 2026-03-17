@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Edit, Trash2, Globe, ExternalLink } from 'lucide-react';
-import articleService from '../services/articleService';
+import { Edit, CheckCircle2, Ban, Rocket } from 'lucide-react';
+import articleService from '../api/articleService';
 import toast from 'react-hot-toast';
 
 const ArticleList = () => {
@@ -9,7 +9,7 @@ const ArticleList = () => {
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
-    const [pushingId, setPushingId] = useState(null);
+    const [actionId, setActionId] = useState(null);
 
     useEffect(() => {
         fetchArticles();
@@ -18,8 +18,8 @@ const ArticleList = () => {
     const fetchArticles = async () => {
         setLoading(true);
         try {
-            const data = await articleService.getAll(page);
-            setArticles(data.articles || []);
+            const data = await articleService.getArticles(page);
+            setArticles(data.articles || data.data || []);
             setTotalPages(Number(data.pages) || 1);
         } catch (error) {
             toast.error('Failed to load articles');
@@ -28,32 +28,46 @@ const ArticleList = () => {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this article?')) return;
+    const updateStatusLocal = (id, status) => {
+        setArticles(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+    };
+
+    const handleApprove = async (id) => {
+        setActionId(id);
         try {
-            await articleService.remove(id);
-            toast.success('Article deleted');
-            fetchArticles();
+            await articleService.approveArticle(id);
+            toast.success('Article approved');
+            updateStatusLocal(id, 'approved');
         } catch (error) {
-            toast.error('Failed to delete article');
+            toast.error(error.response?.data?.message || 'Approve failed');
+        } finally {
+            setActionId(null);
         }
     };
 
-    const handlePushToWP = async (id) => {
-        if (!window.confirm('Push to WordPress as Draft?')) return;
-        setPushingId(id);
+    const handleReject = async (id) => {
+        setActionId(id);
         try {
-            const result = await articleService.pushToWordPress(id);
-            toast.success('Pushed to WordPress!');
-            // Update local state to reflect changes
-            setArticles(articles.map(a =>
-                a._id === id ? { ...a, status: 'DRAFT_WP', wpId: result.wpId, wpUrl: result.wpUrl } : a
-            ));
+            await articleService.rejectArticle(id);
+            toast.success('Article rejected');
+            updateStatusLocal(id, 'rejected');
         } catch (error) {
-            console.error(error);
-            toast.error(error.response?.data?.message || 'Failed to push to WP');
+            toast.error(error.response?.data?.message || 'Reject failed');
         } finally {
-            setPushingId(null);
+            setActionId(null);
+        }
+    };
+
+    const handlePublish = async (id) => {
+        setActionId(id);
+        try {
+            await articleService.publishArticle(id);
+            toast.success('Article published');
+            updateStatusLocal(id, 'published');
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Publish failed');
+        } finally {
+            setActionId(null);
         }
     };
 
@@ -76,6 +90,8 @@ const ArticleList = () => {
                     <thead className="bg-gray-50">
                         <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -83,41 +99,60 @@ const ArticleList = () => {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {articles.map((article) => (
-                            <tr key={article._id}>
+                            <tr key={article.id}>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="text-sm font-medium text-gray-900 truncate max-w-xs">{article.title}</div>
                                 </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                    {article.category || '—'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {article.source || '—'}
+                                </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${article.status === 'PUBLISHED' ? 'bg-green-100 text-green-800' :
-                                        article.status === 'DRAFT_WP' ? 'bg-blue-100 text-blue-800' :
-                                            'bg-gray-100 text-gray-800'
+                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                        article.status === 'published'
+                                            ? 'bg-green-100 text-green-800'
+                                            : article.status === 'approved'
+                                                ? 'bg-blue-100 text-blue-800'
+                                                : article.status === 'rejected'
+                                                    ? 'bg-red-100 text-red-800'
+                                                    : 'bg-yellow-100 text-yellow-800'
                                         }`}>
-                                        {article.status}
+                                        {article.status?.replace('_', ' ') || 'draft'}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {new Date(article.createdAt).toLocaleDateString()}
+                                    {article.createdAt ? new Date(article.createdAt).toLocaleDateString() : '—'}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                                    {article.wpUrl && (
-                                        <a href={article.wpUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900 inline-block" title="View WP Draft">
-                                            <ExternalLink size={18} />
-                                        </a>
-                                    )}
                                     <button
-                                        onClick={() => handlePushToWP(article._id)}
-                                        disabled={pushingId === article._id || article.status === 'PUBLISHED'}
-                                        className={`text-blue-600 hover:text-blue-900 disabled:opacity-50 ${pushingId === article._id ? 'animate-pulse' : ''}`}
-                                        title="Push to WordPress"
+                                        onClick={() => handleApprove(article.id)}
+                                        disabled={actionId === article.id || article.status === 'published'}
+                                        className="text-green-600 hover:text-green-800 disabled:opacity-50"
+                                        title="Approve"
                                     >
-                                        <Globe size={18} />
+                                        <CheckCircle2 size={18} />
                                     </button>
-                                    <Link to={`/articles/edit/${article._id}`} className="text-amber-600 hover:text-amber-900 inline-block">
+                                    <button
+                                        onClick={() => handleReject(article.id)}
+                                        disabled={actionId === article.id}
+                                        className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                                        title="Reject"
+                                    >
+                                        <Ban size={18} />
+                                    </button>
+                                    <button
+                                        onClick={() => handlePublish(article.id)}
+                                        disabled={actionId === article.id || article.status === 'published'}
+                                        className="text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                                        title="Publish"
+                                    >
+                                        <Rocket size={18} />
+                                    </button>
+                                    <Link to={`/articles/edit/${article.id}`} className="text-amber-600 hover:text-amber-900 inline-block">
                                         <Edit size={18} />
                                     </Link>
-                                    <button onClick={() => handleDelete(article._id)} className="text-red-600 hover:text-red-900">
-                                        <Trash2 size={18} />
-                                    </button>
                                 </td>
                             </tr>
                         ))}
