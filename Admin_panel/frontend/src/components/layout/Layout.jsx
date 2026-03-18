@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, LogOut, PlusCircle } from 'lucide-react';
+import { LayoutDashboard, FileText, LogOut, PlusCircle, Bot, Database } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 
 const Layout = () => {
@@ -17,6 +17,8 @@ const Layout = () => {
         { path: '/', label: 'Dashboard', icon: LayoutDashboard },
         { path: '/articles', label: 'Articles', icon: FileText },
         { path: '/articles/create', label: 'Create New', icon: PlusCircle },
+        { path: '/manus-control', label: 'Manus Control', icon: Bot },
+        { path: '/database', label: 'Database Explorer', icon: Database },
     ];
 
     return (

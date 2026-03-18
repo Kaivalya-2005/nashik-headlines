@@ -8,6 +8,8 @@ import Dashboard from './pages/Dashboard';
 import ArticleList from './pages/ArticleList';
 import CreateArticle from './pages/CreateArticle';
 import EditArticle from './pages/EditArticle';
+import ManusControl from './pages/ManusControl';
+import DatabaseExplorer from './pages/DatabaseExplorer';
 
 function App() {
   return (
@@ -22,6 +24,11 @@ function App() {
               <Route path="/articles" element={<ArticleList />} />
               <Route path="/articles/create" element={<CreateArticle />} />
               <Route path="/articles/edit/:id" element={<EditArticle />} />
+
+              <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+                <Route path="/manus-control" element={<ManusControl />} />
+                <Route path="/database" element={<DatabaseExplorer />} />
+              </Route>
             </Route>
           </Route>
 

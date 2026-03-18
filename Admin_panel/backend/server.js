@@ -13,6 +13,7 @@ const { connectDB } = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const articleRoutes = require('./routes/articleRoutes');
 const agentRoutes = require('./routes/agentRoutes');
+const databaseRoutes = require('./routes/databaseRoutes');
 
 // Initialize app
 const app = express();
@@ -48,6 +49,7 @@ app.use(cookieParser());
 app.use('/api/auth', authRoutes);
 app.use('/api/articles', articleRoutes);
 app.use('/api/agents', agentRoutes);
+app.use('/api/database', databaseRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/', (req, res) => {
