@@ -28,6 +28,7 @@ class MasterAgent:
         self.seo       = SEOAgent()
         # self.image     = ImageAgent()  # IMAGE GENERATION DISABLED
         self.publisher = PublisherAgent()
+        self.web_scraper_enabled = True
 
     def _get_conn(self):
         return mysql.connector.connect(
@@ -52,6 +53,34 @@ class MasterAgent:
             cur.close()
             conn.close()
         except: pass
+
+    def set_web_scraper_enabled(self, enabled: bool):
+        self.web_scraper_enabled = bool(enabled)
+
+    def get_runtime_config(self) -> dict:
+        return {
+            "web_scraper_enabled": self.web_scraper_enabled,
+            "image_generation_enabled": False,
+        }
+
+    def run_scraper(self) -> int:
+        return self.scraper.run()
+
+    def _fetch_pending(self, limit: int = 10) -> list:
+        pending = []
+        try:
+            conn = self._get_conn()
+            cur = conn.cursor(dictionary=True)
+            cur.execute(
+                "SELECT id, title, url, source_id FROM raw_articles WHERE status='pending' LIMIT %s",
+                (limit,)
+            )
+            pending = cur.fetchall()
+            cur.close()
+            conn.close()
+        except Exception as exc:
+            log_error(self.name, f"Fetch pending fail: {exc}")
+        return pending
 
     def process(self, stub: dict) -> dict:
         url = stub.get("url", "unknown")
@@ -95,22 +124,14 @@ class MasterAgent:
             if raw_id: self._update_raw_status(raw_id, "rejected")
             return stub
 
-    def run(self) -> int:
+    def run(self, include_scraper: bool | None = None, limit: int = 10) -> int:
         self._banner("MasterAgent — Starting Scrape Cycle")
 
-        self.scraper.run()
+        should_scrape = self.web_scraper_enabled if include_scraper is None else bool(include_scraper)
+        if should_scrape:
+            self.scraper.run()
 
-        pending = []
-        try:
-            conn = self._get_conn()
-            cur = conn.cursor(dictionary=True)
-            # Retrieve source_id instead of source string
-            cur.execute("SELECT id, title, url, source_id FROM raw_articles WHERE status='pending' LIMIT 10")
-            pending = cur.fetchall()
-            cur.close()
-            conn.close()
-        except Exception as exc:
-            log_error(self.name, f"Fetch pending fail: {exc}")
+        pending = self._fetch_pending(limit=limit)
 
         if not pending:
             return 0
@@ -121,6 +142,93 @@ class MasterAgent:
             if result.get("db_id", -1) > 0:
                 saved += 1
         return saved
+
+    def process_pending(self, limit: int = 10) -> dict:
+        pending = self._fetch_pending(limit=limit)
+        if not pending:
+            return {"requested": limit, "processed": 0, "saved": 0}
+
+        saved = 0
+        processed = 0
+        for stub in pending:
+            processed += 1
+            result = self.process(stub)
+            if result.get("db_id", -1) > 0:
+                saved += 1
+
+        return {"requested": limit, "processed": processed, "saved": saved}
+
+    def get_stats(self) -> dict:
+        stats = {
+            "raw_total": 0,
+            "raw_pending": 0,
+            "raw_processed": 0,
+            "raw_rejected": 0,
+            "articles_total": 0,
+            "articles_draft": 0,
+            "articles_published": 0,
+            "articles_rejected": 0,
+            "sources": 0,
+        }
+        try:
+            conn = self._get_conn()
+            cur = conn.cursor(dictionary=True)
+
+            cur.execute("SELECT status, COUNT(*) as count FROM raw_articles GROUP BY status")
+            for row in cur.fetchall():
+                status = row["status"]
+                count = row["count"]
+                stats["raw_total"] += count
+                if status == "pending":
+                    stats["raw_pending"] = count
+                elif status == "processed":
+                    stats["raw_processed"] = count
+                elif status == "rejected":
+                    stats["raw_rejected"] = count
+
+            cur.execute("SELECT status, COUNT(*) as count FROM processed_articles GROUP BY status")
+            for row in cur.fetchall():
+                status = row["status"]
+                count = row["count"]
+                stats["articles_total"] += count
+                if status == "draft":
+                    stats["articles_draft"] = count
+                elif status == "published":
+                    stats["articles_published"] = count
+                elif status == "rejected":
+                    stats["articles_rejected"] = count
+
+            cur.execute("SELECT COUNT(*) as count FROM sources")
+            stats["sources"] = cur.fetchone()["count"]
+
+            cur.close()
+            conn.close()
+        except Exception as exc:
+            log_error(self.name, f"Stats fetch fail: {exc}")
+
+        return stats
+
+    def get_queue(self, limit: int = 20) -> dict:
+        queue = {"pending_count": 0, "pending_items": []}
+        try:
+            conn = self._get_conn()
+            cur = conn.cursor(dictionary=True)
+
+            cur.execute("SELECT COUNT(*) as count FROM raw_articles WHERE status='pending'")
+            queue["pending_count"] = cur.fetchone()["count"]
+
+            cur.execute(
+                "SELECT id, title, url, source_id FROM raw_articles WHERE status='pending' ORDER BY id DESC LIMIT %s",
+                (limit,)
+            )
+            queue["pending_items"] = cur.fetchall()
+
+            cur.close()
+            conn.close()
+        except Exception as exc:
+            log_error(self.name, f"Queue fetch fail: {exc}")
+
+        return queue
 
     def dry_run(self) -> dict:
         from tools.init_db import init_db
