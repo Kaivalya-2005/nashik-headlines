@@ -1,39 +1,39 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { DarkModeProvider } from './context/DarkModeContext';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import Layout from './components/layout/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import ArticleList from './pages/ArticleList';
+import ArticlesPage from './pages/ArticlesPage';
 import CreateArticle from './pages/CreateArticle';
 import EditArticle from './pages/EditArticle';
-import ManusControl from './pages/ManusControl';
-import DatabaseExplorer from './pages/DatabaseExplorer';
+import AIEditor from './pages/AIEditor';
+import RawArticlesPipeline from './pages/RawArticlesPipeline';
 
 function App() {
   return (
     <Router>
       <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+        <DarkModeProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
 
-          <Route element={<ProtectedRoute />}>
-            <Route element={<Layout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/articles" element={<ArticleList />} />
-              <Route path="/articles/create" element={<CreateArticle />} />
-              <Route path="/articles/edit/:id" element={<EditArticle />} />
-
-              <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
-                <Route path="/manus-control" element={<ManusControl />} />
-                <Route path="/database" element={<DatabaseExplorer />} />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<Layout />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/articles" element={<ArticlesPage />} />
+                <Route path="/articles/create" element={<CreateArticle />} />
+                <Route path="/articles/edit/:id" element={<EditArticle />} />
+                <Route path="/ai-editor" element={<AIEditor />} />
+                <Route path="/pipeline" element={<RawArticlesPipeline />} />
               </Route>
             </Route>
-          </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </DarkModeProvider>
       </AuthProvider>
     </Router>
   );

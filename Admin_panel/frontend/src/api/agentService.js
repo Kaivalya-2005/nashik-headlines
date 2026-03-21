@@ -132,6 +132,21 @@ const approveArticle = async (articleId) => {
     return response.data;
 };
 
+const rejectProcessedArticle = async (articleId) => {
+    const response = await manusApi.post(`/ai/articles/${articleId}/reject`);
+    return response.data;
+};
+
+const regenerateArticle = async (articleId) => {
+    const response = await manusApi.post(`/ai/articles/${articleId}/regenerate`);
+    return response.data;
+};
+
+const restoreArticle = async (articleId, payload) => {
+    const response = await manusApi.post(`/ai/articles/${articleId}/restore`, payload);
+    return response.data;
+};
+
 const getMemorySnapshot = async () => {
     /**
      * Get task logs and error history
@@ -306,6 +321,9 @@ const agentService = {
     // Article Management
     getArticles,
     approveArticle,
+    rejectProcessedArticle,
+    regenerateArticle,
+    restoreArticle,
     getMemorySnapshot,
 
     // Admin Runtime Controls

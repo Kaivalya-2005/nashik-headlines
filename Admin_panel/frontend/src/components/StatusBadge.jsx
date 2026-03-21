@@ -6,7 +6,7 @@ const StatusBadge = ({ status, error }) => {
 
     if (status === 'PENDING') {
         return (
-            <div className="flex items-center bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
+            <div className="flex items-center bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 px-3 py-1 rounded-full text-sm font-medium border border-amber-200 dark:border-amber-900">
                 <Clock size={16} className="mr-2" />
                 Queued
             </div>
@@ -15,16 +15,16 @@ const StatusBadge = ({ status, error }) => {
 
     if (status === 'PROCESSING') {
         return (
-            <div className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+            <div className="flex items-center bg-indigo-100 dark:bg-indigo-950/50 text-indigo-800 dark:text-indigo-300 px-3 py-1 rounded-full text-sm font-medium border border-indigo-200 dark:border-indigo-900">
                 <Loader2 size={16} className="mr-2 animate-spin" />
-                Generating AI Content...
+                Processing
             </div>
         );
     }
 
     if (status === 'COMPLETED') {
         return (
-            <div className="flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+            <div className="flex items-center bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 px-3 py-1 rounded-full text-sm font-medium border border-emerald-200 dark:border-emerald-900">
                 <CheckCircle size={16} className="mr-2" />
                 Completed
             </div>
@@ -34,12 +34,12 @@ const StatusBadge = ({ status, error }) => {
     if (status === 'FAILED') {
         return (
             <div className="flex flex-col">
-                <div className="flex items-center bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium w-max">
+                <div className="flex items-center bg-rose-100 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 px-3 py-1 rounded-full text-sm font-medium w-max border border-rose-200 dark:border-rose-900">
                     <AlertCircle size={16} className="mr-2" />
                     Failed
                 </div>
                 {error && (
-                    <span className="text-xs text-red-600 mt-1 max-w-xs break-words bg-red-50 p-1 rounded border border-red-100">
+                    <span className="text-xs text-rose-700 dark:text-rose-300 mt-1 max-w-xs break-words bg-rose-50 dark:bg-rose-950/40 p-1 rounded border border-rose-200 dark:border-rose-900">
                         {error}
                     </span>
                 )}

@@ -27,7 +27,7 @@ const register = async (email, password, name, role = 'EDITOR') => {
 const logout = async () => {
     try {
         await api.post('/auth/logout');
-    } catch (error) {
+    } catch {
         console.log('Logout error (expected if no endpoint exists)');
     } finally {
         localStorage.removeItem('authToken');

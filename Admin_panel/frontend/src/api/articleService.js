@@ -1,23 +1,42 @@
 import api from './api';
 
-const getArticles = async (page = 1, pageSize = 10, status = null) => {
-    const params = { page, pageSize };
-    if (status) params.status = status;
-    const response = await api.get('/articles', { params });
-    return response.data;
+// ========== ARTICLE CRUD ==========
+
+const getArticles = async () => {
+    try {
+        const response = await api.get('/articles');
+        return {
+            articles: response.data || [],
+            total: response.data?.length || 0,
+            pages: 1
+        };
+    } catch (error) {
+        console.error('Failed to fetch articles from backend:', error);
+        return { articles: [], total: 0, pages: 1 };
+    }
 };
 
 const getArticle = async (id) => {
-    const response = await api.get(`/articles/${id}`);
-    return response.data;
+    try {
+        const response = await api.get(`/articles/${id}`);
+        return response.data;
+    } catch (error) {
+        console.error('Failed to fetch article:', error);
+        throw error;
+    }
 };
 
 const createArticle = async (data) => {
-    const response = await api.post('/articles', data);
-    return response.data;
+    try {
+        const response = await api.post('/articles', data);
+        return response.data;
+    } catch (error) {
+        console.error('Failed to create article:', error);
+        throw error;
+    }
 };
 
-const updateArticle = async (id, data) => {
+const editArticle = async (id, data) => {
     const response = await api.put(`/articles/${id}`, data);
     return response.data;
 };
@@ -27,53 +46,70 @@ const deleteArticle = async (id) => {
     return response.data;
 };
 
-const generateContent = async (id) => {
-    const response = await api.post(`/articles/${id}/generate`);
+// ========== APPROVAL WORKFLOW ==========
+
+const approveArticle = async (id) => {
+    const response = await api.put(`/articles/${id}/approve`);
     return response.data;
 };
 
-const getStatus = async (id) => {
-    const response = await api.get(`/articles/${id}/status`);
+const publishArticle = async (id) => {
+    const response = await api.put(`/articles/${id}/publish`);
     return response.data;
 };
 
-const analyzeSEO = async (id) => {
-    const response = await api.post(`/articles/${id}/seo/analyze`);
+// ========== SCRAPER & PROCESSOR ==========
+
+const runScraper = async () => {
+    const response = await api.post('/scrape');
     return response.data;
 };
 
-const improveSEO = async (id) => {
-    const response = await api.post(`/articles/${id}/seo/improve`);
+const runProcessor = async () => {
+    const response = await api.post('/process');
     return response.data;
 };
 
-const uploadImages = async (id, files) => {
-    const formData = new FormData();
-    if (files instanceof FormData) {
-        return await api.post(`/articles/${id}/images`, files);
-    } else {
-        (files || []).forEach(file => formData.append('images', file));
-        return await api.post(`/articles/${id}/images`, formData);
+const getScraperStatus = async () => {
+    try {
+        const response = await api.get('/scrape/status');
+        return response.data;
+    } catch (error) {
+        console.error('Failed to get scraper status:', error);
+        return null;
     }
 };
 
-const pushToWordPress = async (id) => {
-    const response = await api.post(`/articles/${id}/push-to-wp`);
-    return response.data;
+// ========== STATS & STATUS ==========
+
+const checkBackendHealth = async () => {
+    try {
+        const response = await api.get('/');
+        return { connected: true, status: response.data };
+    } catch (error) {
+        return { connected: false, error: error.message };
+    }
 };
 
 const articleService = {
+    // CRUD
     getArticles,
     getArticle,
     createArticle,
-    updateArticle,
+    editArticle,
     deleteArticle,
-    generateContent,
-    getStatus,
-    analyzeSEO,
-    improveSEO,
-    uploadImages,
-    pushToWordPress
+    
+    // Workflow
+    approveArticle,
+    publishArticle,
+    
+    // Scraper & Processor
+    runScraper,
+    runProcessor,
+    getScraperStatus,
+    
+    // Status
+    checkBackendHealth
 };
 
 export default articleService;
