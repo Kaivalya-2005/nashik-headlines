@@ -135,11 +135,17 @@ export const getPublishedArticles = async () => {
 export const createArticle = async (data) => {
   try {
     const response = await api.post('/articles', {
+      ...data,
       title: data.title,
       content: data.content,
       summary: data.summary || '',
       category: data.category || '',
-      status: data.status || 'draft'
+      status: data.status || 'draft',
+      seo_title: data.seo_title || '',
+      meta_description: data.meta_description || '',
+      slug: data.slug || '',
+      keywords: data.keywords || '',
+      image_alt: data.image_alt || ''
     });
     return response.data;
   } catch (error) {

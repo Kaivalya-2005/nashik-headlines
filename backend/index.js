@@ -8,6 +8,7 @@ const app = express();
 app.use(cors({
   origin: [
     "http://localhost:5173",
+    "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://localhost:5000"
   ],
@@ -23,6 +24,8 @@ app.use("/api", require("./routes/auth"));
 app.use("/api", require("./routes/scrape"));
 app.use("/api", require("./routes/process"));
 app.use("/api", require("./routes/articles"));
+app.use("/api", require("./routes/stats"));
+app.use("/api", require("./routes/ai"));
 
 // Health check endpoint
 app.get("/", (req, res) => {
