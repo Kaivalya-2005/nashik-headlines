@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Search, Menu, X, ChevronDown } from 'lucide-react';
 import { LOCATION_CATEGORIES, TOPIC_CATEGORIES } from '@/lib/categories';
@@ -29,13 +30,13 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/60">
       <div className="container mx-auto">
         <div className="flex items-center justify-between h-16 px-4">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-lg bg-accent flex items-center justify-center shadow-sm transition-transform duration-200 group-hover:scale-105">
-              <span className="text-accent-foreground font-headline font-bold text-sm tracking-tight">NH</span>
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="relative h-11 w-11 rounded-xl overflow-hidden border border-border bg-white shadow-sm transition-transform duration-200 group-hover:scale-105">
+              <Image src="/logo.jpeg" alt="Nashik Headlines" fill sizes="44px" className="object-cover" priority />
             </div>
             <div className="flex flex-col">
               <span className="font-headline font-bold text-lg leading-tight tracking-tight">Nashik Headlines</span>
-              <span className="text-overline text-muted-foreground hidden sm:block leading-none">Your Regional News Source</span>
+              <span className="text-overline text-muted-foreground hidden sm:block leading-none">Live • Local • Fast</span>
             </div>
           </Link>
 

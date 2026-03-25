@@ -24,6 +24,12 @@ export const metadata = {
     index: true,
     follow: true,
   },
+  icons: {
+    icon: '/logo.jpeg',
+    shortcut: '/logo.jpeg',
+    apple: '/logo.jpeg',
+  },
+  themeColor: '#0f2b6b',
 };
 
 export default function RootLayout({ children }) {
