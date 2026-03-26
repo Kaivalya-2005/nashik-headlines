@@ -53,8 +53,8 @@ const CreateArticle = () => {
 
         setCreating(true);
         try {
-            const result = await articleService.createArticle({ 
-                title: title.trim(), 
+            const result = await articleService.createArticle({
+                title: title.trim(),
                 content: content.trim(),
                 summary: summary.trim(),
                 category: category.trim(),

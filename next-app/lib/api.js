@@ -1,6 +1,8 @@
 import { estimateReadTime } from '@/lib/format';
 
-const BASE_URL = process.env.API_BASE_URL || 'http://localhost:5000/api/articles';
+const API_BASE = process.env.API_BASE_URL || 'http://localhost:5000/api';
+const PUBLISHED_URL = `${API_BASE}/articles/published`;
+const ARTICLES_URL = `${API_BASE}/articles`;
 
 async function fetchJSON(url, options = {}) {
   const res = await fetch(url, {
@@ -30,7 +32,7 @@ function mapArticle(raw) {
     headline: raw.title,
     description: summary,
     content,
-    category: raw.category,
+    category: raw.category_name || raw.category,
     image: raw.image_url || raw.imageUrl,
     publishedAt: raw.published_at || raw.publishedAt,
     readTime: raw.read_time || estimateReadTime(content),
@@ -43,7 +45,7 @@ function mapArticle(raw) {
 }
 
 export async function fetchArticles({ category, query } = {}, options = {}) {
-  const url = new URL(BASE_URL);
+  const url = new URL(PUBLISHED_URL);
   if (category) url.searchParams.set('category', category);
   if (query) url.searchParams.set('q', query);
 
@@ -61,7 +63,7 @@ export async function fetchArticles({ category, query } = {}, options = {}) {
 export async function fetchArticleBySlug(slug, { cache } = {}) {
   // Try direct endpoint
   try {
-    const res = await fetch(`${BASE_URL}/${slug}`, { cache: cache || 'no-store' });
+    const res = await fetch(`${ARTICLES_URL}/${slug}`, { cache: cache || 'no-store' });
     if (res.ok) {
       const data = await res.json();
       return mapArticle(data);

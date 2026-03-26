@@ -1,10 +1,13 @@
 import React, { useState, useCallback } from 'react';
-import { Zap, Play, RotateCcw, RefreshCw } from 'lucide-react';
+import { Zap, Play, RotateCcw, RefreshCw, HelpCircle, X, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StatusCards from '../components/StatusCards';
 import * as newsroomService from '../services/newsroomService';
 
 const Dashboard = () => {
+  const [showGuide, setShowGuide] = useState(() => {
+    return localStorage.getItem('hideWelcomeGuide') !== 'true';
+  });
   const [loading, setLoading] = useState({
     scraper: false,
     process: false,
@@ -12,6 +15,11 @@ const Dashboard = () => {
     refresh: false
   });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const dismissGuide = () => {
+    setShowGuide(false);
+    localStorage.setItem('hideWelcomeGuide', 'true');
+  };
 
   const handleScraper = async () => {
     setLoading(prev => ({ ...prev, scraper: true }));
@@ -126,6 +134,44 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* Welcome Guide */}
+      {showGuide && (
+        <div className="mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 rounded-xl p-6 border border-indigo-200 dark:border-indigo-800/50 relative">
+          <button
+            onClick={dismissGuide}
+            className="absolute top-4 right-4 p-1 rounded hover:bg-white/50 dark:hover:bg-slate-800/50 text-slate-500"
+            title="Dismiss guide"
+          >
+            <X size={18} />
+          </button>
+          <div className="flex items-center gap-2 mb-3">
+            <HelpCircle size={20} className="text-indigo-600 dark:text-indigo-400" />
+            <h2 className="text-lg font-semibold text-indigo-900 dark:text-indigo-200">Welcome! Here's how to publish news</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {[
+              { step: '1', title: 'Run Scraper', desc: 'Click "Run Scraper" to fetch fresh news from sources' },
+              { step: '2', title: 'Process Pending', desc: 'AI rewrites and optimizes articles for SEO' },
+              { step: '3', title: 'Review Articles', desc: 'Go to Articles tab, review and approve content' },
+              { step: '4', title: 'Publish', desc: 'Click Publish on approved articles to go live!' },
+            ].map((item) => (
+              <div key={item.step} className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-indigo-600 dark:bg-indigo-500 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                  {item.step}
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{item.title}</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-3 flex items-center gap-1">
+            Or use "Full Cycle" below to do steps 1 & 2 automatically <ArrowRight size={12} />
+          </p>
+        </div>
+      )}
+
       {/* Status Cards */}
       <StatusCards refreshTrigger={refreshTrigger} />
 
@@ -134,7 +180,7 @@ const Dashboard = () => {
         <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">
           Quick Actions
         </h2>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <ActionButton
             icon={RotateCcw}
@@ -143,7 +189,7 @@ const Dashboard = () => {
             loading={loading.scraper}
             color="blue"
           />
-          
+
           <ActionButton
             icon={Zap}
             label={loading.process ? 'Processing...' : 'Process Pending'}
@@ -151,7 +197,7 @@ const Dashboard = () => {
             loading={loading.process}
             color="purple"
           />
-          
+
           <ActionButton
             icon={Play}
             label={loading.fullCycle ? 'Running...' : 'Full Cycle'}
@@ -159,7 +205,7 @@ const Dashboard = () => {
             loading={loading.fullCycle}
             color="green"
           />
-          
+
           <ActionButton
             icon={RefreshCw}
             label={loading.refresh ? 'Refreshing...' : 'Refresh Stats'}
@@ -197,3 +243,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+

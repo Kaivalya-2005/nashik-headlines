@@ -114,14 +114,14 @@ const ArticlePreviewModal = ({ article, onClose, onActionSuccess }) => {
                 <p className="font-semibold text-slate-900 dark:text-slate-100">{article.category}</p>
               </div>
             )}
-            
+
             {article.source && (
               <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-md border border-slate-200 dark:border-slate-700">
                 <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Source</p>
                 <p className="font-semibold text-slate-900 dark:text-slate-100">{article.source}</p>
               </div>
             )}
-            
+
             <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-md border border-slate-200 dark:border-slate-700">
               <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Created</p>
               <p className="font-semibold text-slate-900 dark:text-slate-100">

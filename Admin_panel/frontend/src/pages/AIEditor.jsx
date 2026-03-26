@@ -74,7 +74,7 @@ const AIEditor = () => {
   const [content, setContent] = useState('');
   const [summary, setSummary] = useState('');
   const [category, setCategory] = useState('');
-  
+
   // SEO & Optimization Fields
   const [seoTitle, setSeoTitle] = useState('');
   const [metaDesc, setMetaDesc] = useState('');
@@ -193,15 +193,15 @@ const AIEditor = () => {
       });
 
       const text = response.response || '';
-      
+
       // Parse JSON from text correctly
       let parsed = null;
       try {
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-            parsed = JSON.parse(jsonMatch[0]);
+          parsed = JSON.parse(jsonMatch[0]);
         } else {
-            parsed = JSON.parse(text);
+          parsed = JSON.parse(text);
         }
       } catch (err) {
         console.error(err);
@@ -234,8 +234,8 @@ const AIEditor = () => {
       let result = '';
       const baseText = topic || title || 'ताजी बातमी';
       const baseKey = focusKeyphrase || baseText;
-      
-      switch(field) {
+
+      switch (field) {
         case 'title': result = `ब्रेकिंग न्यूझ: ${baseText} - सर्व ताजे अपडेट्स`; break;
         case 'content': result = `### ${baseKey} वर नवीन अपडेट\n\nयेथे ${baseText} बद्दल सविस्तर माहिती आहे. मात्र, सध्या परिस्थिती नियंत्रणात आहे. त्यामुळे, नागरिकांनी अफवांवर विश्वास ठेवू नये. याशिवाच, प्रशासनाने योग्य ती काळजी घेण्याचे आवाहन केले आहे.\n\n### पुढील दिशा\n\nदुसरीकडे, अधिकृत सूत्रांनी दिलेल्या माहितीनुसार...`; break;
         case 'summary': result = `${baseText} बद्दल अत्यंत महत्त्वाची बातमी. सर्व ताजे अपडेट्स आणि माहिती एकाच ठिकाणी वाचा.`; break;
@@ -267,50 +267,50 @@ const AIEditor = () => {
           </p>
         </div>
         <div className="flex gap-3">
-            <button
-              onClick={() => handleAction('draft')}
-              disabled={saving || !title.trim() || !content.trim()}
-              className="flex items-center gap-2 px-6 py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 disabled:opacity-50 text-slate-900 dark:text-slate-100 rounded-md font-medium transition-colors"
-            >
-              <Save size={20} />
-              Save Draft
-            </button>
-            <button
-              onClick={() => handleAction('published')}
-              disabled={saving || !title.trim() || !content.trim()}
-              className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-md font-medium transition-colors"
-            >
-              <Rocket size={20} />
-              Publish Now
-            </button>
+          <button
+            onClick={() => handleAction('draft')}
+            disabled={saving || !title.trim() || !content.trim()}
+            className="flex items-center gap-2 px-6 py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 disabled:opacity-50 text-slate-900 dark:text-slate-100 rounded-md font-medium transition-colors"
+          >
+            <Save size={20} />
+            Save Draft
+          </button>
+          <button
+            onClick={() => handleAction('published')}
+            disabled={saving || !title.trim() || !content.trim()}
+            className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-md font-medium transition-colors"
+          >
+            <Rocket size={20} />
+            Publish Now
+          </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Main Editor */}
         <div className="lg:col-span-3 space-y-6">
-          
+
           {/* Prompt Engine Box */}
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-             <div 
-               className="p-4 bg-slate-100 dark:bg-slate-800/50 flex justify-between items-center cursor-pointer select-none"
-               onClick={() => setShowPromptConfig(!showPromptConfig)}
-             >
-                <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                   <Wand2 size={18} className="text-indigo-500"/> System Prompt Config
-                </div>
-                {showPromptConfig ? <ChevronUp size={20} className="text-slate-500" /> : <ChevronDown size={20} className="text-slate-500" />}
-             </div>
-             {showPromptConfig && (
-                <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-                   <p className="text-xs text-slate-500 mb-2">This dictates how the AI returns data as JSON.</p>
-                   <textarea 
-                     value={promptTemplate}
-                     onChange={(e) => setPromptTemplate(e.target.value)}
-                     className="w-full h-[400px] p-4 text-xs md:text-sm font-mono bg-slate-950 text-emerald-400 rounded-lg border border-slate-700 focus:ring-1 focus:ring-indigo-500 resize-y"
-                   />
-                </div>
-             )}
+            <div
+              className="p-4 bg-slate-100 dark:bg-slate-800/50 flex justify-between items-center cursor-pointer select-none"
+              onClick={() => setShowPromptConfig(!showPromptConfig)}
+            >
+              <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <Wand2 size={18} className="text-indigo-500" /> System Prompt Config
+              </div>
+              {showPromptConfig ? <ChevronUp size={20} className="text-slate-500" /> : <ChevronDown size={20} className="text-slate-500" />}
+            </div>
+            {showPromptConfig && (
+              <div className="p-4 border-t border-slate-200 dark:border-slate-800">
+                <p className="text-xs text-slate-500 mb-2">This dictates how the AI returns data as JSON.</p>
+                <textarea
+                  value={promptTemplate}
+                  onChange={(e) => setPromptTemplate(e.target.value)}
+                  className="w-full h-[400px] p-4 text-xs md:text-sm font-mono bg-slate-950 text-emerald-400 rounded-lg border border-slate-700 focus:ring-1 focus:ring-indigo-500 resize-y"
+                />
+              </div>
+            )}
           </div>
 
           {/* Top Generator Box */}
@@ -339,7 +339,7 @@ const AIEditor = () => {
                 className="flex items-center justify-center gap-2 px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-md font-medium transition-colors"
               >
                 {aiLoaders.all ? <div className="animate-spin"><Sparkles size={20} /></div> : <Sparkles size={20} />}
-                Generate 
+                Generate
               </button>
             </div>
           </div>
@@ -350,7 +350,7 @@ const AIEditor = () => {
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Article Title</label>
                 <button onClick={() => generateField('title', setTitle, 'Title')} className="text-xs flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline">
-                  <Wand2 size={12}/> AI Edit
+                  <Wand2 size={12} /> AI Edit
                 </button>
               </div>
               <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-md focus:ring-2 focus:ring-indigo-400/40" />
@@ -374,7 +374,7 @@ const AIEditor = () => {
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Summary (Excerpt)</label>
                 <button onClick={() => generateField('summary', setSummary, 'Summary')} className="text-xs flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline">
-                  <Wand2 size={12}/> AI
+                  <Wand2 size={12} /> AI
                 </button>
               </div>
               <textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Brief summary..." rows={3} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-md focus:ring-2 focus:ring-indigo-400/40 resize-none" />
@@ -383,8 +383,8 @@ const AIEditor = () => {
 
           {/* Media / Images */}
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-800">
-            <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2"><ImagePlus size={18}/> Media & Images ({images.length}/{maxImages})</h3>
-            
+            <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2"><ImagePlus size={18} /> Media & Images ({images.length}/{maxImages})</h3>
+
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
               {images.map((img, idx) => (
                 <div key={idx} className="relative group rounded-md overflow-hidden bg-slate-100 dark:bg-slate-800 aspect-video border border-slate-200 dark:border-slate-700 flex items-center justify-center">
@@ -396,7 +396,7 @@ const AIEditor = () => {
                   </div>
                 </div>
               ))}
-              
+
               {images.length < maxImages && (
                 <label className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 rounded-md aspect-video flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 cursor-pointer transition-colors bg-slate-50 dark:bg-slate-950">
                   <ImagePlus size={24} className="mb-2" />
@@ -405,10 +405,10 @@ const AIEditor = () => {
                 </label>
               )}
             </div>
-            
+
             <div className="mt-4">
               <div className="flex justify-between items-center mb-1">
-                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Feature Image Alt Text</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Feature Image Alt Text</label>
               </div>
               <input type="text" value={imageAlt} onChange={(e) => setImageAlt(e.target.value)} placeholder="Representative SEO alt text for thumbnail..." className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-md focus:ring-2 focus:ring-indigo-400/40" />
             </div>
@@ -417,7 +417,7 @@ const AIEditor = () => {
 
         {/* Sidebar - SEO & Meta */}
         <div className="space-y-6">
-          
+
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-800">
             <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center justify-between">
               Rank on Google
@@ -428,10 +428,10 @@ const AIEditor = () => {
 
             <div className="space-y-4">
               <div>
-                 <div className="flex justify-between items-center mb-1">
-                   <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block">Category</label>
-                 </div>
-                 <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. ताज्या बातम्या" className="w-full p-2 text-sm border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded focus:ring-1 focus:ring-indigo-400" />
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block">Category</label>
+                </div>
+                <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. ताज्या बातम्या" className="w-full p-2 text-sm border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded focus:ring-1 focus:ring-indigo-400" />
               </div>
 
               <div>
@@ -463,24 +463,24 @@ const AIEditor = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Action Box Extra */}
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-800">
-             <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 mb-4">
-                <RotateCcw size={16} /> Snapshots
-             </div>
-             <button onClick={saveToHistory} disabled={!content.trim()} className="w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-800 dark:text-slate-200 text-sm font-medium mb-3">
-                Save Snapshot
-             </button>
-             {history.length > 0 && (
-                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                   {history.map((snap) => (
-                      <div key={snap.id} onClick={() => restoreFromHistory(snap)} className="text-xs p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
-                         {snap.timestamp} - {snap.title || 'Untitled'}
-                      </div>
-                   ))}
-                </div>
-             )}
+            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 mb-4">
+              <RotateCcw size={16} /> Snapshots
+            </div>
+            <button onClick={saveToHistory} disabled={!content.trim()} className="w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-800 dark:text-slate-200 text-sm font-medium mb-3">
+              Save Snapshot
+            </button>
+            {history.length > 0 && (
+              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                {history.map((snap) => (
+                  <div key={snap.id} onClick={() => restoreFromHistory(snap)} className="text-xs p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+                    {snap.timestamp} - {snap.title || 'Untitled'}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -489,3 +489,4 @@ const AIEditor = () => {
 };
 
 export default AIEditor;
+

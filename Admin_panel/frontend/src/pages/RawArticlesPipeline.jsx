@@ -194,11 +194,10 @@ const RawArticlesPipeline = ({ refreshTrigger }) => {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
-                      article.status === 'pending'
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${article.status === 'pending'
                         ? 'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300'
                         : 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300'
-                    }`}>
+                      }`}>
                       {article.status?.toUpperCase()}
                     </span>
                   </div>

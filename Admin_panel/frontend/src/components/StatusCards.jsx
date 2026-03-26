@@ -61,11 +61,10 @@ const StatusCards = ({ refreshTrigger }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {/* Backend Status */}
-      <div className={`border rounded-xl p-4 ${
-        health.connected 
+      <div className={`border rounded-xl p-4 ${health.connected
           ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900'
           : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-900'
-      }`}>
+        }`}>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium opacity-75">Backend</p>

@@ -12,19 +12,30 @@ export default function ArticleCard({ article, variant = 'default' }) {
     return (
       <article className="news-card relative group">
         <Link href={href} className="block">
-          <div className="aspect-[16/9] overflow-hidden relative">
-            <Image
-              src={article.image || 'https://images.unsplash.com/photo-1504711434969-e33886168d6c?w=800&h=500&fit=crop'}
-              alt={article.title}
-              fill
-              className="object-cover card-image"
-              sizes="(min-width: 1024px) 800px, 100vw"
-              priority
-            />
+          <div className="relative">
+            <div className="aspect-[16/9] overflow-hidden relative">
+              <Image
+                src={article.image || 'https://images.unsplash.com/photo-1504711434969-e33886168d6c?w=800&h=500&fit=crop'}
+                alt={article.title}
+                fill
+                className="object-cover card-image"
+                sizes="(min-width: 1024px) 800px, 100vw"
+                priority
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+            </div>
           </div>
           <div className="p-5 md:p-6">
-            {cat && <span className={`category-badge mb-3 ${cat.colorClass}`}>{cat.label}</span>}
-            <h2 className="font-headline font-bold text-title-lg leading-tight mb-2.5 headline-link">{article.title}</h2>
+            <div className="flex items-center gap-2 mb-3">
+              {cat && <span className={`category-badge ${cat.colorClass}`}>{cat.label}</span>}
+              {article.isBreaking && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 text-[11px] font-semibold uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  Breaking
+                </span>
+              )}
+            </div>
+            <h2 className="font-headline font-bold text-title-lg leading-tight mb-2.5 headline-link group-hover:text-accent transition-colors duration-200">{article.title}</h2>
             <p className="text-muted-foreground text-body leading-relaxed line-clamp-2 mb-4">{article.description}</p>
             <div className="flex items-center justify-between text-caption text-muted-foreground">
               <div className="flex items-center gap-2">
@@ -54,10 +65,13 @@ export default function ArticleCard({ article, variant = 'default' }) {
             className="object-cover card-image"
             sizes="(min-width: 768px) 400px, 100vw"
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         </div>
         <div className="p-4">
-          {cat && <span className={`category-badge mb-2.5 ${cat.colorClass}`}>{cat.label}</span>}
-          <h3 className="font-headline font-semibold text-base leading-snug mb-1.5 line-clamp-2 headline-link">{article.title}</h3>
+          <div className="flex items-center gap-2 mb-2.5">
+            {cat && <span className={`category-badge ${cat.colorClass}`}>{cat.label}</span>}
+          </div>
+          <h3 className="font-headline font-semibold text-base leading-snug mb-1.5 line-clamp-2 headline-link group-hover:text-accent transition-colors duration-200">{article.title}</h3>
           <p className="text-muted-foreground text-sm leading-relaxed line-clamp-2 mb-3">{article.description}</p>
           <div className="flex items-center justify-between text-caption text-muted-foreground">
             <div className="flex items-center gap-1.5">

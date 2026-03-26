@@ -24,7 +24,7 @@ function getCategoryId(categoryValue, callback) {
   db.query("SELECT id FROM categories WHERE slug = ? OR name = ? LIMIT 1", [slug, categoryValue], (err, results) => {
     if (err) return callback(err, null);
     if (results && results.length > 0) return callback(null, results[0].id);
-    
+
     // Auto-create category if not exists
     db.query("INSERT INTO categories (name, slug) VALUES (?, ?)", [categoryValue, slug], (insertErr, insertRes) => {
       if (insertErr) return callback(insertErr, null);
@@ -37,11 +37,11 @@ function getCategoryId(categoryValue, callback) {
 function getSourceId(sourceValue, callback) {
   if (!sourceValue) return callback(null, null);
   if (!isNaN(sourceValue)) return callback(null, parseInt(sourceValue, 10));
-  
+
   db.query("SELECT id FROM sources WHERE name = ? LIMIT 1", [sourceValue], (err, results) => {
     if (err) return callback(err, null);
     if (results && results.length > 0) return callback(null, results[0].id);
-    
+
     db.query("INSERT INTO sources (name, url) VALUES (?, ?)", [sourceValue, ''], (insertErr, insertRes) => {
       if (insertErr) return callback(insertErr, null);
       return callback(null, insertRes.insertId);
@@ -92,42 +92,107 @@ router.post("/articles", (req, res) => {
     if (errCat) return res.status(500).json({ error: errCat.message });
 
     getSourceId(srcVal, (errSrc, finalSourceId) => {
-        if (errSrc) return res.status(500).json({ error: errSrc.message });
+      if (errSrc) return res.status(500).json({ error: errSrc.message });
 
-        db.query(
-          `INSERT INTO articles
+      db.query(
+        `INSERT INTO articles
           (title, content, summary, category_id, status, seo_title, meta_description, slug, keywords, image_url, image_alt, tags, source_id, seo_score)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            title,
-            content,
-            summary || "",
-            finalCategoryId || null,
-            status || "draft",
-            seoData.seo_title,
-            seoData.meta_description,
-            seoData.slug,
-            seoData.keywords,
-            image_url || "",
-            seoData.image_alt,
-            typeof tags === "string" ? tags : JSON.stringify(tags || []),
-            finalSourceId || null,
-            seoData.seo_score,
-          ],
-          (err, result) => {
-            if (err) {
-              console.error("Error creating article:", err);
-              return res.status(500).json({ error: err.message });
-            }
-            res.status(201).json({
-              success: true,
-              id: result.insertId,
-              message: "Article created",
-              seo_score: seoData.seo_score,
-            });
+        [
+          title,
+          content,
+          summary || "",
+          finalCategoryId || null,
+          status || "draft",
+          seoData.seo_title,
+          seoData.meta_description,
+          seoData.slug,
+          seoData.keywords,
+          image_url || "",
+          seoData.image_alt,
+          typeof tags === "string" ? tags : JSON.stringify(tags || []),
+          finalSourceId || null,
+          seoData.seo_score,
+        ],
+        (err, result) => {
+          if (err) {
+            console.error("Error creating article:", err);
+            return res.status(500).json({ error: err.message });
           }
-        );
+          res.status(201).json({
+            success: true,
+            id: result.insertId,
+            message: "Article created",
+            seo_score: seoData.seo_score,
+          });
+        }
+      );
     });
+  });
+});
+
+// 🔹 GET ALL ARTICLES (admin use)
+router.get("/articles", (req, res) => {
+  db.query(
+    `SELECT a.*, c.name as category_name, s.name as source_name 
+     FROM articles a 
+     LEFT JOIN categories c ON a.category_id = c.id 
+     LEFT JOIN sources s ON a.source_id = s.id 
+     ORDER BY a.created_at DESC`,
+    (err, results) => {
+      if (err) {
+        console.error("Error fetching articles:", err);
+        return res.status(500).json({ error: err.message });
+      }
+      res.json((results || []).map(withSeoMetrics));
+    }
+  );
+});
+
+// 🔹 GET PUBLISHED ARTICLES ONLY (public frontend)
+// ⚠️ Must be ABOVE /articles/:id so Express doesn't match "published" as :id
+router.get("/articles/published", (req, res) => {
+  db.query(
+    `SELECT a.*, c.name as category_name, s.name as source_name 
+     FROM articles a 
+     LEFT JOIN categories c ON a.category_id = c.id 
+     LEFT JOIN sources s ON a.source_id = s.id 
+     WHERE a.status='published' ORDER BY a.published_at DESC`,
+    (err, results) => {
+      if (err) {
+        console.error("Error fetching published articles:", err);
+        return res.status(500).json({ error: err.message });
+      }
+      res.json((results || []).map(withSeoMetrics));
+    }
+  );
+});
+
+// 🔹 TRACK ARTICLE VIEW
+router.post("/articles/:id/view", (req, res) => {
+  const articleId = req.params.id;
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Increment total views on article
+  db.query("UPDATE articles SET views = views + 1 WHERE id = ?", [articleId], (err) => {
+    if (err) {
+      console.error("Error incrementing views:", err);
+      return res.status(500).json({ error: err.message });
+    }
+
+    // Upsert daily analytics
+    db.query(
+      `INSERT INTO analytics (article_id, view_date, views)
+       VALUES (?, ?, 1)
+       ON DUPLICATE KEY UPDATE views = views + 1`,
+      [articleId, today],
+      (analyticsErr) => {
+        if (analyticsErr) {
+          console.error("Error updating analytics:", analyticsErr);
+        }
+        res.json({ success: true, message: "View recorded" });
+      }
+    );
   });
 });
 
@@ -149,42 +214,6 @@ router.get("/articles/:id", (req, res) => {
         return res.status(404).json({ error: "Article not found" });
       }
       res.json(withSeoMetrics(results[0]));
-    }
-  );
-});
-
-// 🔹 GET ALL ARTICLES
-router.get("/articles", (req, res) => {
-  db.query(
-    `SELECT a.*, c.name as category_name, s.name as source_name 
-     FROM articles a 
-     LEFT JOIN categories c ON a.category_id = c.id 
-     LEFT JOIN sources s ON a.source_id = s.id 
-     ORDER BY a.created_at DESC`,
-    (err, results) => {
-      if (err) {
-        console.error("Error fetching articles:", err);
-        return res.status(500).json({ error: err.message });
-      }
-      res.json((results || []).map(withSeoMetrics));
-    }
-  );
-});
-
-// 🔹 GET PUBLISHED ARTICLES ONLY
-router.get("/articles/published", (req, res) => {
-  db.query(
-    `SELECT a.*, c.name as category_name, s.name as source_name 
-     FROM articles a 
-     LEFT JOIN categories c ON a.category_id = c.id 
-     LEFT JOIN sources s ON a.source_id = s.id 
-     WHERE a.status='published' ORDER BY a.created_at DESC`,
-    (err, results) => {
-      if (err) {
-        console.error("Error fetching published articles:", err);
-        return res.status(500).json({ error: err.message });
-      }
-      res.json((results || []).map(withSeoMetrics));
     }
   );
 });
@@ -281,32 +310,32 @@ router.put("/articles/:id", (req, res) => {
   const catVal = category_id || category;
 
   getCategoryId(catVal, (errCat, finalCategoryId) => {
-      if (errCat) return res.status(500).json({ error: errCat.message });
+    if (errCat) return res.status(500).json({ error: errCat.message });
 
-      db.query(
-        "UPDATE articles SET title=?, content=?, summary=?, category_id=?, seo_title=?, meta_description=?, slug=?, keywords=?, image_url=?, image_alt=?, seo_score=? WHERE id=?",
-        [
-          title,
-          content,
-          summary || "",
-          finalCategoryId || null,
-          seoData.seo_title,
-          seoData.meta_description,
-          seoData.slug,
-          seoData.keywords,
-          image_url || "",
-          seoData.image_alt,
-          seoData.seo_score,
-          req.params.id,
-        ],
-        (err) => {
-          if (err) {
-            console.error("Error updating article:", err);
-            return res.status(500).json({ error: err.message });
-          }
-          res.json({ success: true, message: "Updated ✏️", seo_score: seoData.seo_score });
+    db.query(
+      "UPDATE articles SET title=?, content=?, summary=?, category_id=?, seo_title=?, meta_description=?, slug=?, keywords=?, image_url=?, image_alt=?, seo_score=? WHERE id=?",
+      [
+        title,
+        content,
+        summary || "",
+        finalCategoryId || null,
+        seoData.seo_title,
+        seoData.meta_description,
+        seoData.slug,
+        seoData.keywords,
+        image_url || "",
+        seoData.image_alt,
+        seoData.seo_score,
+        req.params.id,
+      ],
+      (err) => {
+        if (err) {
+          console.error("Error updating article:", err);
+          return res.status(500).json({ error: err.message });
         }
-      );
+        res.json({ success: true, message: "Updated ✏️", seo_score: seoData.seo_score });
+      }
+    );
   });
 });
 

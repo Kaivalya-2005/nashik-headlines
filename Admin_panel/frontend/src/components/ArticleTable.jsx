@@ -128,7 +128,7 @@ const ArticleTable = ({ refreshTrigger }) => {
       {/* Header */}
       <div className="mb-6">
         <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-4">Articles</h2>
-        
+
         {/* Search and Filter */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Search */}
