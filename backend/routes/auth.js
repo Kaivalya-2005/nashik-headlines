@@ -70,9 +70,15 @@ router.post("/auth/login", async (req, res) => {
   }
 });
 
+const { adminAuth } = require("../middleware/auth");
+
 // Logout endpoint (if needed by frontend)
 router.post("/auth/logout", (req, res) => {
   res.json({ message: "Logged out successfully" });
+});
+
+router.get("/auth/me", adminAuth, (req, res) => {
+  res.json(req.user);
 });
 
 module.exports = router;
