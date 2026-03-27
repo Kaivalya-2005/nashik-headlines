@@ -62,11 +62,11 @@ export const calculateSeoScore = ({
 
   const checks = {
     seoTitlePresent: String(seo_title).trim().length > 0,
-    metaDescription: String(meta_description).trim().length >= 150 && String(meta_description).trim().length <= 160,
+    metaDescription: String(meta_description).trim().length >= 100 && String(meta_description).trim().length <= 160,
     keywordInTitle: primaryKeyword
       ? `${seo_title} ${title}`.toLowerCase().includes(primaryKeyword.toLowerCase())
       : false,
-    contentLength: wordCount >= 600,
+    contentLength: wordCount >= 300,
     headings: hasHeadingStructure(content),
     imageAlt: String(image_alt).trim().length > 0,
     internalLinks: hasInternalLink(content),

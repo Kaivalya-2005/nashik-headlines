@@ -7,12 +7,17 @@ const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
-async function askGroq(prompt) {
+async function askGroq(prompt, jsonFormat = false) {
   try {
-    const response = await axios.post(GROQ_URL, {
+    const payload = {
       model: GROQ_MODEL,
       messages: [{ role: "user", content: prompt }]
-    }, {
+    };
+    if (jsonFormat) {
+      payload.response_format = { type: "json_object" };
+    }
+
+    const response = await axios.post(GROQ_URL, payload, {
       headers: {
         "Authorization": `Bearer ${GROQ_API_KEY}`,
         "Content-Type": "application/json"
@@ -54,7 +59,7 @@ const getArticleById = (id) => {
   });
 };
 
-router.post("/ai/ai/generate-article", async (req, res) => {
+router.post("/ai/generate-article", async (req, res) => {
   const { prompt, topic, focusKeyword, category, tone, length } = req.body;
 
   let fullPrompt = "";
@@ -82,7 +87,7 @@ Format the response strictly as JSON with this structure:
   }
 
   try {
-    const aiText = await askGroq(fullPrompt);
+    const aiText = await askGroq(fullPrompt, true);
 
     if (isCreateFlow) {
       const parsed = extractJSON(aiText);
@@ -119,7 +124,7 @@ Format the response strictly as JSON with this structure:
   }
 });
 
-router.post("/ai/ai/rewrite", async (req, res) => {
+router.post("/ai/rewrite", async (req, res) => {
   const { id } = req.body;
   try {
     const article = await getArticleById(id);
@@ -139,7 +144,7 @@ ${article.content}`;
   }
 });
 
-router.post("/ai/ai/summarize", async (req, res) => {
+router.post("/ai/summarize", async (req, res) => {
   const { id } = req.body;
   try {
     const article = await getArticleById(id);
@@ -159,7 +164,7 @@ ${article.content}`;
   }
 });
 
-router.post("/ai/ai/generate-seo", async (req, res) => {
+router.post("/ai/generate-seo", async (req, res) => {
   const { id } = req.body;
   try {
     const article = await getArticleById(id);
@@ -175,7 +180,7 @@ Respond in strictly valid JSON format:
 Article:
 ${article.content}`;
     
-    const aiText = await askGroq(prompt);
+    const aiText = await askGroq(prompt, true);
     const parsed = extractJSON(aiText);
     
     if(!parsed) return res.status(500).json({ message: "AI returned invalid format." });
@@ -191,7 +196,7 @@ ${article.content}`;
   }
 });
 
-router.post("/ai/ai/generate-tags", async (req, res) => {
+router.post("/ai/generate-tags", async (req, res) => {
   const { id } = req.body;
   try {
     const article = await getArticleById(id);
@@ -212,7 +217,7 @@ ${article.content}`;
   }
 });
 
-router.post("/ai/ai/generate-image", async (req, res) => {
+router.post("/ai/generate-image", async (req, res) => {
   const { id } = req.body;
   try {
     const article = await getArticleById(id);

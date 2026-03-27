@@ -19,6 +19,7 @@ const axios = require("axios");
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const RATE_LIMIT_PENALTY_MS = 15000; // 15 seconds on 429
 
 const VALID_CATEGORIES = [
   "Politics",
@@ -71,7 +72,7 @@ ${snippet}
         "Authorization": `Bearer ${GROQ_API_KEY}`,
         "Content-Type": "application/json"
       },
-      timeout: 30000 
+      timeout: 30000
     }
   );
 
@@ -108,6 +109,11 @@ async function categorize(title, content) {
     }
     console.warn("⚠️  categoryAgent: AI returned ambiguous result, using keyword fallback.");
   } catch (err) {
+    const is429 = err?.response?.status === 429;
+    if (is429) {
+      console.warn(`⏳ categoryAgent: Rate limited — waiting ${RATE_LIMIT_PENALTY_MS / 1000}s...`);
+      await new Promise((r) => setTimeout(r, RATE_LIMIT_PENALTY_MS));
+    }
     console.warn("⚠️  categoryAgent: AI call failed, using keyword fallback:", err.message);
   }
 

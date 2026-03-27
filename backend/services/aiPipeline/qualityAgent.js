@@ -21,12 +21,13 @@ const axios = require("axios");
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const RATE_LIMIT_PENALTY_MS = 15000; // 15 seconds on 429
 
 // ── 1. Content Length ─────────────────────────────────────────────────────────
 
 function checkContentLength(content) {
   const words = String(content).split(/\s+/).filter(Boolean);
-  return { word_count: words.length, ok: words.length >= 300 && words.length <= 700 };
+  return { word_count: words.length, ok: words.length >= 60 && words.length <= 700 };
 }
 
 // ── 2. Readability Score (0–100) ─────────────────────────────────────────────
@@ -177,7 +178,7 @@ async function checkQuality(title, content) {
   warnings.push(...clickbaitWarnings, ...repetitionWarnings);
 
   if (!lengthOk) {
-    if (word_count < 300) warnings.push(`Content too short: ${word_count} words (min 300)`);
+    if (word_count < 60) warnings.push(`Content too short: ${word_count} words (min 60)`);
     if (word_count > 700) warnings.push(`Content too long: ${word_count} words (max 700)`);
   }
 
@@ -190,6 +191,11 @@ async function checkQuality(title, content) {
   try {
     ai_confidence = await getAiConfidence(title, content);
   } catch (err) {
+    const is429 = err?.response?.status === 429;
+    if (is429) {
+      console.warn(`⏳ qualityAgent: Rate limited — waiting ${RATE_LIMIT_PENALTY_MS / 1000}s...`);
+      await new Promise((r) => setTimeout(r, RATE_LIMIT_PENALTY_MS));
+    }
     warnings.push(`AI confidence check skipped: ${err.message}`);
     console.warn("⚠️  qualityAgent: AI confidence check failed:", err.message);
   }

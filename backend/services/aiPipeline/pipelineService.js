@@ -23,7 +23,7 @@ const { checkQuality }  = require("./qualityAgent");
 // ── Quality Thresholds ────────────────────────────────────────────────────────
 const QUALITY_THRESHOLD   = 50;   // ai_confidence below this → fail
 const READABILITY_MINIMUM = 40;   // readability below this → flag for review
-const MIN_WORD_COUNT      = 200;  // fewer words than this → fail
+const MIN_WORD_COUNT      = 60;   // fewer words than this → fail (raw articles avg ~60-100 words)
 
 // ── DB Logging Helper ─────────────────────────────────────────────────────────
 

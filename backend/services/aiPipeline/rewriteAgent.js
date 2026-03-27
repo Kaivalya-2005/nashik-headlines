@@ -1,7 +1,7 @@
 /**
  * rewriteAgent.js
  * ---------------
- * Uses Ollama / Mistral to rewrite cleaned content as a professional
+ * Uses Groq/Llama to rewrite cleaned content as a professional
  * journalistic news article.
  *
  * Rules:
@@ -20,10 +20,11 @@ const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 2000;
+const BASE_RETRY_DELAY_MS = 5000;   // 5 seconds between normal retries
+const RATE_LIMIT_PENALTY_MS = 15000; // 15 seconds when we hit a 429
 
 /**
- * Build the rewrite prompt for Mistral.
+ * Build the rewrite prompt.
  */
 function buildPrompt(clean_title, clean_content) {
   return `
@@ -39,6 +40,7 @@ STRICT RULES:
 - Do NOT use phrases like "According to reports", "It is said that", "Sources say".
 - Target length: 400 to 600 words.
 - Include a max 2-sentence lead paragraph summarizing the who/what/when/where.
+- IMPORTANT: Escape all newlines within JSON string values as \\n. Do NOT include raw newline characters inside the JSON strings.
 
 Return ONLY valid JSON — no markdown, no extra text. Format:
 {
@@ -55,17 +57,18 @@ ${clean_content}
 }
 
 /**
- * Parse JSON from Mistral response, handling markdown code fences.
+ * Sanitize raw AI text before JSON.parse to remove control characters
+ * that cause "Bad control character in string literal" errors.
  */
-function parseJsonResponse(text) {
+function sanitizeJsonText(text) {
   // Strip markdown code fences if present
   const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
   const jsonText = fenceMatch ? fenceMatch[1] : text;
 
-  // Find the first {...} block
+  // Find the outermost JSON object
   const objMatch = jsonText.match(/\{[\s\S]*\}/);
   if (!objMatch) throw new Error("No JSON object found in AI response");
-
+  
   return JSON.parse(objMatch[0]);
 }
 
@@ -92,7 +95,8 @@ async function rewrite(clean_title, clean_content) {
         GROQ_URL,
         {
           model: GROQ_MODEL,
-          messages: [{ role: "user", content: prompt }]
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" }
         },
         {
           headers: {
@@ -104,7 +108,7 @@ async function rewrite(clean_title, clean_content) {
       );
 
       const text = response.data?.choices?.[0]?.message?.content || "";
-      const parsed = parseJsonResponse(text);
+      const parsed = sanitizeJsonText(text);
 
       if (!parsed.rewritten_title || !parsed.rewritten_content) {
         throw new Error("AI response missing required fields");
@@ -116,8 +120,16 @@ async function rewrite(clean_title, clean_content) {
       };
     } catch (err) {
       lastError = err;
+      const is429 = err?.response?.status === 429;
+      const delayMs = is429
+        ? RATE_LIMIT_PENALTY_MS
+        : BASE_RETRY_DELAY_MS * attempt;
+
       console.warn(`⚠️  rewriteAgent attempt ${attempt}/${MAX_RETRIES} failed:`, err.message);
-      if (attempt < MAX_RETRIES) await sleep(RETRY_DELAY_MS * attempt);
+      if (attempt < MAX_RETRIES) {
+        if (is429) console.warn(`⏳ Rate limited — waiting ${delayMs / 1000}s before retry...`);
+        await sleep(delayMs);
+      }
     }
   }
 

@@ -10,11 +10,22 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
+
+// ── Global Pipeline State ─────────────────────────────────────────────────────
+global.pipelineState = global.pipelineState || {
+  isProcessing: false,
+  total: 0,
+  current: 0,
+  processed: 0,
+  duplicates: 0,
+  failed: 0,
+  cancel: false
+};
 const { runPipeline, log } = require("../services/aiPipeline/pipelineService");
 
 // ── Config ──────────────────────────────────────────────────────────────────
-const BATCH_SIZE = 3; // max articles processed concurrently (avoids rate limits)
-const DUPLICATE_THRESHOLD = 0.80; // 80% similarity → mark as duplicate
+const INTER_ARTICLE_DELAY_MS = 8000; // 8-second pause between articles (Groq rate limits)
+const DUPLICATE_THRESHOLD = 0.80;    // 80% similarity → mark as duplicate
 
 // ── DB Promise Helpers ───────────────────────────────────────────────────────
 
@@ -134,9 +145,8 @@ async function saveArticle(processed) {
   const result = await dbQuery(
     `INSERT INTO articles
       (title, content, summary, category_id, status,
-       seo_title, meta_description, slug, keywords, seo_score, source_id,
-       quality_score, readability_score, ai_confidence)
-     VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       seo_title, meta_description, slug, keywords, seo_score, source_id)
+     VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?)`,
     [
       processed.title,
       processed.content,
@@ -148,13 +158,10 @@ async function saveArticle(processed) {
       processed.keywords || "",
       processed.seo_score || 0,
       sourceId || null,
-      processed.quality_score || 0,
-      processed.readability_score || 0,
-      processed.ai_confidence || 0,
     ]
   );
 
-  log("save", `Article saved — articles.id=${result.insertId}, slug="${slug}", quality_score=${processed.quality_score}`);
+  log("save", `Article saved — articles.id=${result.insertId}, slug="${slug}", seo_score=${processed.seo_score}`);
   return result.insertId;
 }
 
@@ -248,11 +255,34 @@ router.post("/process/:id", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ROUTE 3  GET /api/pipeline/status
+// ─────────────────────────────────────────────────────────────────────────────
+router.get("/status", (req, res) => {
+  res.json(global.pipelineState);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ROUTE 4  POST /api/pipeline/cancel
+// ─────────────────────────────────────────────────────────────────────────────
+router.post("/cancel", (req, res) => {
+  if (global.pipelineState.isProcessing) {
+    global.pipelineState.cancel = true;
+    log("pipeline", "🛑 Pipeline cancel requested by user");
+    return res.json({ success: true, message: "Cancelling pipeline..." });
+  }
+  return res.json({ success: false, message: "Pipeline is not running" });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ROUTE 2  POST /api/pipeline/process-pending
-// Batch-process ALL pending raw articles in configurable batches
+// Batch-process ALL pending raw articles asynchronously
 // ─────────────────────────────────────────────────────────────────────────────
 
 router.post("/process-pending", async (req, res) => {
+  if (global.pipelineState.isProcessing) {
+    return res.status(400).json({ error: "Pipeline is already running" });
+  }
+
   // Fetch all pending articles
   let pending;
   try {
@@ -264,24 +294,40 @@ router.post("/process-pending", async (req, res) => {
   }
 
   if (pending.length === 0) {
-    return res.json({ success: true, message: "No pending articles", total: 0, processed: 0, duplicates: 0, failed: 0 });
+    return res.json({ success: true, message: "No pending articles" });
   }
 
-  log("pipeline", `▶ Batch processing ${pending.length} pending articles (batch size: ${BATCH_SIZE})`);
+  // Reset and set state
+  global.pipelineState = {
+    isProcessing: true,
+    total: pending.length,
+    current: 0,
+    processed: 0,
+    duplicates: 0,
+    failed: 0,
+    cancel: false
+  };
 
-  const stats = { total: pending.length, processed: 0, duplicates: 0, failed: 0 };
+  log("pipeline", `▶ Background batch processing started for ${pending.length} articles`);
 
-  // Process in chunks of BATCH_SIZE to avoid API rate limits
-  for (let i = 0; i < pending.length; i += BATCH_SIZE) {
-    const batch = pending.slice(i, i + BATCH_SIZE);
+  // Start background processing without awaiting it
+  (async () => {
+    try {
+      for (let i = 0; i < pending.length; i++) {
+        if (global.pipelineState.cancel) {
+          log("pipeline", "🛑 Pipeline processing aborted by user");
+          break;
+        }
 
-    await Promise.all(
-      batch.map(async (rawArticle) => {
-        // Skip non-pending (may have been updated by a concurrent call)
-        if (!["pending"].includes(rawArticle.status)) return;
+        global.pipelineState.current = i + 1;
+        const rawArticle = pending[i];
+
+        // Ensure it's still pending
+        const check = await dbQuery("SELECT status FROM raw_articles WHERE id=?", [rawArticle.id]);
+        if (!check[0] || check[0].status !== "pending") continue;
 
         // Mark as processing
-        await dbQuery("UPDATE raw_articles SET status='processing' WHERE id=?", [rawArticle.id]).catch(() => {});
+        await dbQuery("UPDATE raw_articles SET status='processing' WHERE id=?", [rawArticle.id]).catch(() => { });
 
         try {
           const processed = await runPipeline(rawArticle);
@@ -291,37 +337,40 @@ router.post("/process-pending", async (req, res) => {
           if (dupId) {
             log("duplicate", `#${rawArticle.id} → duplicate of articles.id=${dupId}`, "warning");
             await dbQuery("UPDATE raw_articles SET status='duplicate' WHERE id=?", [rawArticle.id]);
-            stats.duplicates++;
-            return;
+            global.pipelineState.duplicates++;
+          } else {
+            await saveArticle(processed);
+            await dbQuery("UPDATE raw_articles SET status='processed' WHERE id=?", [rawArticle.id]);
+            global.pipelineState.processed++;
           }
-
-          await saveArticle(processed);
-          await dbQuery("UPDATE raw_articles SET status='processed' WHERE id=?", [rawArticle.id]);
-          stats.processed++;
         } catch (err) {
           if (err.qualityFail) {
             log("quality_check_fail", `#${rawArticle.id} failed quality gate: ${err.message}`, "error");
           } else {
             log("pipeline", `#${rawArticle.id} failed: ${err.message}`, "error");
           }
-          await dbQuery("UPDATE raw_articles SET status='failed' WHERE id=?", [rawArticle.id]).catch(() => {});
-          stats.failed++;
+          await dbQuery("UPDATE raw_articles SET status='failed' WHERE id=?", [rawArticle.id]).catch(() => { });
+          global.pipelineState.failed++;
         }
-      })
-    );
 
-    // Brief pause between batches to give the API breathing room
-    if (i + BATCH_SIZE < pending.length) {
-      await new Promise((r) => setTimeout(r, 1000));
+        // Pause between articles to let Groq rate-limit bucket refill
+        if (i < pending.length - 1 && !global.pipelineState.cancel) {
+          await new Promise((r) => setTimeout(r, INTER_ARTICLE_DELAY_MS));
+        }
+      }
+    } catch (fatalErr) {
+      log("pipeline", `Fatal error in background pipeline: ${fatalErr.message}`, "error");
+    } finally {
+      global.pipelineState.isProcessing = false;
+      const s = global.pipelineState;
+      log("pipeline", `✔ Background batch complete — processed:${s.processed} duplicates:${s.duplicates} failed:${s.failed}${s.cancel ? ' (cancelled)' : ''}`);
     }
-  }
+  })();
 
-  log("pipeline", `✔ Batch complete — processed:${stats.processed} duplicates:${stats.duplicates} failed:${stats.failed}`);
-
+  // Return immediately to the client
   return res.json({
     success: true,
-    message: "Batch processing complete ✅",
-    ...stats,
+    message: "Background processing started. Check /status for progress.",
   });
 });
 

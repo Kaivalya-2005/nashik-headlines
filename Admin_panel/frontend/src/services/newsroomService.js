@@ -89,6 +89,26 @@ export const processAllPending = async () => {
   }
 };
 
+export const getPipelineStatus = async () => {
+  try {
+    const response = await api.get('/pipeline/status');
+    return response.data;
+  } catch (error) {
+    console.error('Failed to get pipeline status:', error);
+    return null;
+  }
+};
+
+export const cancelPipeline = async () => {
+  try {
+    const response = await api.post('/pipeline/cancel');
+    return response.data;
+  } catch (error) {
+    console.error('Failed to cancel pipeline:', error);
+    throw error;
+  }
+};
+
 export const processSingleArticle = async (id) => {
   try {
     const response = await api.post(`/pipeline/process/${id}`);
@@ -281,5 +301,7 @@ export default {
   improveArticleQuality,
   deleteArticle,
   getAllRawArticles,
-  getPendingRawArticles
+  getPendingRawArticles,
+  getPipelineStatus,
+  cancelPipeline
 };
