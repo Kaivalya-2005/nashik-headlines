@@ -231,28 +231,39 @@ const AIEditor = () => {
   };
 
   // Field specific fallback simulators or micro-prompts can be linked here
-  const generateField = (field, setter, promptHint) => {
+  const generateField = async (field, setter, promptHint) => {
     setAiLoaders(prev => ({ ...prev, [field]: true }));
-    setTimeout(() => {
-      let result = '';
-      const baseText = topic || title || 'ताजी बातमी';
+    try {
+      const baseText = topic || title || 'News Topic';
       const baseKey = focusKeyphrase || baseText;
-
+      let promptSnippet = "";
+      
       switch (field) {
-        case 'title': result = `ब्रेकिंग न्यूझ: ${baseText} - सर्व ताजे अपडेट्स`; break;
-        case 'content': result = `### ${baseKey} वर नवीन अपडेट\n\nयेथे ${baseText} बद्दल सविस्तर माहिती आहे. मात्र, सध्या परिस्थिती नियंत्रणात आहे. त्यामुळे, नागरिकांनी अफवांवर विश्वास ठेवू नये. याशिवाच, प्रशासनाने योग्य ती काळजी घेण्याचे आवाहन केले आहे.\n\n### पुढील दिशा\n\nदुसरीकडे, अधिकृत सूत्रांनी दिलेल्या माहितीनुसार...`; break;
-        case 'summary': result = `${baseText} बद्दल अत्यंत महत्त्वाची बातमी. सर्व ताजे अपडेट्स आणि माहिती एकाच ठिकाणी वाचा.`; break;
-        case 'category': result = 'ताज्या बातम्या'; break;
-        case 'seoTitle': result = `${baseText} | Nashik Headlines`; break;
-        case 'metaDesc': result = `${baseText} संबंधी प्रत्येक महत्त्वाचा अपडेट जाणून घ्या फक्त नाशिक हेडलाईन्सवर.`; break;
-        case 'keywords': result = `Nashik, ${baseKey}, Maharashtra News, Marathi News`; break;
-        case 'slug': result = baseText.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || 'marathi-latest-update'; break;
-        case 'imageAlt': result = `Representative image showing ${baseKey} scenario in Maharashtra`; break;
+        case 'title': promptSnippet = `Write a short, catchy Marathi news headline about: ${baseText}. Return ONLY the title, no quotes.`; break;
+        case 'content': promptSnippet = `Write a detailed Marathi news report about: ${baseText} with focus keyword ${baseKey}. Format in Markdown with headings. Return ONLY the content.`; break;
+        case 'summary': promptSnippet = `Write a 2-sentence summary in Marathi for the news topic: ${baseText}. Return ONLY the summary, no quotes.`; break;
+        case 'category': promptSnippet = `Suggest a single 1-2 word Marathi news category for: ${baseText}. Return ONLY the category, no quotes.`; break;
+        case 'seoTitle': promptSnippet = `Write an SEO optimized Marathi news title for: ${baseText}. Return ONLY the title, no quotes.`; break;
+        case 'metaDesc': promptSnippet = `Write an SEO meta description in Marathi (max 150 chars) for: ${baseText}. Return ONLY the description, no quotes.`; break;
+        case 'keywords': promptSnippet = `List 5 comma-separated SEO keywords for: ${baseKey}, including Nashik and Maharashtra. Return ONLY the keywords string.`; break;
+        case 'slug': promptSnippet = `Create a URL-friendly slug using english letters only for the topic: ${baseText}. Return ONLY the slug, no quotes, no spaces.`; break;
+        case 'imageAlt': promptSnippet = `Write a descriptive image alt text for an image representing: ${baseKey}. Return ONLY the alt text.`; break;
       }
-      setter(result);
-      setAiLoaders(prev => ({ ...prev, [field]: false }));
+
+      const response = await aiService.generateArticle({
+        prompt: promptSnippet,
+        topic: baseText,
+        focusKeyword: baseKey
+      });
+
+      const text = (response.response || '').trim().replace(/^"|"$/g, '');
+      setter(text);
       toast.success(`${promptHint} Generated`);
-    }, 1200);
+    } catch (err) {
+      toast.error(err.message || `Failed to generate ${promptHint}`);
+    } finally {
+      setAiLoaders(prev => ({ ...prev, [field]: false }));
+    }
   };
 
   const seoScore = title && content ? calculateSeoScore({ title, content, summary, seo_title: seoTitle, meta_description: metaDesc, slug, keywords: String(keywords).split(',') })?.score || 0 : 0;
