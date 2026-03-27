@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Upload, X, Wand2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Upload, X, Wand2, Image as ImageIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ImageUpload = ({ images = [], onImagesChange, onGenerateSEO, maxImages = 3, articleId = null }) => {
@@ -15,7 +15,7 @@ const ImageUpload = ({ images = [], onImagesChange, onGenerateSEO, maxImages = 3
                 });
             }
         };
-    }, [images]);
+    }, []);
 
     const handleFileChange = (e) => {
         const files = Array.from(e.target.files);

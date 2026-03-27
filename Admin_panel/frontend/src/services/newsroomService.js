@@ -4,10 +4,18 @@ const API_BASE = 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_BASE,
-  timeout: 30000,
+  timeout: 150000,
   headers: {
     'Content-Type': 'application/json'
   }
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 // ============================================
@@ -73,10 +81,30 @@ export const toggleScraper = async (enabled) => {
 
 export const processAllPending = async () => {
   try {
-    const response = await api.post('/process');
+    const response = await api.post('/pipeline/process-pending');
     return response.data;
   } catch (error) {
     console.error('Processing error:', error);
+    throw error;
+  }
+};
+
+export const processSingleArticle = async (id) => {
+  try {
+    const response = await api.post(`/pipeline/process/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error('Single process error:', error);
+    throw error;
+  }
+};
+
+export const deleteRawArticle = async (id) => {
+  try {
+    const response = await api.delete(`/raw-articles/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to delete raw article:', error);
     throw error;
   }
 };
@@ -189,6 +217,16 @@ export const publishArticle = async (id) => {
   }
 };
 
+export const improveArticleQuality = async (id) => {
+  try {
+    const response = await api.post(`/articles/${id}/improve`);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to improve article quality:', error);
+    throw error;
+  }
+};
+
 export const deleteArticle = async (id) => {
   try {
     const response = await api.delete(`/articles/${id}`);
@@ -230,6 +268,8 @@ export default {
   getScraperStatus,
   toggleScraper,
   processAllPending,
+  processSingleArticle,
+  deleteRawArticle,
   runFullCycle,
   getAllArticles,
   getArticleById,
@@ -238,6 +278,7 @@ export default {
   updateArticle,
   approveArticle,
   publishArticle,
+  improveArticleQuality,
   deleteArticle,
   getAllRawArticles,
   getPendingRawArticles

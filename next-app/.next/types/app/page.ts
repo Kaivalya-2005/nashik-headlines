@@ -1,4 +1,4 @@
-// File: /home/kaivalya/Desktop/nashik-headlines/next-app/app/page.js
+// File: D:\code\NashikHeadlines\next-app\app\page.js
 import * as entry from '../../../app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

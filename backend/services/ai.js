@@ -37,10 +37,18 @@ ${content}
 
   const text = response.data.response;
 
+  let jsonString = text;
+  // Extract JSON from markdown code block if present
+  const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (jsonMatch) {
+    jsonString = jsonMatch[1];
+  }
+
   try {
-    return JSON.parse(text);
+    return JSON.parse(jsonString);
   } catch (error) {
     console.log("JSON parse failed ❌, using fallback");
+    const uniqueId = Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
     return {
       title: "Generated News",
       content: text,
@@ -48,7 +56,7 @@ ${content}
       category: "General",
       seo_title: "News Update",
       meta_description: "Latest Nashik news updates from Nashik Headlines.",
-      slug: "generated-news",
+      slug: `generated-news-${uniqueId}`,
       keywords: ["nashik news", "maharashtra news", "india news"],
       image_alt: "Nashik headlines update",
       tags: []

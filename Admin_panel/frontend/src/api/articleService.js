@@ -1,115 +1,70 @@
 import api from './api';
 
-// ========== ARTICLE CRUD ==========
-
-const getArticles = async () => {
-    try {
-        const response = await api.get('/articles');
-        return {
-            articles: response.data || [],
-            total: response.data?.length || 0,
-            pages: 1
-        };
-    } catch (error) {
-        console.error('Failed to fetch articles from backend:', error);
-        return { articles: [], total: 0, pages: 1 };
-    }
+const getArticles = async (page = 1) => {
+    const response = await api.get('/admin/articles', {
+        params: { page }
+    });
+    return response.data;
 };
 
 const getArticle = async (id) => {
-    try {
-        const response = await api.get(`/articles/${id}`);
-        return response.data;
-    } catch (error) {
-        console.error('Failed to fetch article:', error);
-        throw error;
-    }
+    const response = await api.get(`/admin/articles/${id}`);
+    return response.data;
 };
 
 const createArticle = async (data) => {
-    try {
-        const response = await api.post('/articles', data);
-        return response.data;
-    } catch (error) {
-        console.error('Failed to create article:', error);
-        throw error;
-    }
+    const response = await api.post('/admin/articles', data);
+    return response.data;
 };
 
-const editArticle = async (id, data) => {
-    const response = await api.put(`/articles/${id}`, data);
+const updateArticle = async (id, data) => {
+    const response = await api.put(`/admin/articles/${id}`, data);
     return response.data;
 };
 
 const deleteArticle = async (id) => {
-    const response = await api.delete(`/articles/${id}`);
+    const response = await api.delete(`/admin/articles/${id}`);
     return response.data;
 };
 
-// ========== APPROVAL WORKFLOW ==========
-
 const approveArticle = async (id) => {
-    const response = await api.put(`/articles/${id}/approve`);
+    const response = await api.post(`/admin/articles/${id}/approve`);
+    return response.data;
+};
+
+const rejectArticle = async (id) => {
+    const response = await api.post(`/admin/articles/${id}/reject`);
     return response.data;
 };
 
 const publishArticle = async (id) => {
-    const response = await api.put(`/articles/${id}/publish`);
+    const response = await api.post(`/admin/articles/${id}/publish`);
     return response.data;
 };
 
-// ========== SCRAPER & PROCESSOR ==========
+const uploadImages = async (id, files) => {
+    const formData = files instanceof FormData ? files : (() => {
+        const fd = new FormData();
+        (files || []).forEach(file => fd.append('images', file));
+        return fd;
+    })();
 
-const runScraper = async () => {
-    const response = await api.post('/scrape');
+    const response = await api.post(`/admin/articles/${id}/images`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    });
     return response.data;
-};
-
-const runProcessor = async () => {
-    const response = await api.post('/process');
-    return response.data;
-};
-
-const getScraperStatus = async () => {
-    try {
-        const response = await api.get('/scrape/status');
-        return response.data;
-    } catch (error) {
-        console.error('Failed to get scraper status:', error);
-        return null;
-    }
-};
-
-// ========== STATS & STATUS ==========
-
-const checkBackendHealth = async () => {
-    try {
-        const response = await api.get('/');
-        return { connected: true, status: response.data };
-    } catch (error) {
-        return { connected: false, error: error.message };
-    }
 };
 
 const articleService = {
-    // CRUD
     getArticles,
     getArticle,
     createArticle,
-    editArticle,
+    updateArticle,
     deleteArticle,
-    
-    // Workflow
     approveArticle,
+    rejectArticle,
     publishArticle,
-    
-    // Scraper & Processor
-    runScraper,
-    runProcessor,
-    getScraperStatus,
-    
-    // Status
-    checkBackendHealth
+    uploadImages
 };
 
 export default articleService;

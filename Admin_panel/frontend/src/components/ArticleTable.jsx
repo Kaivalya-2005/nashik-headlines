@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Eye, Trash2, CheckCircle2, Rocket, RefreshCw, FilePenLine } from 'lucide-react';
+import { Search, Eye, Trash2, CheckCircle2, Rocket, RefreshCw, FilePenLine, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import * as newsroomService from '../services/newsroomService';
@@ -104,6 +104,25 @@ const ArticleTable = ({ refreshTrigger }) => {
     }
   };
 
+  const handleImprove = async (id) => {
+    setActioningId(id);
+    const toastId = toast.loading('Improving article with AI...');
+    try {
+      const result = await newsroomService.improveArticleQuality(id);
+      if (result.message === "No significant improvement detected") {
+        toast.success('AI could not significantly improve this article', { id: toastId });
+      } else {
+        toast.success('Article quality improved successfully', { id: toastId });
+      }
+      fetchArticles();
+    } catch (error) {
+      const msg = error.response?.data?.error || error.message;
+      toast.error(`Failed to improve: ${msg}`, { id: toastId });
+    } finally {
+      setActioningId(null);
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case 'published':
@@ -120,6 +139,12 @@ const ArticleTable = ({ refreshTrigger }) => {
   const getSeoScoreColor = (score) => {
     if (score >= 80) return 'text-emerald-700 dark:text-emerald-400';
     if (score >= 60) return 'text-amber-700 dark:text-amber-400';
+    return 'text-rose-700 dark:text-rose-400';
+  };
+
+  const getQualityScoreColor = (score) => {
+    if (score >= 75) return 'text-emerald-700 dark:text-emerald-400';
+    if (score >= 50) return 'text-amber-700 dark:text-amber-400';
     return 'text-rose-700 dark:text-rose-400';
   };
 
@@ -201,6 +226,8 @@ const ArticleTable = ({ refreshTrigger }) => {
                   <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Source</th>
                   <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Status</th>
                   <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">SEO</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Quality</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Readability</th>
                   <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Created</th>
                   <th className="text-right py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Actions</th>
                 </tr>
@@ -209,9 +236,16 @@ const ArticleTable = ({ refreshTrigger }) => {
                 {paginatedArticles.map((article) => (
                   <tr key={article.id} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
                     <td className="py-3 px-4">
-                      <p className="font-medium text-slate-900 dark:text-slate-100 truncate max-w-xs">
-                        {article.title}
-                      </p>
+                      <div className="flex flex-col gap-1">
+                        <p className="font-medium text-slate-900 dark:text-slate-100 truncate max-w-xs">
+                          {article.title}
+                        </p>
+                        {Number(article.ai_confidence || 0) < 60 && (
+                          <span className="inline-flex items-center gap-1 w-fit px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                            ⚠ Low Quality
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-slate-600 dark:text-slate-400 text-sm">
                       {article.category || '—'}
@@ -226,6 +260,12 @@ const ArticleTable = ({ refreshTrigger }) => {
                     </td>
                     <td className={`py-3 px-4 text-sm font-semibold ${getSeoScoreColor(Number(article.seo_score || 0))}`}>
                       {Number(article.seo_score || 0)} / 100
+                    </td>
+                    <td className={`py-3 px-4 text-sm font-semibold ${getQualityScoreColor(Number(article.quality_score || 0))}`}>
+                      {Number(article.quality_score || 0)} / 100
+                    </td>
+                    <td className={`py-3 px-4 text-sm font-semibold ${getQualityScoreColor(Number(article.readability_score || 0))}`}>
+                      {Number(article.readability_score || 0)} / 100
                     </td>
                     <td className="py-3 px-4 text-slate-600 dark:text-slate-400 text-sm">
                       {article.created_at ? new Date(article.created_at).toLocaleDateString() : '—'}
@@ -258,6 +298,17 @@ const ArticleTable = ({ refreshTrigger }) => {
                             disabled={actioningId !== null}
                           >
                             <CheckCircle2 size={18} />
+                          </button>
+                        )}
+
+                        {(Number(article.ai_confidence || 0) < 70 || Number(article.seo_score || 0) < 70 || Number(article.readability_score || 0) < 50) && (
+                          <button
+                            onClick={() => handleImprove(article.id)}
+                            className="p-2 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded transition-colors text-purple-600 dark:text-purple-400 disabled:opacity-50"
+                            title="AI will regenerate the article to improve SEO, readability and overall quality."
+                            disabled={actioningId !== null}
+                          >
+                            <Sparkles size={18} />
                           </button>
                         )}
 

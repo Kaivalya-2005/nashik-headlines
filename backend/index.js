@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -26,6 +27,7 @@ app.use("/api", require("./routes/process"));
 app.use("/api", require("./routes/articles"));
 app.use("/api", require("./routes/stats"));
 app.use("/api", require("./routes/ai"));
+app.use("/api/pipeline", require("./routes/pipeline"));
 
 // Health check endpoint
 app.get("/", (req, res) => {

@@ -199,13 +199,16 @@ const AIEditor = () => {
       try {
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          parsed = JSON.parse(jsonMatch[0]);
+          parsed = JSON.parse(jsonMatch[0].trim());
         } else {
-          parsed = JSON.parse(text);
+          parsed = JSON.parse(text.trim());
         }
       } catch (err) {
-        console.error(err);
-        throw new Error('AI returned an invalid format. Please try again.');
+        console.error("Raw AI Output:", text);
+        console.error("JSON Parse Error:", err);
+        // Fallback: inject raw text so the user's wait is not wasted
+        setContent(text);
+        toast.error('AI format error. Showing raw output instead.');
       }
 
       if (parsed) {
@@ -323,6 +326,7 @@ const AIEditor = () => {
                 type="text"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') generateFullArticle(); }}
                 placeholder="Topic: e.g. Nashik Smart City Project"
                 className="flex-1 px-4 py-3 border border-indigo-200 dark:border-indigo-800/50 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-400/40"
               />
@@ -330,6 +334,7 @@ const AIEditor = () => {
                 type="text"
                 value={focusKeyphrase}
                 onChange={(e) => setFocusKeyphrase(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') generateFullArticle(); }}
                 placeholder="Focus Keyphrase: e.g. nashik smart city"
                 className="flex-1 px-4 py-3 border border-indigo-200 dark:border-indigo-800/50 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-400/40"
               />

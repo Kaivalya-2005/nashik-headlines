@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useState, useEffect } from 'react';
 import authService from '../api/authService';
 
@@ -9,38 +8,25 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const initializeUser = async () => {
+        const fetchUser = async () => {
             try {
-                // Check localStorage first
-                const storedToken = localStorage.getItem('authToken');
-                const storedUser = localStorage.getItem('user');
-                
-                if (storedToken && storedUser) {
-                    setUser(JSON.parse(storedUser));
-                } else {
-                    setUser(null);
-                }
+                const current = await authService.getCurrentUser();
+                setUser(current);
             } catch (error) {
-                console.error('Failed to initialize user:', error);
                 setUser(null);
             } finally {
                 setLoading(false);
             }
         };
 
-        initializeUser();
+        fetchUser();
     }, []);
 
     const login = async (email, password) => {
-        const result = await authService.login(email, password);
-        setUser(result);
-        return result;
-    };
-
-    const register = async (email, password, name, role = 'EDITOR') => {
-        const result = await authService.register(email, password, name, role);
-        setUser(result);
-        return result;
+        const data = await authService.login(email, password);
+        const current = await authService.getCurrentUser();
+        setUser(current || data);
+        return current || data;
     };
 
     const logout = async () => {
@@ -49,9 +35,8 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, logout, loading }}>
             {!loading && children}
         </AuthContext.Provider>
     );
 };
-

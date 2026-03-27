@@ -365,3 +365,153 @@
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }
 }
+
+/* ─── Google Translate — Custom UI ─────────────────────────────────────────── */
+
+/* Hide Google's own widget mount point — off-screen so GT still renders its <select> */
+.gt-hidden-widget {
+  position: fixed;
+  bottom: -9999px;
+  left: -9999px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Suppress Google's injected top banner (prevents layout shift) */
+.goog-te-banner-frame,
+#goog-gt-tt,
+.goog-te-tooltip,
+.goog-te-balloon-frame { display: none !important; }
+body { top: 0 !important; }
+
+/* ── Trigger button positioning root ───────────────────────────────────────── */
+.gt-root {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* ── The clickable trigger button ──────────────────────────────────────────── */
+.gt-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--border) / 0.8);
+  background: transparent;
+  color: hsl(var(--foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  line-height: 1;
+}
+.gt-trigger:hover {
+  background: hsl(var(--secondary));
+  border-color: hsl(var(--border));
+}
+
+/* Label visible on desktop (≥ 768 px) */
+.gt-label-full {
+  display: none;
+}
+/* Label visible on tablet (640–767 px) */
+.gt-label-short {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  /* Tablet: show short code */
+  .gt-label-short { display: inline; }
+}
+@media (min-width: 768px) {
+  /* Desktop: show full language name, hide short */
+  .gt-label-full  { display: inline; }
+  .gt-label-short { display: none; }
+}
+
+/* Chevron rotation */
+.gt-chevron {
+  color: hsl(var(--muted-foreground));
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+.gt-chevron-open { transform: rotate(180deg); }
+
+/* ── Dropdown panel ─────────────────────────────────────────────────────────── */
+.gt-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 200;
+  min-width: 155px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 28px -6px hsl(220 20% 10% / 0.14), 0 2px 8px -2px hsl(220 20% 10% / 0.08);
+  animation: gtDropIn 0.18s ease-out both;
+}
+
+@keyframes gtDropIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+/* ── Individual language option ─────────────────────────────────────────────── */
+.gt-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  color: hsl(var(--muted-foreground));
+  transition: background 0.12s, color 0.12s, padding-left 0.15s;
+  user-select: none;
+}
+.gt-option:hover {
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+  padding-left: 16px;
+}
+.gt-option-active {
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  font-weight: 600;
+}
+.gt-option-active:hover {
+  background: hsl(var(--primary) / 0.15);
+  color: hsl(var(--primary));
+}
+
+/* Short code badge inside option */
+.gt-option-short {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 18px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 3px;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  flex-shrink: 0;
+}
+.gt-option-active .gt-option-short {
+  background: hsl(var(--primary) / 0.15);
+  color: hsl(var(--primary));
+}
+
+.gt-option-label {
+  font-size: 0.8125rem;
+  line-height: 1;
+}

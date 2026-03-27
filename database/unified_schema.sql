@@ -4,7 +4,7 @@ CREATE TABLE raw_articles (
   content LONGTEXT,
   url VARCHAR(500) UNIQUE,
   source VARCHAR(255),
-  status ENUM('pending','processed','failed') DEFAULT 'pending',
+  status ENUM('pending','processing','processed','duplicate','failed') DEFAULT 'pending',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
   INDEX (status),
@@ -69,6 +69,10 @@ CREATE TABLE articles (
   image_alt VARCHAR(255),
 
   seo_score INT DEFAULT 0,
+
+  quality_score INT DEFAULT 0,
+  readability_score INT DEFAULT 0,
+  ai_confidence INT DEFAULT 0,
 
   status ENUM('draft','approved','published') DEFAULT 'draft',
 

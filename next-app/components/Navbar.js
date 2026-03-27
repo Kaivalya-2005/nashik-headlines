@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Search, Menu, X, ChevronDown } from 'lucide-react';
 import { LOCATION_CATEGORIES, TOPIC_CATEGORIES } from '@/lib/categories';
 import ThemeToggle from '@/components/ThemeToggle';
+import GoogleTranslate from '@/components/GoogleTranslate';
 
 function LiveDate() {
   const [dateStr, setDateStr] = useState('');
@@ -78,6 +79,7 @@ export default function Navbar() {
               <Search size={18} className="text-muted-foreground" />
             </button>
             <ThemeToggle />
+            <GoogleTranslate />
             <button
               onClick={() => setMenuOpen((v) => !v)}
               className="p-2.5 rounded-lg hover:bg-secondary transition-colors md:hidden"

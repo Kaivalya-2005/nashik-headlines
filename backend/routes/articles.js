@@ -2,6 +2,11 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const { buildSeoPayload, calculateSeoScore } = require("../services/seo");
+const { adminAuth } = require("../middleware/auth");
+const { improve } = require("../services/aiPipeline/improveAgent");
+const { categorize } = require("../services/aiPipeline/categoryAgent");
+const { generateSeo } = require("../services/aiPipeline/seoAgent");
+const { checkQuality } = require("../services/aiPipeline/qualityAgent");
 
 function withSeoMetrics(article) {
   const analysis = calculateSeoScore(article);
@@ -276,6 +281,183 @@ router.put("/articles/:id/publish", (req, res) => {
   );
 });
 
+// Rate limiting state
+let activeImprovements = 0;
+const MAX_CONCURRENT_IMPROVEMENTS = 2;
+
+// 🔹 REGENERATE ARTICLE (Preview Only)
+router.post("/articles/regenerate", adminAuth, async (req, res) => {
+  if (activeImprovements >= MAX_CONCURRENT_IMPROVEMENTS) {
+    return res.status(429).json({ error: "AI processing queue is busy, please try again." });
+  }
+
+  const { title, content } = req.body;
+  if (!title || !content) {
+    return res.status(400).json({ error: "Title and content are required for regeneration" });
+  }
+
+  activeImprovements++;
+
+  try {
+    // 1. Run improveAgent
+    let improvedData;
+    try {
+      improvedData = await improve(title, content);
+    } catch (aiErr) {
+      return res.status(500).json({ error: `AI Improvement failed: ${aiErr.message}` });
+    }
+
+    // 2. Run other agents on the new content
+    const categorized = await categorize(improvedData.improved_title, improvedData.improved_content);
+    const seoData = await generateSeo(improvedData.improved_title, improvedData.improved_content, categorized.category);
+    const qualityData = await checkQuality(improvedData.improved_title, improvedData.improved_content);
+
+    const quality_score = Math.round(
+      qualityData.ai_confidence * 0.50 +
+      qualityData.readability_score * 0.30 +
+      seoData.seo_score * 0.20
+    );
+
+    // 3. Return the regenerated data (do not save to DB)
+    return res.json({
+      title: improvedData.improved_title,
+      content: improvedData.improved_content,
+      category: categorized.category,
+      seo_title: seoData.seo_title,
+      meta_description: seoData.meta_description,
+      keywords: seoData.keywords,
+      slug: seoData.slug,
+      seo_score: seoData.seo_score,
+      quality_score,
+      readability_score: qualityData.readability_score,
+      ai_confidence: qualityData.ai_confidence
+    });
+  } catch (err) {
+    console.error("Regeneration flow error:", err);
+    res.status(500).json({ error: "Internal error during regeneration" });
+  } finally {
+    activeImprovements--;
+  }
+});
+
+// 🔹 IMPROVE ARTICLE (DB Update)
+router.post("/articles/:id/improve", adminAuth, async (req, res) => {
+  if (activeImprovements >= MAX_CONCURRENT_IMPROVEMENTS) {
+    return res.status(429).json({ error: "AI processing queue is busy, please try again." });
+  }
+
+  activeImprovements++;
+
+  try {
+    const articleId = req.params.id;
+
+    // 1. Fetch article
+    const results = await new Promise((resolve, reject) => {
+      db.query("SELECT * FROM articles WHERE id = ?", [articleId], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+
+    if (!results || results.length === 0) {
+      return res.status(404).json({ error: "Article not found" });
+    }
+
+    const oldArticle = results[0];
+
+    // 2. Run improveAgent
+    let improvedData;
+    try {
+      improvedData = await improve(oldArticle.title, oldArticle.content);
+    } catch (aiErr) {
+      return res.status(500).json({ error: `AI Improvement failed: ${aiErr.message}` });
+    }
+
+    // 3. Check similarity
+    if (improvedData.isSimilar) {
+      return res.json({ message: "No significant improvement detected" });
+    }
+
+    // 4. Run other agents
+    const categorized = await categorize(improvedData.improved_title, improvedData.improved_content);
+    const seoData = await generateSeo(improvedData.improved_title, improvedData.improved_content, categorized.category);
+    const qualityData = await checkQuality(improvedData.improved_title, improvedData.improved_content);
+
+    const quality_score = Math.round(
+      qualityData.ai_confidence * 0.50 +
+      qualityData.readability_score * 0.30 +
+      seoData.seo_score * 0.20
+    );
+
+    // 5. Save revision
+    await new Promise((resolve, reject) => {
+      db.query(
+        `INSERT INTO article_revisions 
+        (article_id, title, content, seo_title, meta_description, keywords, slug, seo_score, quality_score, readability_score, ai_confidence)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          oldArticle.id, oldArticle.title, oldArticle.content,
+          oldArticle.seo_title, oldArticle.meta_description, oldArticle.keywords,
+          oldArticle.slug, oldArticle.seo_score, oldArticle.quality_score,
+          oldArticle.readability_score, oldArticle.ai_confidence
+        ],
+        (err) => err ? reject(err) : resolve()
+      );
+    });
+
+    // Log revision step
+    await new Promise((resolve) => {
+      db.query("INSERT INTO logs (step, message, status) VALUES (?, ?, ?)",
+        ["article_revision_saved", `Revision saved for article #${articleId}`, "info"],
+        () => resolve()
+      );
+    });
+
+    // 6. Update document
+    await new Promise((resolve, reject) => {
+      db.query(
+        `UPDATE articles SET 
+          title=?, content=?, seo_title=?, meta_description=?, keywords=?, 
+          slug=?, seo_score=?, quality_score=?, readability_score=?, ai_confidence=?
+         WHERE id=?`,
+        [
+          improvedData.improved_title, improvedData.improved_content,
+          seoData.seo_title, seoData.meta_description, seoData.keywords,
+          seoData.slug, seoData.seo_score, quality_score,
+          qualityData.readability_score, qualityData.ai_confidence,
+          articleId
+        ],
+        (err) => err ? reject(err) : resolve()
+      );
+    });
+
+    // Log quality improved
+    await new Promise((resolve) => {
+      db.query("INSERT INTO logs (step, message, status) VALUES (?, ?, ?)",
+        ["article_quality_improved", `Article #${articleId} improved. Quality Score: ${quality_score}`, "info"],
+        () => resolve()
+      );
+    });
+
+    return res.json({
+      success: true,
+      message: "Article improved successfully",
+      new_scores: {
+        seo_score: seoData.seo_score,
+        quality_score,
+        readability_score: qualityData.readability_score,
+        ai_confidence: qualityData.ai_confidence
+      }
+    });
+
+  } catch (err) {
+    console.error("Improvement flow error:", err);
+    res.status(500).json({ error: "Database or internal error during improvement" });
+  } finally {
+    activeImprovements--;
+  }
+});
+
 // 🔹 EDIT ARTICLE 
 router.put("/articles/:id", (req, res) => {
   const {
@@ -352,6 +534,60 @@ router.delete("/articles/:id", (req, res) => {
       res.json({ success: true, message: "Deleted 🗑️" });
     }
   );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🔹 RAW ARTICLES ROUTES (scraped, unprocessed)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// GET /api/raw-articles — all scraped articles
+router.get("/raw-articles", (req, res) => {
+  db.query(
+    "SELECT * FROM raw_articles ORDER BY created_at DESC",
+    (err, results) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(results || []);
+    }
+  );
+});
+
+// GET /api/raw-articles/pending — only pending ones
+router.get("/raw-articles/pending", (req, res) => {
+  db.query(
+    "SELECT * FROM raw_articles WHERE status='pending' ORDER BY created_at ASC",
+    (err, results) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(results || []);
+    }
+  );
+});
+
+// DELETE /api/raw-articles/:id
+router.delete("/raw-articles/:id", (req, res) => {
+  db.query(
+    "DELETE FROM raw_articles WHERE id=?",
+    [req.params.id],
+    (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ success: true, message: "Raw article deleted 🗑️" });
+    }
+  );
+});
+
+// POST /api/raw-articles/:id/process — trigger single-article pipeline
+// (thin proxy — delegates to the pipeline route handler)
+router.post("/raw-articles/:id/process", async (req, res) => {
+  try {
+    const axios = require("axios");
+    const response = await axios.post(
+      `http://localhost:${process.env.PORT || 5000}/api/pipeline/process/${req.params.id}`
+    );
+    res.json(response.data);
+  } catch (err) {
+    const data = err.response?.data;
+    const status = err.response?.status || 500;
+    res.status(status).json(data || { error: err.message });
+  }
 });
 
 module.exports = router;

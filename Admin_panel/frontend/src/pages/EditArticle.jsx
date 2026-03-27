@@ -1,327 +1,337 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, CheckCircle2, Rocket } from 'lucide-react';
+import { ArrowLeft, Save, Sparkles, Wand2, AlignCenter, ImagePlus } from 'lucide-react';
 import articleService from '../api/articleService';
+import aiService from '../api/aiService';
 import toast from 'react-hot-toast';
-import { calculateSeoScore, normalizeKeywords, slugify } from '../utils/seoScore';
+import ImageUpload from '../components/ImageUpload';
 
 const EditArticle = () => {
     const { id } = useParams();
     const navigate = useNavigate();
 
+    const [article, setArticle] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [actionLoading, setActionLoading] = useState(false);
+    const [processing, setProcessing] = useState(false);
 
     const [title, setTitle] = useState('');
-    const [content, setContent] = useState('');
     const [summary, setSummary] = useState('');
+    const [content, setContent] = useState('');
     const [category, setCategory] = useState('');
-    const [status, setStatus] = useState('draft');
-    const [seoTitle, setSeoTitle] = useState('');
-    const [metaDescription, setMetaDescription] = useState('');
-    const [slug, setSlug] = useState('');
-    const [slugEdited, setSlugEdited] = useState(false);
-    const [keywords, setKeywords] = useState('');
-    const [imageAlt, setImageAlt] = useState('');
+    const [tagsInput, setTagsInput] = useState('');
+    const [seo, setSEO] = useState({ metaTitle: '', metaDescription: '', keywords: [] });
+    const [images, setImages] = useState([]);
+    const [imagePrompt, setImagePrompt] = useState('');
 
-    const seoReport = useMemo(() => {
-        return calculateSeoScore({
-            title,
-            seo_title: seoTitle,
-            meta_description: metaDescription,
-            slug,
-            keywords,
-            image_alt: imageAlt,
-            content,
-        });
-    }, [title, seoTitle, metaDescription, slug, keywords, imageAlt, content]);
+    useEffect(() => {
+        loadArticle();
+    }, [id]);
 
-    const scoreTone = seoReport.score >= 80 ? 'text-emerald-600 dark:text-emerald-400' : seoReport.score >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400';
-
-    const loadArticle = useCallback(async () => {
+    const loadArticle = async () => {
         try {
             const data = await articleService.getArticle(id);
+            setArticle(data);
             setTitle(data.title || '');
-            setContent(data.content || '');
             setSummary(data.summary || '');
+            setContent(data.content || '');
             setCategory(data.category || '');
-            setStatus(data.status || 'draft');
-            setSeoTitle(data.seo_title || data.title || '');
-            setMetaDescription(data.meta_description || '');
-            setSlug(data.slug || slugify(data.title || ''));
-            setKeywords(data.keywords || '');
-            setImageAlt(data.image_alt || data.title || '');
+            setTagsInput((data.tags || []).join(', '));
+            setSEO({
+                metaTitle: data.seo?.metaTitle || '',
+                metaDescription: data.seo?.metaDescription || '',
+                keywords: data.seo?.keywords || []
+            });
+            const normalizedImages = (data.images || []).map((img, idx) => ({
+                ...img,
+                id: img.id || `${idx}-${img.url || 'image'}`
+            }));
+            setImages(normalizedImages);
         } catch (error) {
             toast.error('Failed to load article');
-            console.error(error);
             navigate('/articles');
         } finally {
             setLoading(false);
         }
-    }, [id, navigate]);
-
-    useEffect(() => {
-        loadArticle();
-    }, [loadArticle]);
+    };
 
     const handleSave = async () => {
-        if (!title.trim()) {
-            toast.error('Title is required');
-            return;
-        }
-
-        setSaving(true);
+        setProcessing(true);
         try {
-            await articleService.editArticle(id, {
-                title: title.trim(),
-                content: content.trim(),
-                summary: summary.trim(),
-                category: category.trim(),
-                seo_title: seoTitle.trim(),
-                meta_description: metaDescription.trim(),
-                slug: slug.trim() || slugify(title),
-                keywords: normalizeKeywords(keywords),
-                image_alt: imageAlt.trim(),
-                seo_score: seoReport.score,
+            const newFiles = images.filter(img => img.file);
+            let currentImages = images;
+
+            if (newFiles.length > 0) {
+                const formData = new FormData();
+                newFiles.forEach(img => formData.append('images', img.file));
+                currentImages = await articleService.uploadImages(id, formData);
+                currentImages = (currentImages || []).map((img, idx) => ({
+                    ...img,
+                    id: img.id || `${idx}-${img.url || 'image'}`
+                }));
+                setImages(currentImages);
+            }
+
+            const payload = {
+                title,
+                summary,
+                content,
+                category,
+                tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
+                seo,
+                images: currentImages.map(img => ({
+                    id: img.id,
+                    url: img.url,
+                    caption: img.caption,
+                    altText: img.altText,
+                    isFeatured: img.isFeatured
+                }))
+            };
+
+            const updated = await articleService.updateArticle(id, payload);
+            toast.success('Saved successfully');
+            const normalized = (updated.images || []).map((img, idx) => ({
+                ...img,
+                id: img.id || `${idx}-${img.url || 'image'}`
+            }));
+            setArticle(updated);
+            setImages(normalized);
+        } catch (error) {
+            const msg = error.response?.data?.message || 'Failed to save changes.';
+            toast.error(msg, { duration: 5000 });
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleRewrite = async () => {
+        setProcessing(true);
+        try {
+            const result = await aiService.rewriteArticle(id);
+            setTitle(result.title || title);
+            setContent(result.content || content);
+            setSummary(result.summary || summary);
+            toast.success('Article rewritten');
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Rewrite failed');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleGenerateSummary = async () => {
+        setProcessing(true);
+        try {
+            const result = await aiService.summarizeArticle(id);
+            setSummary(result.summary || result || '');
+            toast.success('Summary generated');
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Summary failed');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleGenerateSEO = async () => {
+        setProcessing(true);
+        try {
+            const result = await aiService.generateSEO(id);
+            setSEO({
+                metaTitle: result.metaTitle || seo.metaTitle,
+                metaDescription: result.metaDescription || seo.metaDescription,
+                keywords: result.keywords || seo.keywords || []
             });
-            toast.success('Article saved successfully');
-            loadArticle();
+            toast.success('SEO metadata generated');
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Save failed');
-            console.error(error);
+            toast.error(error.response?.data?.message || 'SEO generation failed');
         } finally {
-            setSaving(false);
+            setProcessing(false);
         }
     };
 
-    const handleApprove = async () => {
-        setActionLoading(true);
+    const handleGenerateTags = async () => {
+        setProcessing(true);
         try {
-            await articleService.approveArticle(id);
-            toast.success('Article approved');
-            setStatus('approved');
+            const result = await aiService.generateTags(id);
+            const tags = result.tags || [];
+            setTagsInput(tags.join(', '));
+            toast.success('Tags generated');
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Approval failed');
-            console.error(error);
+            toast.error(error.response?.data?.message || 'Tag generation failed');
         } finally {
-            setActionLoading(false);
+            setProcessing(false);
         }
     };
 
-    const handlePublish = async () => {
-        setActionLoading(true);
+    const handleGenerateImagePrompt = async () => {
+        setProcessing(true);
         try {
-            await articleService.publishArticle(id);
-            toast.success('Article published');
-            setStatus('published');
+            const result = await aiService.generateImagePrompt(id);
+            setImagePrompt(result.prompt || '');
+            toast.success('Image prompt generated');
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Publish failed');
-            console.error(error);
+            toast.error(error.response?.data?.message || 'Image prompt failed');
         } finally {
-            setActionLoading(false);
+            setProcessing(false);
         }
     };
 
-
-    if (loading) {
-        return (
-            <div className="p-10 flex justify-center text-gray-500 dark:text-gray-400 dark:bg-slate-900">
-                Loading article...
-            </div>
-        );
-    }
+    if (loading) return <div className="p-8">Loading...</div>;
 
     return (
-        <div className="max-w-4xl mx-auto bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors p-6 md:p-8">
-            <div className="flex items-center justify-between mb-4">
-                <button
-                    onClick={() => navigate('/articles')}
-                    className="flex items-center text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                >
-                    <ArrowLeft size={18} className="mr-1" /> Back to Articles
-                </button>
-                <div className="text-sm text-slate-600 dark:text-slate-400">
-                    Status: <span className="font-semibold capitalize">{status}</span>
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+                <div className="flex items-center mb-4">
+                    <button onClick={() => navigate('/articles')} className="text-gray-500 hover:text-gray-700 mr-4">
+                        <ArrowLeft size={18} />
+                    </button>
+                    <h1 className="text-2xl font-bold text-gray-800">Edit Article</h1>
+                </div>
+
+                <div className="bg-white p-6 rounded-lg shadow-sm space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Article Title</label>
+                        <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            className="w-full p-2 border rounded-lg text-lg font-semibold text-gray-900"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Summary</label>
+                        <textarea
+                            value={summary}
+                            onChange={(e) => setSummary(e.target.value)}
+                            className="w-full h-28 p-3 border rounded-lg text-gray-900 bg-gray-50 focus:bg-white"
+                        ></textarea>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">HTML Content</label>
+                        <textarea
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                            className="w-full h-[420px] p-4 border rounded-lg font-mono text-sm text-gray-900 bg-gray-50 focus:bg-white transition-colors"
+                        ></textarea>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                            <input
+                                type="text"
+                                value={category}
+                                onChange={(e) => setCategory(e.target.value)}
+                                className="w-full p-2 border rounded-lg text-gray-900"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Tags (comma separated)</label>
+                            <input
+                                type="text"
+                                value={tagsInput}
+                                onChange={(e) => setTagsInput(e.target.value)}
+                                className="w-full p-2 border rounded-lg text-gray-900"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex justify-end">
+                    <button
+                        onClick={handleSave}
+                        disabled={processing}
+                        className="flex items-center bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+                    >
+                        <Save size={18} className="mr-2" /> Save Changes
+                    </button>
+                </div>
+
+                <div className="bg-white p-6 rounded-lg shadow-sm space-y-3">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-bold">Article Images</h3>
+                        {imagePrompt && (
+                            <span className="text-xs text-gray-500 truncate max-w-xs" title={imagePrompt}>Prompt: {imagePrompt}</span>
+                        )}
+                    </div>
+                    <ImageUpload
+                        images={images}
+                        onImagesChange={setImages}
+                        maxImages={3}
+                        articleId={id}
+                    />
                 </div>
             </div>
 
-            <h1 className="text-3xl font-semibold tracking-tight mb-6 text-slate-900 dark:text-slate-100">Edit Article</h1>
-
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm p-6 space-y-6 border border-slate-200 dark:border-slate-800">
-                {/* Title */}
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Title *</label>
-                    <input
-                        type="text"
-                        value={title}
-                        onChange={(e) => {
-                            const value = e.target.value;
-                            setTitle(value);
-                            if (!slugEdited) {
-                                setSlug(slugify(value));
-                            }
-                        }}
-                        className="w-full p-3 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-md focus:ring-2 focus:ring-slate-400/40"
-                        placeholder="Article title"
-                    />
-                </div>
-
-                {/* Content */}
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Content *</label>
-                    <textarea
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        className="w-full h-64 p-3 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-md focus:ring-2 focus:ring-slate-400/40"
-                        placeholder="Article content"
-                    />
-                </div>
-
-                {/* Summary */}
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Summary</label>
-                    <textarea
-                        value={summary}
-                        onChange={(e) => setSummary(e.target.value)}
-                        className="w-full h-20 p-3 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-md focus:ring-2 focus:ring-slate-400/40"
-                        placeholder="Brief summary of the article"
-                    />
-                </div>
-
-                {/* Category */}
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Category</label>
-                    <input
-                        type="text"
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        className="w-full p-3 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-md focus:ring-2 focus:ring-slate-400/40"
-                        placeholder="Article category"
-                    />
-                </div>
-
-                {/* Status */}
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Status</label>
-                    <select
-                        value={status}
-                        onChange={(e) => setStatus(e.target.value)}
-                        disabled
-                        className="w-full p-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-md opacity-60 cursor-not-allowed"
-                    >
-                        <option value="draft">Draft</option>
-                        <option value="approved">Approved</option>
-                        <option value="published">Published</option>
-                    </select>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Use action buttons to change status</p>
-                </div>
-
-                <div className="border-t border-slate-200 dark:border-slate-800 pt-6 space-y-4">
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">SEO Panel</h2>
-                        <div className={`text-sm font-semibold ${scoreTone}`}>SEO Score: {seoReport.score} / 100</div>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">SEO Title (max 60)</label>
-                        <input
-                            type="text"
-                            value={seoTitle}
-                            onChange={(e) => setSeoTitle(e.target.value)}
-                            maxLength={60}
-                            className="w-full p-3 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-md focus:ring-2 focus:ring-slate-400/40"
-                            placeholder="Nashik Water Crisis 2026..."
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Meta Description (150-160)</label>
-                        <textarea
-                            value={metaDescription}
-                            onChange={(e) => setMetaDescription(e.target.value)}
-                            maxLength={160}
-                            className="w-full h-20 p-3 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-md focus:ring-2 focus:ring-slate-400/40"
-                            placeholder="Get the latest updates..."
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Slug</label>
-                        <input
-                            type="text"
-                            value={slug}
-                            onChange={(e) => {
-                                setSlugEdited(true);
-                                setSlug(slugify(e.target.value));
-                            }}
-                            className="w-full p-3 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-md focus:ring-2 focus:ring-slate-400/40"
-                            placeholder="nashik-water-crisis-2026"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Keywords (comma separated)</label>
-                        <input
-                            type="text"
-                            value={keywords}
-                            onChange={(e) => setKeywords(e.target.value)}
-                            className="w-full p-3 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-md focus:ring-2 focus:ring-slate-400/40"
-                            placeholder="nashik news, water crisis, nashik 2026"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Image Alt Text</label>
-                        <input
-                            type="text"
-                            value={imageAlt}
-                            onChange={(e) => setImageAlt(e.target.value)}
-                            className="w-full p-3 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-md focus:ring-2 focus:ring-slate-400/40"
-                            placeholder="Nashik water shortage 2026 situation"
-                        />
-                    </div>
-                </div>
-
-                {/* Actions */}
-                <div className="border-t border-slate-200 dark:border-slate-800 pt-6 flex gap-4 flex-wrap">
+            <div className="space-y-6 lg:mt-12">
+                <div className="bg-white p-6 rounded-lg shadow-sm space-y-3">
+                    <h3 className="text-lg font-bold mb-2 flex items-center text-purple-700">
+                        <Sparkles size={18} className="mr-2" /> AI Actions
+                    </h3>
                     <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="flex items-center gap-2 bg-emerald-700 text-white px-6 py-2 rounded-md hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={handleRewrite}
+                        disabled={processing}
+                        className="w-full flex items-center justify-center p-2 bg-purple-50 text-purple-700 rounded hover:bg-purple-100 font-medium transition-colors"
                     >
-                        <Save size={18} />
-                        {saving ? 'Saving...' : 'Save Changes'}
+                        <Wand2 size={16} className="mr-2" /> Rewrite Article
                     </button>
-
-                    {status === 'draft' && (
-                        <button
-                            onClick={handleApprove}
-                            disabled={actionLoading}
-                            className="flex items-center gap-2 bg-amber-700 text-white px-6 py-2 rounded-md hover:bg-amber-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <CheckCircle2 size={18} />
-                            {actionLoading ? 'Processing...' : 'Approve'}
-                        </button>
-                    )}
-
-                    {(status === 'draft' || status === 'approved') && (
-                        <button
-                            onClick={handlePublish}
-                            disabled={actionLoading}
-                            className="flex items-center gap-2 bg-slate-900 dark:bg-slate-100 text-slate-100 dark:text-slate-900 px-6 py-2 rounded-md hover:bg-slate-800 dark:hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <Rocket size={18} />
-                            {actionLoading ? 'Processing...' : 'Publish'}
-                        </button>
-                    )}
-
                     <button
-                        onClick={() => navigate('/articles')}
-                        className="bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-6 py-2 rounded-md hover:bg-slate-300 dark:hover:bg-slate-700"
+                        onClick={handleGenerateSummary}
+                        disabled={processing}
+                        className="w-full flex items-center justify-center p-2 border border-gray-200 rounded hover:bg-gray-50 text-gray-700 font-medium transition-colors"
                     >
-                        Cancel
+                        <AlignCenter size={16} className="mr-2" /> Generate Summary
                     </button>
+                    <button
+                        onClick={handleGenerateSEO}
+                        disabled={processing}
+                        className="w-full flex items-center justify-center p-2 border border-gray-200 rounded hover:bg-gray-50 text-gray-700 font-medium transition-colors"
+                    >
+                        <Sparkles size={16} className="mr-2" /> Generate SEO
+                    </button>
+                    <button
+                        onClick={handleGenerateTags}
+                        disabled={processing}
+                        className="w-full flex items-center justify-center p-2 border border-gray-200 rounded hover:bg-gray-50 text-gray-700 font-medium transition-colors"
+                    >
+                        <Sparkles size={16} className="mr-2" /> Generate Tags
+                    </button>
+                    <button
+                        onClick={handleGenerateImagePrompt}
+                        disabled={processing}
+                        className="w-full flex items-center justify-center p-2 border border-gray-200 rounded hover:bg-gray-50 text-gray-700 font-medium transition-colors"
+                    >
+                        <ImagePlus size={16} className="mr-2" /> Generate Image Prompt
+                    </button>
+                </div>
+
+                <div className="bg-white p-6 rounded-lg shadow-sm space-y-4">
+                    <h3 className="text-lg font-bold flex items-center">
+                        <Sparkles size={18} className="mr-2 text-blue-500" /> SEO Metadata
+                    </h3>
+
+                    <div>
+                        <label className="text-xs font-semibold text-gray-500 uppercase">Meta Title</label>
+                        <p className="text-sm text-gray-800">{seo.metaTitle || 'Not set'}</p>
+                    </div>
+                    <div>
+                        <label className="text-xs font-semibold text-gray-500 uppercase">Meta Description</label>
+                        <p className="text-sm text-gray-600 line-clamp-3">{seo.metaDescription || 'Not set'}</p>
+                    </div>
+                    <div>
+                        <label className="text-xs font-semibold text-gray-500 uppercase">Keywords</label>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                            {(seo.keywords || []).map((k, i) => (
+                                <span key={i} className="text-xs bg-gray-100 text-gray-800 border border-gray-200 px-2 py-1 rounded">{k}</span>
+                            ))}
+                            {(seo.keywords || []).length === 0 && <span className="text-sm text-gray-400">None</span>}
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-xs font-semibold text-gray-500 uppercase">Status</label>
+                        <p className="text-sm font-semibold capitalize">{article.status || 'draft'}</p>
+                    </div>
                 </div>
             </div>
         </div>
