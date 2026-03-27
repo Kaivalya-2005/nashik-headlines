@@ -29,13 +29,17 @@ Article:
 ${content}
 `;
 
-  const response = await axios.post("http://localhost:11434/api/generate", {
-    model: "mistral",
-    prompt,
-    stream: false
+  const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
+    model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
+    messages: [{ role: "user", content: prompt }]
+  }, {
+    headers: {
+      "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+      "Content-Type": "application/json"
+    }
   });
 
-  const text = response.data.response;
+  const text = response.data.choices[0].message.content;
 
   let jsonString = text;
   // Extract JSON from markdown code block if present

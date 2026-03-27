@@ -13,7 +13,7 @@ const db = require("../db");
 const { runPipeline, log } = require("../services/aiPipeline/pipelineService");
 
 // ── Config ──────────────────────────────────────────────────────────────────
-const BATCH_SIZE = 3; // max articles processed concurrently (avoids Ollama overload)
+const BATCH_SIZE = 3; // max articles processed concurrently (avoids rate limits)
 const DUPLICATE_THRESHOLD = 0.80; // 80% similarity → mark as duplicate
 
 // ── DB Promise Helpers ───────────────────────────────────────────────────────
@@ -271,7 +271,7 @@ router.post("/process-pending", async (req, res) => {
 
   const stats = { total: pending.length, processed: 0, duplicates: 0, failed: 0 };
 
-  // Process in chunks of BATCH_SIZE to avoid Ollama overload
+  // Process in chunks of BATCH_SIZE to avoid API rate limits
   for (let i = 0; i < pending.length; i += BATCH_SIZE) {
     const batch = pending.slice(i, i + BATCH_SIZE);
 
@@ -310,7 +310,7 @@ router.post("/process-pending", async (req, res) => {
       })
     );
 
-    // Brief pause between batches to give Ollama breathing room
+    // Brief pause between batches to give the API breathing room
     if (i + BATCH_SIZE < pending.length) {
       await new Promise((r) => setTimeout(r, 1000));
     }

@@ -74,7 +74,7 @@ async function runPipeline(rawArticle) {
   }
 
   // ── STEP 2: REWRITE ───────────────────────────────────────────────────
-  log("rewrite", `Rewriting article #${articleId} via Ollama/Mistral`);
+  log("rewrite", `Rewriting article #${articleId} via Groq API`);
   let rewritten;
   try {
     rewritten = await rewrite(clean_title, clean_content);

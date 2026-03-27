@@ -16,8 +16,9 @@
 
 const axios = require("axios");
 
-const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434/api/generate";
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "mistral";
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 const VALID_CATEGORIES = [
   "Politics",
@@ -60,12 +61,21 @@ ${snippet}
 `.trim();
 
   const response = await axios.post(
-    OLLAMA_URL,
-    { model: OLLAMA_MODEL, prompt, stream: false },
-    { timeout: 30000 }
+    GROQ_URL,
+    {
+      model: GROQ_MODEL,
+      messages: [{ role: "user", content: prompt }]
+    },
+    {
+      headers: {
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      timeout: 30000 
+    }
   );
 
-  const raw = String(response.data?.response || "").trim();
+  const raw = String(response.data?.choices?.[0]?.message?.content || "").trim();
   // Find which valid category matches the response (case-insensitive)
   const matched = VALID_CATEGORIES.find(
     (cat) => raw.toLowerCase().includes(cat.toLowerCase())

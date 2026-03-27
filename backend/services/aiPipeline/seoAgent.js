@@ -15,8 +15,9 @@
 const axios = require("axios");
 const { slugify, buildSeoPayload } = require("../seo");
 
-const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434/api/generate";
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "mistral";
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 /**
  * Build the SEO prompt — keeps it concise to get fast, clean output.
@@ -81,11 +82,20 @@ async function generateSeo(title, content, category = "") {
   // ── Attempt AI SEO generation ─────────────────────────────────────────
   try {
     const response = await axios.post(
-      OLLAMA_URL,
-      { model: OLLAMA_MODEL, prompt: buildPrompt(title, content), stream: false },
-      { timeout: 60000 }
+      GROQ_URL,
+      {
+        model: GROQ_MODEL,
+        messages: [{ role: "user", content: buildPrompt(title, content) }]
+      },
+      {
+        headers: {
+          "Authorization": `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        timeout: 60000 
+      }
     );
-    const text = response.data?.response || "";
+    const text = response.data?.choices?.[0]?.message?.content || "";
     const parsed = parseJsonResponse(text);
     aiSeoTitle = parsed.seo_title || "";
     aiMetaDesc = parsed.meta_description || "";

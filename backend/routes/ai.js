@@ -3,20 +3,25 @@ const router = express.Router();
 const axios = require("axios");
 const db = require("../db");
 
-const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434/api/generate";
-const MODEL = "mistral";
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
-async function askOllama(prompt) {
+async function askGroq(prompt) {
   try {
-    const response = await axios.post(OLLAMA_URL, {
-      model: MODEL,
-      prompt,
-      stream: false
+    const response = await axios.post(GROQ_URL, {
+      model: GROQ_MODEL,
+      messages: [{ role: "user", content: prompt }]
+    }, {
+      headers: {
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json"
+      }
     });
-    return response.data.response;
+    return response.data.choices[0].message.content;
   } catch (error) {
-    console.error("Ollama AI Error:", error.message);
-    throw new Error("Failed to communicate with local AI model");
+    console.error("Groq AI Error:", error.response ? error.response.data : error.message);
+    throw new Error("Failed to communicate with Groq AI model");
   }
 }
 
@@ -77,7 +82,7 @@ Format the response strictly as JSON with this structure:
   }
 
   try {
-    const aiText = await askOllama(fullPrompt);
+    const aiText = await askGroq(fullPrompt);
 
     if (isCreateFlow) {
       const parsed = extractJSON(aiText);
@@ -123,7 +128,7 @@ router.post("/ai/ai/rewrite", async (req, res) => {
     const prompt = `Rewrite the following Marathi article to improve flow and readability while keeping the original meaning:
 
 ${article.content}`;
-    const aiText = await askOllama(prompt);
+    const aiText = await askGroq(prompt);
 
     db.query("UPDATE articles SET content = ? WHERE id = ?", [aiText, id], (err) => {
       if (err) return res.status(500).json({ message: "Failed to save rewritten content." });
@@ -143,7 +148,7 @@ router.post("/ai/ai/summarize", async (req, res) => {
     const prompt = `Provide a short, 2-sentence summary in Marathi for the following article:
 
 ${article.content}`;
-    const aiText = await askOllama(prompt);
+    const aiText = await askGroq(prompt);
 
     db.query("UPDATE articles SET summary = ? WHERE id = ?", [aiText.trim(), id], (err) => {
       if (err) return res.status(500).json({ message: "Failed to save summary." });
@@ -170,7 +175,7 @@ Respond in strictly valid JSON format:
 Article:
 ${article.content}`;
     
-    const aiText = await askOllama(prompt);
+    const aiText = await askGroq(prompt);
     const parsed = extractJSON(aiText);
     
     if(!parsed) return res.status(500).json({ message: "AI returned invalid format." });
@@ -196,7 +201,7 @@ router.post("/ai/ai/generate-tags", async (req, res) => {
 
 ${article.content}`;
 
-    const aiText = await askOllama(prompt);
+    const aiText = await askGroq(prompt);
 
     db.query("UPDATE articles SET tags = ? WHERE id = ?", [aiText.trim(), id], (err) => {
       if (err) return res.status(500).json({ message: "Failed to save tags." });
@@ -218,7 +223,7 @@ router.post("/ai/ai/generate-image", async (req, res) => {
 ${article.title}
 ${article.content}`;
 
-    const aiText = await askOllama(prompt);
+    const aiText = await askGroq(prompt);
     res.json({ prompt: aiText.trim() });
   } catch(e) {
     res.status(500).json({ message: e.message });
