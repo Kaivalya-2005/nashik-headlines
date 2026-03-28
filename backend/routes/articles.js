@@ -472,6 +472,7 @@ router.put("/articles/:id", (req, res) => {
     keywords,
     image_url,
     image_alt,
+    tags,
   } = req.body;
 
   if (!title || !content) {
@@ -487,6 +488,7 @@ router.put("/articles/:id", (req, res) => {
     slug,
     keywords,
     image_alt,
+    tags,
   });
 
   const catVal = category_id || category;
@@ -495,7 +497,7 @@ router.put("/articles/:id", (req, res) => {
     if (errCat) return res.status(500).json({ error: errCat.message });
 
     db.query(
-      "UPDATE articles SET title=?, content=?, summary=?, category_id=?, seo_title=?, meta_description=?, slug=?, keywords=?, image_url=?, image_alt=?, seo_score=? WHERE id=?",
+      "UPDATE articles SET title=?, content=?, summary=?, category_id=?, seo_title=?, meta_description=?, slug=?, keywords=?, image_url=?, image_alt=?, tags=?, seo_score=? WHERE id=?",
       [
         title,
         content,
@@ -507,6 +509,7 @@ router.put("/articles/:id", (req, res) => {
         seoData.keywords,
         image_url || "",
         seoData.image_alt,
+        typeof tags === "string" ? tags : JSON.stringify(tags || []),
         seoData.seo_score,
         req.params.id,
       ],

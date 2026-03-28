@@ -222,13 +222,13 @@ const ArticleTable = ({ refreshTrigger }) => {
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800">
                   <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Title</th>
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Category</th>
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Source</th>
+                  <th className="hidden md:table-cell text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Category</th>
+                  <th className="hidden md:table-cell text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Source</th>
                   <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Status</th>
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">SEO</th>
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Quality</th>
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Readability</th>
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Created</th>
+                  <th className="hidden lg:table-cell text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">SEO</th>
+                  <th className="hidden lg:table-cell text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Quality</th>
+                  <th className="hidden lg:table-cell text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Readability</th>
+                  <th className="hidden xl:table-cell text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Created</th>
                   <th className="text-right py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Actions</th>
                 </tr>
               </thead>
@@ -237,7 +237,7 @@ const ArticleTable = ({ refreshTrigger }) => {
                   <tr key={article.id} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
                     <td className="py-3 px-4">
                       <div className="flex flex-col gap-1">
-                        <p className="font-medium text-slate-900 dark:text-slate-100 truncate max-w-xs">
+                        <p className="font-medium text-slate-900 dark:text-slate-100 truncate max-w-[200px] md:max-w-xs whitespace-normal line-clamp-2">
                           {article.title}
                         </p>
                         {Number(article.ai_confidence || 0) < 60 && (
@@ -247,10 +247,10 @@ const ArticleTable = ({ refreshTrigger }) => {
                         )}
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-slate-600 dark:text-slate-400 text-sm">
+                    <td className="hidden md:table-cell py-3 px-4 text-slate-600 dark:text-slate-400 text-sm">
                       {article.category || '—'}
                     </td>
-                    <td className="py-3 px-4 text-slate-600 dark:text-slate-400 text-sm">
+                    <td className="hidden md:table-cell py-3 px-4 text-slate-600 dark:text-slate-400 text-sm">
                       {article.source || '—'}
                     </td>
                     <td className="py-3 px-4">
@@ -258,16 +258,16 @@ const ArticleTable = ({ refreshTrigger }) => {
                         {article.status?.toUpperCase()}
                       </span>
                     </td>
-                    <td className={`py-3 px-4 text-sm font-semibold ${getSeoScoreColor(Number(article.seo_score || 0))}`}>
+                    <td className={`hidden lg:table-cell py-3 px-4 text-sm font-semibold ${getSeoScoreColor(Number(article.seo_score || 0))}`}>
                       {Number(article.seo_score || 0)} / 100
                     </td>
-                    <td className={`py-3 px-4 text-sm font-semibold ${getQualityScoreColor(Number(article.quality_score || 0))}`}>
+                    <td className={`hidden lg:table-cell py-3 px-4 text-sm font-semibold ${getQualityScoreColor(Number(article.quality_score || 0))}`}>
                       {Number(article.quality_score || 0)} / 100
                     </td>
-                    <td className={`py-3 px-4 text-sm font-semibold ${getQualityScoreColor(Number(article.readability_score || 0))}`}>
+                    <td className={`hidden lg:table-cell py-3 px-4 text-sm font-semibold ${getQualityScoreColor(Number(article.readability_score || 0))}`}>
                       {Number(article.readability_score || 0)} / 100
                     </td>
-                    <td className="py-3 px-4 text-slate-600 dark:text-slate-400 text-sm">
+                    <td className="hidden xl:table-cell py-3 px-4 text-slate-600 dark:text-slate-400 text-sm">
                       {article.created_at ? new Date(article.created_at).toLocaleDateString() : '—'}
                     </td>
                     <td className="py-3 px-4">

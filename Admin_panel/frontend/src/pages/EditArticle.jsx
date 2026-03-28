@@ -77,7 +77,9 @@ const EditArticle = () => {
                 content,
                 category,
                 tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
-                seo,
+                seo_title: seo.metaTitle,
+                meta_description: seo.metaDescription,
+                keywords: seo.keywords,
                 images: currentImages.map(img => ({
                     id: img.id,
                     url: img.url,
@@ -107,9 +109,7 @@ const EditArticle = () => {
         setProcessing(true);
         try {
             const result = await aiService.rewriteArticle(id);
-            setTitle(result.title || title);
             setContent(result.content || content);
-            setSummary(result.summary || summary);
             toast.success('Article rewritten');
         } catch (error) {
             toast.error(error.response?.data?.message || 'Rewrite failed');
@@ -122,7 +122,7 @@ const EditArticle = () => {
         setProcessing(true);
         try {
             const result = await aiService.summarizeArticle(id);
-            setSummary(result.summary || result || '');
+            setSummary(result.summary || '');
             toast.success('Summary generated');
         } catch (error) {
             toast.error(error.response?.data?.message || 'Summary failed');
@@ -136,9 +136,9 @@ const EditArticle = () => {
         try {
             const result = await aiService.generateSEO(id);
             setSEO({
-                metaTitle: result.metaTitle || seo.metaTitle,
-                metaDescription: result.metaDescription || seo.metaDescription,
-                keywords: result.keywords || seo.keywords || []
+                metaTitle: result.seoData?.seo_title || seo.metaTitle,
+                metaDescription: result.seoData?.meta_description || seo.metaDescription,
+                keywords: result.seoData?.keywords || seo.keywords || []
             });
             toast.success('SEO metadata generated');
         } catch (error) {
@@ -152,8 +152,8 @@ const EditArticle = () => {
         setProcessing(true);
         try {
             const result = await aiService.generateTags(id);
-            const tags = result.tags || [];
-            setTagsInput(tags.join(', '));
+            const tags = result.tags || '';
+            setTagsInput(typeof tags === 'string' ? tags : tags.join(', '));
             toast.success('Tags generated');
         } catch (error) {
             toast.error(error.response?.data?.message || 'Tag generation failed');
