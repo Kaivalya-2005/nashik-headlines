@@ -55,15 +55,84 @@ ${content}
 }
 
 /**
- * Parse JSON from Mistral response, handling markdown code fences.
+ * Sanitize an AI text response and extract the first valid JSON object.
+ *
+ * Steps:
+ *  1. Strip markdown code fences (```json ... ```)
+ *  2. Extract the outermost { ... } block
+ *  3. Replace bare control characters (tabs, newlines, carriage-returns)
+ *     that appear INSIDE JSON string values with their escaped equivalents.
+ *     Raw newlines inside a JSON string value are illegal per spec and are
+ *     the root cause of the "Bad control character" SyntaxErrors from Groq.
+ *  4. Call JSON.parse on the cleaned string.
+ *
+ * Logs the raw text for debugging if parsing ultimately fails.
  */
-function parseJsonResponse(text) {
-  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  const jsonText = fenceMatch ? fenceMatch[1] : text;
-  const objMatch = jsonText.match(/\{[\s\S]*\}/);
-  if (!objMatch) throw new Error("No JSON object found in AI response");
-  return JSON.parse(objMatch[0]);
+function sanitizeAndParseJson(rawText) {
+  // 1. Strip markdown fences
+  const fenceMatch = rawText.match(/```(?:json)?[\s\S]*?```/);
+  let text = fenceMatch
+    ? rawText.replace(/```(?:json)?\s*([\s\S]*?)\s*```/, '$1')
+    : rawText;
+
+  // 2. Extract outermost { ... } block
+  const objMatch = text.match(/\{[\s\S]*\}/);
+  if (!objMatch) {
+    console.error('[improveAgent] No JSON object found in AI response. Raw text:\n', rawText.slice(0, 500));
+    throw new Error('No JSON object found in AI response');
+  }
+
+  let jsonStr = objMatch[0];
+
+  // 3. Replace illegal bare control characters inside JSON string values.
+  //    We walk through the string tracking whether we are inside a quoted
+  //    string so we only touch characters that would break the parser.
+  let result = '';
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < jsonStr.length; i++) {
+    const ch = jsonStr[i];
+
+    if (escaped) {
+      result += ch;
+      escaped = false;
+      continue;
+    }
+
+    if (ch === '\\') {
+      result += ch;
+      escaped = true;
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = !inString;
+      result += ch;
+      continue;
+    }
+
+    if (inString) {
+      // Replace control characters that are illegal inside JSON strings
+      if (ch === '\n')      { result += '\\n';  continue; }
+      if (ch === '\r')      { result += '\\r';  continue; }
+      if (ch === '\t')      { result += '\\t';  continue; }
+      if (ch.charCodeAt(0) < 0x20) { continue; } // drop other control chars
+    }
+
+    result += ch;
+  }
+
+  // 4. Parse
+  try {
+    return JSON.parse(result);
+  } catch (parseErr) {
+    console.error('[improveAgent] JSON.parse failed after sanitization:', parseErr.message);
+    console.error('[improveAgent] Sanitized string (first 500 chars):\n', result.slice(0, 500));
+    throw new Error(`JSON parse error after sanitization: ${parseErr.message}`);
+  }
 }
+
 
 /**
  * Similarity check helper
@@ -118,7 +187,7 @@ async function improve(title, content) {
       );
 
       const text = response.data?.choices?.[0]?.message?.content || "";
-      const parsed = parseJsonResponse(text);
+      const parsed = sanitizeAndParseJson(text);
 
       if (!parsed.improved_title || !parsed.improved_content) {
         throw new Error("AI response missing required fields");

@@ -30,13 +30,26 @@ const generateArticle = async (data) => {
     return response.data;
 };
 
+const regenerateArticle = async (data) => {
+    // POST /api/articles/regenerate
+    // Auth is handled automatically by the api.js request interceptor (Bearer token).
+    // Only send the fields the backend validates: title and content.
+    const payload = {
+        title: data.title || '',
+        content: data.content || ''
+    };
+    const response = await api.post('/articles/regenerate', payload);
+    return response.data;
+};
+
 const aiService = {
     rewriteArticle,
     summarizeArticle,
     generateSEO,
     generateTags,
     generateImagePrompt,
-    generateArticle
+    generateArticle,
+    regenerateArticle
 };
 
 export default aiService;

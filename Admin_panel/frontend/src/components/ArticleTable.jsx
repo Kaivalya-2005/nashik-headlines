@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Eye, Trash2, CheckCircle2, Rocket, RefreshCw, FilePenLine, Sparkles } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import * as newsroomService from '../services/newsroomService';
 import ArticlePreviewModal from './ArticlePreviewModal';
@@ -104,20 +104,19 @@ const ArticleTable = ({ refreshTrigger }) => {
     }
   };
 
-  const handleImprove = async (id) => {
-    setActioningId(id);
-    const toastId = toast.loading('Improving article with AI...');
+  const handleRegenerate = async (article) => {
+    setActioningId(article.id);
+    const toastId = toast.loading('Regenerating article with AI...');
     try {
-      const result = await newsroomService.improveArticleQuality(id);
-      if (result.message === "No significant improvement detected") {
-        toast.success('AI could not significantly improve this article', { id: toastId });
-      } else {
-        toast.success('Article quality improved successfully', { id: toastId });
-      }
+      const generated = await newsroomService.regenerateArticle({ 
+        title: article.title, 
+        content: article.content 
+      });
+      await newsroomService.updateArticle(article.id, generated);
+      toast.success('Article regenerated successfully', { id: toastId });
       fetchArticles();
     } catch (error) {
-      const msg = error.response?.data?.error || error.message;
-      toast.error(`Failed to improve: ${msg}`, { id: toastId });
+      toast.error('AI regeneration failed. Please try again.', { id: toastId });
     } finally {
       setActioningId(null);
     }
@@ -152,7 +151,12 @@ const ArticleTable = ({ refreshTrigger }) => {
     <div className="bg-white dark:bg-slate-950 p-6 md:p-8 rounded-xl transition-colors border border-slate-200 dark:border-slate-800 shadow-sm">
       {/* Header */}
       <div className="mb-6">
-        <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-4">Articles</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">Articles</h2>
+          <button onClick={() => navigate('/articles/create')} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors font-medium">
+            Create Article
+          </button>
+        </div>
 
         {/* Search and Filter */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -282,10 +286,14 @@ const ArticleTable = ({ refreshTrigger }) => {
                         </button>
 
                         <button
-                          onClick={() => navigate(`/articles/edit/${article.id}`)}
-                          className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded transition-colors text-indigo-700 dark:text-indigo-400"
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            navigate(`/articles/edit/${article.id}`, { state: { focusSeo: true } });
+                          }}
+                          className={`p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded transition-colors text-indigo-700 dark:text-indigo-400 block ${actioningId !== null ? 'opacity-50 pointer-events-none' : ''}`}
                           title="Edit SEO"
-                          disabled={actioningId !== null}
                         >
                           <FilePenLine size={18} />
                         </button>
@@ -303,12 +311,17 @@ const ArticleTable = ({ refreshTrigger }) => {
 
                         {(Number(article.ai_confidence || 0) < 70 || Number(article.seo_score || 0) < 70 || Number(article.readability_score || 0) < 50) && (
                           <button
-                            onClick={() => handleImprove(article.id)}
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleRegenerate(article);
+                            }}
                             className="p-2 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded transition-colors text-purple-600 dark:text-purple-400 disabled:opacity-50"
                             title="AI will regenerate the article to improve SEO, readability and overall quality."
                             disabled={actioningId !== null}
                           >
-                            <Sparkles size={18} />
+                            {actioningId === article.id ? <RefreshCw className="animate-spin" size={18} /> : <Sparkles size={18} />}
                           </button>
                         )}
 

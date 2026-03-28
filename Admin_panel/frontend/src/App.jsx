@@ -1,4 +1,5 @@
 import React from 'react';
+import { Toaster } from 'react-hot-toast';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { DarkModeProvider } from './context/DarkModeContext';
@@ -17,6 +18,7 @@ function App() {
     <Router>
       <AuthProvider>
         <DarkModeProvider>
+          <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
           <Routes>
             <Route path="/login" element={<Login />} />
 

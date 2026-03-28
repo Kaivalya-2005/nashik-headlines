@@ -466,18 +466,30 @@ router.put("/articles/:id", (req, res) => {
     summary,
     category_id,
     category,
-    seo_title,
-    meta_description,
+    tags,
+    // Accept both flat fields and nested seo object (from frontend)
+    seo_title: flat_seo_title,
+    meta_description: flat_meta_description,
     slug,
-    keywords,
+    keywords: flat_keywords,
     image_url,
     image_alt,
-    tags,
+    seo,
   } = req.body;
 
   if (!title || !content) {
     return res.status(400).json({ error: "Title and content are required" });
   }
+
+  // Support both { seo_title, meta_description } (flat) and { seo: { metaTitle, metaDescription } } (nested)
+  const seo_title       = flat_seo_title       || seo?.metaTitle        || '';
+  const meta_description = flat_meta_description || seo?.metaDescription  || '';
+  const keywords        = flat_keywords         || (seo?.keywords ? (Array.isArray(seo.keywords) ? seo.keywords.join(', ') : seo.keywords) : '');
+
+  // Serialize tags
+  const tagsValue = Array.isArray(tags)
+    ? tags.join(', ')
+    : (typeof tags === 'string' ? tags : '');
 
   const seoData = buildSeoPayload({
     title,
@@ -497,19 +509,19 @@ router.put("/articles/:id", (req, res) => {
     if (errCat) return res.status(500).json({ error: errCat.message });
 
     db.query(
-      "UPDATE articles SET title=?, content=?, summary=?, category_id=?, seo_title=?, meta_description=?, slug=?, keywords=?, image_url=?, image_alt=?, tags=?, seo_score=? WHERE id=?",
+      "UPDATE articles SET title=?, content=?, summary=?, category_id=?, tags=?, seo_title=?, meta_description=?, slug=?, keywords=?, image_url=?, image_alt=?, seo_score=? WHERE id=?",
       [
         title,
         content,
         summary || "",
         finalCategoryId || null,
+        tagsValue,
         seoData.seo_title,
         seoData.meta_description,
         seoData.slug,
         seoData.keywords,
         image_url || "",
         seoData.image_alt,
-        typeof tags === "string" ? tags : JSON.stringify(tags || []),
         seoData.seo_score,
         req.params.id,
       ],
@@ -518,7 +530,21 @@ router.put("/articles/:id", (req, res) => {
           console.error("Error updating article:", err);
           return res.status(500).json({ error: err.message });
         }
-        res.json({ success: true, message: "Updated ✏️", seo_score: seoData.seo_score });
+        // Return the updated article so the frontend can reflect the saved state
+        db.query(
+          `SELECT a.*, c.name as category_name, s.name as source_name 
+           FROM articles a 
+           LEFT JOIN categories c ON a.category_id = c.id 
+           LEFT JOIN sources s ON a.source_id = s.id 
+           WHERE a.id=?`,
+          [req.params.id],
+          (err2, rows) => {
+            if (err2 || !rows || rows.length === 0) {
+              return res.json({ success: true, message: "Updated ✏️", seo_score: seoData.seo_score });
+            }
+            res.json({ ...withSeoMetrics(rows[0]), success: true });
+          }
+        );
       }
     );
   });

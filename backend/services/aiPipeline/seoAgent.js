@@ -49,16 +49,50 @@ ${snippet}
 }
 
 /**
- * Parse and sanitize JSON response from AI, handling markdown fences
- * and stripping control characters that trigger parse errors.
+ * Parse and sanitize JSON response from AI.
+ * Strips markdown fences and escapes bare control characters inside
+ * JSON string values before calling JSON.parse — prevents the
+ * "Bad control character in string literal" SyntaxError from Groq responses.
  */
-function sanitizeJsonText(text) {
-  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  const jsonText = fenceMatch ? fenceMatch[1] : text;
-  const objMatch = jsonText.match(/\{[\s\S]*\}/);
-  if (!objMatch) throw new Error("No JSON found in SEO agent response");
+function sanitizeJsonText(rawText) {
+  // Strip markdown fences
+  let text = rawText.replace(/```(?:json)?\s*([\s\S]*?)\s*```/, '$1');
 
-  return JSON.parse(objMatch[0]);
+  // Extract outermost { ... } block
+  const objMatch = text.match(/\{[\s\S]*\}/);
+  if (!objMatch) {
+    console.error('[seoAgent] No JSON object found. Raw (first 500):\n', rawText.slice(0, 500));
+    throw new Error('No JSON found in SEO agent response');
+  }
+
+  let jsonStr = objMatch[0];
+
+  // Walk the string and escape bare control chars inside quoted values
+  let result = '';
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < jsonStr.length; i++) {
+    const ch = jsonStr[i];
+    if (escaped)          { result += ch; escaped = false; continue; }
+    if (ch === '\\')      { result += ch; escaped = true;  continue; }
+    if (ch === '"')       { inString = !inString; result += ch; continue; }
+    if (inString) {
+      if (ch === '\n')               { result += '\\n'; continue; }
+      if (ch === '\r')               { result += '\\r'; continue; }
+      if (ch === '\t')               { result += '\\t'; continue; }
+      if (ch.charCodeAt(0) < 0x20)  { continue; } // drop other control chars
+    }
+    result += ch;
+  }
+
+  try {
+    return JSON.parse(result);
+  } catch (err) {
+    console.error('[seoAgent] JSON.parse failed after sanitization:', err.message);
+    console.error('[seoAgent] Sanitized (first 500):\n', result.slice(0, 500));
+    throw new Error(`SEO agent JSON parse error: ${err.message}`);
+  }
 }
 
 /**

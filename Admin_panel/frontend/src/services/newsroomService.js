@@ -1,22 +1,7 @@
-import axios from 'axios';
-
-const API_BASE = 'http://localhost:5000/api';
-
-const api = axios.create({
-  baseURL: API_BASE,
-  timeout: 150000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken') || localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// Use the shared axios instance from api.js.
+// It already reads 'token' from localStorage, attaches Authorization headers,
+// and redirects to /login on 401 — no duplication needed here.
+import api from '../api/api';
 
 // ============================================
 // SYSTEM HEALTH & MONITORING
@@ -204,15 +189,20 @@ export const createArticle = async (data) => {
 
 export const updateArticle = async (id, data) => {
   try {
-    const response = await api.put(`/articles/${id}`, {
-      title: data.title,
-      content: data.content,
-      summary: data.summary || '',
-      category: data.category || ''
-    });
+    const response = await api.put(`/articles/${id}`, data);
     return response.data;
   } catch (error) {
     console.error('Failed to update article:', error);
+    throw error;
+  }
+};
+
+export const regenerateArticle = async (data) => {
+  try {
+    const response = await api.post('/articles/regenerate', data);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to regenerate article:', error);
     throw error;
   }
 };
@@ -296,6 +286,7 @@ export default {
   getPublishedArticles,
   createArticle,
   updateArticle,
+  regenerateArticle,
   approveArticle,
   publishArticle,
   improveArticleQuality,
