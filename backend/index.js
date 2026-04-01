@@ -5,6 +5,8 @@ const path = require("path");
 
 const app = express();
 
+require("./services/aiPipeline/queue"); // Initialize BullMQ Queue and Worker
+
 // Enable CORS for React frontend
 app.use(cors({
   origin: [

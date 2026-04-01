@@ -4,10 +4,8 @@
  * Orchestrates all AI agents sequentially:
  *
  *  Step 1 → cleanAgent    : strip HTML/ads/whitespace, detect language
- *  Step 2 → rewriteAgent  : professional AI rewrite (400-600 words)
- *  Step 3 → categoryAgent : classify into predefined categories
- *  Step 4 → seoAgent      : SEO title, meta, keywords, slug, score
- *  Step 5 → qualityAgent  : readability, clickbait, repetition, AI confidence
+ *  Step 2 → unifiedAgent  : single LLM call for rewrite, category, SEO, and AI confidence
+ *  Step 3 → qualityAgent  : fast pure JS checks for readability, repetition, length
  *
  * Returns the final processed article object ready for DB insertion,
  * including quality metrics and a `quality_gate` object for threshold checks.
@@ -15,10 +13,9 @@
 
 const db = require("../../db");
 const { clean }         = require("./cleanAgent");
-const { rewrite }       = require("./rewriteAgent");
-const { categorize }    = require("./categoryAgent");
-const { generateSeo }   = require("./seoAgent");
-const { checkQuality }  = require("./qualityAgent");
+const { processAllInOne } = require("./unifiedAgent");
+const { checkQuality }  = require("./qualityAgent"); // For sync checks only
+const { generateImage } = require("./imageAgent");
 
 // ── Quality Thresholds ────────────────────────────────────────────────────────
 const QUALITY_THRESHOLD   = 50;   // ai_confidence below this → fail
@@ -27,10 +24,6 @@ const MIN_WORD_COUNT      = 60;   // fewer words than this → fail (raw article
 
 // ── DB Logging Helper ─────────────────────────────────────────────────────────
 
-/**
- * Write a pipeline step log entry to the `logs` table.
- * Non-blocking — errors are only printed to console.
- */
 function log(step, message, status = "info") {
   const truncated = String(message).slice(0, 2000);
   db.query(
@@ -44,17 +37,11 @@ function log(step, message, status = "info") {
 
 // ── Pipeline Orchestrator ─────────────────────────────────────────────────────
 
-/**
- * Run the full AI pipeline for a single raw article object.
- * @param {Object} rawArticle - Record from raw_articles: { id, title, content, source, url }
- * @returns {Object} processedArticle ready to INSERT into articles
- * @throws {Error} with .qualityFail=true if article fails quality thresholds
- */
 async function runPipeline(rawArticle) {
   const articleId = rawArticle.id;
-  log("pipeline", `▶ Starting pipeline for raw_article #${articleId}: "${rawArticle.title?.slice(0, 60)}"`);
+  log("pipeline", `▶ Starting unified pipeline for raw_article #${articleId}: "${rawArticle.title?.slice(0, 60)}"`);
 
-  // ── STEP 1: CLEAN ─────────────────────────────────────────────────────
+  // ── STEP 1: CLEAN (Fast JS)
   log("clean", `Cleaning raw article #${articleId}`);
   let cleaned;
   try {
@@ -67,55 +54,49 @@ async function runPipeline(rawArticle) {
 
   const { clean_title, clean_content, language } = cleaned;
 
-  // Guard: skip rewrite if content too short after cleaning
   if (clean_content.split(/\s+/).filter(Boolean).length < 30) {
     log("clean", "Content too short after cleaning — article skipped", "warning");
     throw new Error("Article content too short to process");
   }
 
-  // ── STEP 2: REWRITE ───────────────────────────────────────────────────
-  log("rewrite", `Rewriting article #${articleId} via Groq API`);
-  let rewritten;
+  // ── STEP 2: UNIFIED AI AGENT (Single API Call)
+  log("unified_agent", `Generating rewrite, category, and SEO via single Groq call for #${articleId}`);
+  let processedData;
   try {
-    rewritten = await rewrite(clean_title, clean_content);
-    const wc = rewritten.rewritten_content.split(/\s+/).filter(Boolean).length;
-    log("rewrite", `Done — ${wc} words`);
-  } catch (err) {
-    log("rewrite", `Failed: ${err.message}`, "error");
-    throw new Error(`rewriteAgent failed: ${err.message}`);
+    processedData = await processAllInOne(clean_title, clean_content);
+    log("unified_agent", `Done — ${processedData.rewritten_content?.split(/\s+/).length} words generated. Category: ${processedData.category}`);
+  } catch(err) {
+    log("unified_agent", `Failed: ${err.message}`, "error");
+    throw new Error(`unifiedAgent failed: ${err.message}`);
   }
 
-  const { rewritten_title, rewritten_content } = rewritten;
+  // Destructure results carefully
+  const rewritten_content = processedData.rewritten_content || clean_content;
+  const rewritten_title = processedData.rewritten_title || clean_title;
+  const category = processedData.category || "Local News";
+  const seoData = processedData.seo || {};
+  const ai_confidence = processedData.quality?.ai_confidence || 70;
 
-  // ── STEP 3: CATEGORIZE ────────────────────────────────────────────────
-  log("category", `Classifying article #${articleId}`);
-  let categorized;
+  // ── STEP 3: IMAGE GENERATION
+  log("image_agent", `Generating featured image for article #${articleId}`);
+  let image_url = "";
   try {
-    categorized = await categorize(rewritten_title, rewritten_content);
-    log("category", `Category: ${categorized.category}`);
-  } catch (err) {
-    log("category", `Failed: ${err.message} — defaulting to 'Local News'`, "warning");
-    categorized = { category: "Local News" };
+    image_url = await generateImage(rewritten_title, seoData.keywords || category);
+    log("image_agent", `Done — Image generated successfully`);
+  } catch(err) {
+    log("image_agent", `Skipped/failed: ${err.message}`, "warning");
   }
 
-  const { category } = categorized;
-
-  // ── STEP 4: SEO ───────────────────────────────────────────────────────
-  log("seo", `Generating SEO metadata for article #${articleId}`);
-  let seoData;
-  try {
-    seoData = await generateSeo(rewritten_title, rewritten_content, category);
-    log("seo", `Done — SEO score: ${seoData.seo_score}, slug: ${seoData.slug}`);
-  } catch (err) {
-    log("seo", `SEO generation failed: ${err.message}`, "error");
-    throw new Error(`seoAgent failed: ${err.message}`);
-  }
-
-  // ── STEP 5: QUALITY CHECK ─────────────────────────────────────────────
-  log("quality_check_start", `Running quality validation for article #${articleId}`);
+  // ── STEP 4: SYNC QUALITY CHECK (Length, Readability, Repetition)
+  log("quality_check_start", `Running pure JS quality validation for article #${articleId}`);
   let quality;
   try {
+    // Modify checkQuality to only do sync checks if we pass a short-circuit
+    // Temporarily relying on imported checkQuality but avoiding its own LLM call if possible
     quality = await checkQuality(rewritten_title, rewritten_content);
+    // Overwrite with the ai_confidence we ALREADY fetched!
+    quality.ai_confidence = ai_confidence;
+    
     const warnSummary = quality.warnings.length > 0
       ? `Warnings: ${quality.warnings.join(" | ")}`
       : "No warnings";
@@ -124,14 +105,14 @@ async function runPipeline(rawArticle) {
       `Done — readability:${quality.readability_score} ai_confidence:${quality.ai_confidence} ` +
       `words:${quality.content_length}. ${warnSummary}`
     );
-  } catch (err) {
+  } catch(err) {
+    // If checkQuality fails via rate limit on Groq (because inside checkQuality it might STILL call it depending on logic)
+    // we bypass. Ideally we'd remove getAiConfidence from checkQuality, but this guarantees fallback.
     log("quality_check_fail", `Quality check threw: ${err.message}`, "error");
-    // Non-fatal — use safe defaults so the pipeline doesn't stop
-    quality = { readability_score: 50, ai_confidence: 70, content_length: 0, warnings: [] };
+    quality = { readability_score: 50, ai_confidence: ai_confidence, content_length: 0, warnings: [] };
   }
 
   // ── THRESHOLD ENFORCEMENT ─────────────────────────────────────────────
-  // Hard failures → caller marks status='failed'
   if (quality.ai_confidence < QUALITY_THRESHOLD) {
     const msg = `Quality gate failed: ai_confidence ${quality.ai_confidence} < ${QUALITY_THRESHOLD}`;
     log("quality_check_fail", msg, "error");
@@ -150,7 +131,6 @@ async function runPipeline(rawArticle) {
     throw err;
   }
 
-  // Soft flag: low readability → include in warnings but don't fail
   const needsReview = quality.readability_score < READABILITY_MINIMUM;
   if (needsReview) {
     log("quality_check_pass",
@@ -159,11 +139,10 @@ async function runPipeline(rawArticle) {
     );
   }
 
-  // Composite quality score: weighted average of ai_confidence + readability + seo
   const quality_score = Math.round(
     quality.ai_confidence * 0.50 +
     quality.readability_score * 0.30 +
-    seoData.seo_score * 0.20
+    (seoData.seo_score || 0) * 0.20
   );
 
   // ── ASSEMBLE FINAL ARTICLE ────────────────────────────────────────────
@@ -172,11 +151,12 @@ async function runPipeline(rawArticle) {
     content:           rewritten_content,
     summary:           rewritten_content.slice(0, 250).replace(/\n/g, " ").trim() + "…",
     category,
-    seo_title:         seoData.seo_title,
-    meta_description:  seoData.meta_description,
-    keywords:          seoData.keywords,
-    slug:              seoData.slug,
-    seo_score:         seoData.seo_score,
+    seo_title:         seoData.seo_title || rewritten_title,
+    meta_description:  seoData.meta_description || "",
+    keywords:          seoData.keywords || "",
+    slug:              seoData.slug || rewritten_title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    image_url:         image_url,
+    seo_score:         seoData.seo_score || 0,
     quality_score,
     readability_score: quality.readability_score,
     ai_confidence:     quality.ai_confidence,

@@ -316,54 +316,54 @@ const EditArticle = () => {
     if (loading) return <div className="p-8">Loading...</div>;
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6 pb-12">
+        <div className="max-w-4xl mx-auto space-y-6 pb-12 transition-colors">
             <div className="flex items-center mb-4">
-                <button onClick={() => navigate('/articles')} className="text-gray-500 hover:text-gray-700 mr-4">
+                <button onClick={() => navigate('/articles')} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mr-4 transition-colors">
                     <ArrowLeft size={18} />
                 </button>
-                <h1 className="text-2xl font-bold text-gray-800">Edit Article</h1>
+                <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Edit Article</h1>
                 
-                <div className="ml-auto text-sm text-gray-500 font-medium capitalize">
-                    Status: <span className="text-indigo-600 bg-indigo-50 px-2 py-1 rounded">{article?.status || 'draft'}</span>
+                <div className="ml-auto text-sm text-gray-500 dark:text-gray-400 font-medium capitalize">
+                    Status: <span className="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded">{article?.status || 'draft'}</span>
                 </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm space-y-6">
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-sm border border-transparent dark:border-slate-800 space-y-6 transition-colors">
                 
                 {/* Basic Info */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Article Title</label>
-                    <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full p-2 border rounded-lg text-lg font-semibold text-gray-900" />
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Article Title</label>
+                    <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full p-2 border border-gray-200 dark:border-slate-700 rounded-lg text-lg font-semibold text-gray-900 dark:text-gray-100 bg-white dark:bg-slate-950 transition-colors focus:ring-2 focus:ring-indigo-500" />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <div className="flex justify-between items-center mb-1">
-                            <label className="text-sm font-medium text-gray-700">Category</label>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>
                         </div>
-                        <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} className="w-full p-2 border rounded-lg text-gray-900" />
+                        <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} className="w-full p-2 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-slate-950 transition-colors focus:ring-2 focus:ring-indigo-500" />
                     </div>
                     <div>
                         <div className="flex justify-between items-center mb-1">
-                            <label className="text-sm font-medium text-gray-700">Tags (comma separated)</label>
-                            <button type="button" onClick={handleGenerateTags} disabled={processing} className="text-xs text-purple-600 hover:text-purple-800 flex items-center"><Sparkles size={12} className="mr-1"/> Generate Tags</button>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Tags (comma separated)</label>
+                            <button type="button" onClick={handleGenerateTags} disabled={processing} className="text-xs text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 flex items-center transition-colors"><Sparkles size={12} className="mr-1"/> Generate Tags</button>
                         </div>
-                        <input type="text" value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} className="w-full p-2 border rounded-lg text-gray-900" />
+                        <input type="text" value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} className="w-full p-2 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-slate-950 transition-colors focus:ring-2 focus:ring-indigo-500" />
                     </div>
                 </div>
 
                 <div>
                     <div className="flex justify-between items-center mb-1">
-                        <label className="text-sm font-medium text-gray-700">Summary</label>
-                        <button type="button" onClick={handleGenerateSummary} disabled={processing} className="text-xs text-purple-600 hover:text-purple-800 flex items-center"><AlignCenter size={12} className="mr-1"/> Generate Summary</button>
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Summary</label>
+                        <button type="button" onClick={handleGenerateSummary} disabled={processing} className="text-xs text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 flex items-center transition-colors"><AlignCenter size={12} className="mr-1"/> Generate Summary</button>
                     </div>
-                    <textarea value={summary} onChange={(e) => setSummary(e.target.value)} className="w-full h-24 p-3 border rounded-lg text-gray-900 bg-gray-50 focus:bg-white"></textarea>
+                    <textarea value={summary} onChange={(e) => setSummary(e.target.value)} className="w-full h-24 p-3 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-slate-950 focus:bg-white dark:focus:bg-slate-900 transition-colors focus:ring-2 focus:ring-indigo-500"></textarea>
                 </div>
 
                 {/* Content Editor */}
                 <div>
                     <div className="flex justify-between items-center mb-2">
-                        <label className="text-sm font-medium text-gray-700">HTML Content</label>
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">HTML Content</label>
                         <div className="flex flex-col items-end">
                             <div className="flex gap-2 relative">
                                 <button type="button" onClick={handleRewrite} disabled={processing} className="text-xs text-purple-600 bg-purple-50 hover:bg-purple-100 px-2 py-1 rounded flex items-center"><Wand2 size={12} className="mr-1"/> Rewrite Style</button>
@@ -394,22 +394,22 @@ const EditArticle = () => {
                             </div>
                             {aiStatus.regenerateMsg && (
                                 <span className={`text-[10px] mt-1 font-medium
-                                    ${aiStatus.regenerate === 'failed'    ? 'text-red-600'   :
-                                      aiStatus.regenerate === 'completed' ? 'text-green-600' :
-                                      aiStatus.regenerate === 'waiting'   ? 'text-amber-600' :
-                                      'text-indigo-600'}`}>
+                                    ${aiStatus.regenerate === 'failed'    ? 'text-red-600 dark:text-red-400'   :
+                                      aiStatus.regenerate === 'completed' ? 'text-green-600 dark:text-green-400' :
+                                      aiStatus.regenerate === 'waiting'   ? 'text-amber-600 dark:text-amber-400' :
+                                      'text-indigo-600 dark:text-indigo-400'}`}>
                                     {aiStatus.regenerateMsg}
                                 </span>
                             )}
                         </div>
                     </div>
-                    <textarea value={content} onChange={(e) => setContent(e.target.value)} className="w-full h-[400px] p-4 border rounded-lg font-mono text-sm text-gray-900 bg-gray-50 focus:bg-white transition-colors"></textarea>
+                    <textarea value={content} onChange={(e) => setContent(e.target.value)} className="w-full h-[400px] p-4 border border-gray-200 dark:border-slate-700 rounded-lg font-mono text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-slate-950 focus:bg-white dark:focus:bg-slate-900 transition-colors focus:ring-2 focus:ring-indigo-500"></textarea>
                 </div>
 
                 {/* Images */}
-                <div className="pt-4 border-t border-gray-100">
+                <div className="pt-4 border-t border-gray-200 dark:border-slate-800">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-bold flex items-center text-gray-800">Article Images</h3>
+                        <h3 className="text-lg font-bold flex items-center text-gray-800 dark:text-gray-100">Article Images</h3>
                         <div className="flex items-center gap-3">
                             {imagePrompt && <span className="text-xs text-gray-500 truncate max-w-[200px]">Prompt saved</span>}
                             <button type="button" onClick={handleGenerateImagePrompt} disabled={processing} className="text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded flex items-center"><ImagePlus size={12} className="mr-1"/> Generate Prompt</button>
@@ -420,12 +420,12 @@ const EditArticle = () => {
 
                 {/* SEO Panel */}
                 <div id="seo-panel" className="pt-6 mt-8 space-y-6">
-                    <div className="flex justify-between items-center border-b pb-2">
+                    <div className="flex justify-between items-center border-b border-gray-200 dark:border-slate-800 pb-2">
                         <div className="flex items-center gap-3">
-                            <h3 className="text-lg font-bold text-gray-900">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
                                 SEO Panel
                             </h3>
-                            <button type="button" onClick={handleGenerateSEO} disabled={processing} className="text-xs text-purple-600 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-md flex items-center font-medium transition-colors">
+                            <button type="button" onClick={handleGenerateSEO} disabled={processing} className="text-xs text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 px-3 py-1.5 rounded-md flex items-center font-medium transition-colors">
                                 <Sparkles size={14} className="mr-1.5"/> Auto-Generate SEO
                             </button>
                         </div>
@@ -447,28 +447,28 @@ const EditArticle = () => {
 
                     <div className="space-y-5">
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">SEO Title (max 60)</label>
-                            <input type="text" value={seo.metaTitle} onChange={(e) => setSEO({...seo, metaTitle: e.target.value})} className="w-full p-2.5 border border-gray-200 rounded-md text-gray-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" />
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">SEO Title (max 60)</label>
+                            <input type="text" value={seo.metaTitle} onChange={(e) => setSEO({...seo, metaTitle: e.target.value})} className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-md text-gray-800 dark:text-gray-100 bg-white dark:bg-slate-950 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors" />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Meta Description (150-160)</label>
-                            <textarea value={seo.metaDescription} onChange={(e) => setSEO({...seo, metaDescription: e.target.value})} className="w-full h-24 p-2.5 border border-gray-200 rounded-md text-gray-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none leading-relaxed" />
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Meta Description (150-160)</label>
+                            <textarea value={seo.metaDescription} onChange={(e) => setSEO({...seo, metaDescription: e.target.value})} className="w-full h-24 p-2.5 border border-gray-200 dark:border-slate-700 rounded-md text-gray-800 dark:text-gray-100 bg-white dark:bg-slate-950 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none leading-relaxed transition-colors" />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Slug</label>
-                            <input type="text" value={seo.slug} onChange={(e) => setSEO({...seo, slug: e.target.value})} className="w-full p-2.5 border border-gray-200 rounded-md text-gray-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" />
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Slug</label>
+                            <input type="text" value={seo.slug} onChange={(e) => setSEO({...seo, slug: e.target.value})} className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-md text-gray-800 dark:text-gray-100 bg-white dark:bg-slate-950 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors" />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Keywords (comma separated)</label>
-                            <input type="text" value={typeof seo.keywords === 'string' ? seo.keywords : (seo.keywords || []).join(', ')} onChange={(e) => setSEO({...seo, keywords: e.target.value})} className="w-full p-2.5 border border-gray-200 rounded-md text-gray-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" />
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Keywords (comma separated)</label>
+                            <input type="text" value={typeof seo.keywords === 'string' ? seo.keywords : (seo.keywords || []).join(', ')} onChange={(e) => setSEO({...seo, keywords: e.target.value})} className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-md text-gray-800 dark:text-gray-100 bg-white dark:bg-slate-950 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors" />
                         </div>
                         
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Image Alt Text</label>
-                            <input type="text" value={seo.imageAlt || ''} onChange={(e) => setSEO({...seo, imageAlt: e.target.value})} className="w-full p-2.5 border border-gray-200 rounded-md text-gray-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" />
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Image Alt Text</label>
+                            <input type="text" value={seo.imageAlt || ''} onChange={(e) => setSEO({...seo, imageAlt: e.target.value})} className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-md text-gray-800 dark:text-gray-100 bg-white dark:bg-slate-950 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors" />
                         </div>
                     </div>
                 </div>
@@ -487,12 +487,12 @@ const EditArticle = () => {
                 )}
 
                 {article?.status !== 'published' && (
-                    <button type="button" onClick={() => handleAction(articleService.publishArticle, 'Article published')} disabled={processing} className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded font-medium transition-colors flex items-center disabled:opacity-70 shadow-sm">
+                    <button type="button" onClick={() => handleAction(articleService.publishArticle, 'Article published')} disabled={processing} className="px-6 py-2.5 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded font-medium transition-colors flex items-center disabled:opacity-70 shadow-sm">
                         <Rocket className="mr-2" size={18}/> Publish
                     </button>
                 )}
 
-                <button type="button" onClick={() => navigate('/articles')} className="px-6 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded font-medium transition-colors">
+                <button type="button" onClick={() => navigate('/articles')} className="px-6 py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded font-medium transition-colors">
                     Cancel
                 </button>
             </div>

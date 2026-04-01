@@ -5,6 +5,26 @@ import * as newsroomService from '../services/newsroomService';
 import { calculateSeoScore } from '../utils/seoScore';
 import aiService from '../api/aiService';
 
+const VALID_CATEGORIES = [
+  { slug: 'nashik', label: 'Nashik' },
+  { slug: 'shirdi', label: 'Shirdi' },
+  { slug: 'yeola', label: 'Yeola' },
+  { slug: 'dhule', label: 'Dhule' },
+  { slug: 'malegaon', label: 'Malegaon' },
+  { slug: 'igatpuri', label: 'Igatpuri' },
+  { slug: 'maharashtra', label: 'Maharashtra' },
+  { slug: 'india', label: 'India' },
+  { slug: 'international', label: 'International' },
+  { slug: 'entertainment', label: 'Entertainment' },
+  { slug: 'sports', label: 'Sports' },
+  { slug: 'politics', label: 'Politics' },
+  { slug: 'business', label: 'Business' },
+  { slug: 'technology', label: 'Technology' },
+  { slug: 'health', label: 'Health' },
+  { slug: 'education', label: 'Education' },
+  { slug: 'crime', label: 'Crime' },
+];
+
 const DEFAULT_PROMPT = `Act as a professional Indian journalist and SEO expert.
 
 Write a Marathi news article (330–350 words) in Google News friendly journalism style.
@@ -16,12 +36,14 @@ Topic:
 
 Writing Guidelines (Must Follow)
 
-• Article length must be 330 to 350 words strictly
+• Article length must be 400 to 500 words strictly
 • Language must be simple and clear Marathi
 • Journalism style writing
 • No spelling or grammar mistakes
 • Avoid sentence repetition
 • Use passive voice where appropriate
+• Keep EVERY single sentence under 15 words for maximum readability
+• Separate content into multiple short paragraphs
 
 Use transition words in at least 30% of sentences such as:
 मात्र, तसेच, दरम्यान, त्यामुळे, याशिवाय, दुसरीकडे, अखेरीस, शिवाय.
@@ -57,7 +79,7 @@ Return ONLY a perfectly formatted JSON object with no wrapping markdown text lik
   "title": "SEO Title (Max 55 characters)",
   "slug": "url-friendly-slug-in-marathi-english-letters",
   "metaDesc": "Meta Description (Max 155 characters)",
-  "category": "Suitable News Category",
+  "category": "Pick exactly ONE: Nashik, Maharashtra, India, International, Entertainment, Sports, Politics, Business, Technology, Health, Education, Crime",
   "content": "The full markdown formatted article including Subtitles, Quote Blocks, Source url, etc.",
   "summary": "Short 2 sentence summary excerpt",
   "imageAlt": "Primary image alt text relevant to topic",
@@ -235,7 +257,7 @@ const AIEditor = () => {
         setTitle(parsed.title || `ब्रेकिंग न्यूझ: ${topic}`);
         setContent(parsed.content || '');
         setSummary(parsed.summary || '');
-        setCategory(parsed.category || 'ताज्या बातम्या');
+        setCategory(parsed.category || 'Nashik');
         setSeoTitle(parsed.title || parsed.seo_title || '');
         setMetaDesc(parsed.metaDesc || parsed.meta_description || '');
         setKeywords(Array.isArray(parsed.keywords) ? parsed.keywords.join(', ') : (parsed.keywords || ''));
@@ -262,7 +284,7 @@ const AIEditor = () => {
         case 'title': promptSnippet = `Write a short, catchy Marathi news headline about: "${baseText}". Return ONLY the exact title string without quotes or json.`; break;
         case 'content': promptSnippet = `Write a detailed Marathi news report about: "${baseText}" with focus keyword "${baseKey}". Format in Markdown with headings. Return ONLY the content string.`; break;
         case 'summary': promptSnippet = `Write a 2-sentence summary in Marathi for the news topic: "${baseText}". Return ONLY the summary string without quotes or json.`; break;
-        case 'category': promptSnippet = `Suggest exactly one 1-2 word Marathi news category for: "${baseText}". Return ONLY the category word(s) without quotes.`; break;
+        case 'category': promptSnippet = `Suggest exactly one English news category for: "${baseText}" from exactly this list: Nashik, Maharashtra, India, International, Entertainment, Sports, Politics, Business, Technology, Health, Education, Crime. Return ONLY the category word(s) without quotes.`; break;
         case 'seoTitle': promptSnippet = `Write an SEO optimized Marathi news title for: "${baseText}" (max 55 chars). Return ONLY the title string.`; break;
         case 'metaDesc': promptSnippet = `Write an SEO meta description in Marathi (max 150 chars) for: "${baseText}". Return ONLY the description string.`; break;
         case 'keywords': promptSnippet = `List 5 to 10 comma-separated SEO keywords for: "${baseKey}", including Nashik and Maharashtra. Return ONLY the comma separated keywords string.`; break;
@@ -525,7 +547,16 @@ const AIEditor = () => {
             <div className="p-6 space-y-5 bg-slate-50/50 dark:bg-slate-900">
               <div>
                 <FieldLabel label="Category Label" fieldKey="category" setter={setCategory} />
-                <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. ताज्या बातम्या" className="w-full p-2.5 text-sm border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg focus:border-indigo-500 outline-none transition-all" />
+                <select 
+                  value={category} 
+                  onChange={(e) => setCategory(e.target.value)} 
+                  className="w-full p-2.5 text-sm border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg focus:border-indigo-500 outline-none transition-all appearance-none cursor-pointer"
+                >
+                  <option value="" disabled>Select a Category...</option>
+                  {VALID_CATEGORIES.map(cat => (
+                    <option key={cat.slug} value={cat.label}>{cat.label}</option>
+                  ))}
+                </select>
               </div>
 
               <div>

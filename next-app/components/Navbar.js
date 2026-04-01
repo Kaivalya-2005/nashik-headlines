@@ -37,7 +37,6 @@ export default function Navbar() {
   const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
   const [query, setQuery] = useState('');
 
   const isActive = (path) => pathname === path;
@@ -53,7 +52,6 @@ export default function Navbar() {
   // Close mobile menu on route change
   useEffect(() => {
     setMenuOpen(false);
-    setMoreOpen(false);
   }, [pathname]);
 
   return (
@@ -106,45 +104,31 @@ export default function Navbar() {
           </div>
         )}
 
-        <nav className="hidden md:flex items-center gap-0.5 px-4 pb-2.5 overflow-x-auto scrollbar-hide">
-          <NavPill href="/" active={isActive('/')} label="All" />
+        <nav className="hidden md:flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 pb-3">
+          <div className="flex flex-wrap items-center gap-1 md:gap-1.5">
+            <NavPill href="/" active={isActive('/')} label="Home" />
+            
+            <NavPill href="/category/nashik" active={isActive('/category/nashik')} label="Nashik" />
+            <DesktopNavDropdown 
+              label="Cities" 
+              items={LOCATION_CATEGORIES.filter(c => !['nashik', 'maharashtra', 'india', 'international'].includes(c.slug))} 
+              isActive={isActive} 
+            />
+            <NavPill href="/category/maharashtra" active={isActive('/category/maharashtra')} label="Maharashtra" />
+            <NavPill href="/category/india" active={isActive('/category/india')} label="India" />
+            <NavPill href="/category/international" active={isActive('/category/international')} label="World" />
+          </div>
 
-          {LOCATION_CATEGORIES.map((cat) => (
-            <NavPill key={cat.slug} href={`/category/${cat.slug}`} active={isActive(`/category/${cat.slug}`)} label={cat.label} />
-          ))}
-
-          <span className="text-muted-foreground/30 mx-1.5">|</span>
-
-          {TOPIC_CATEGORIES.slice(0, 4).map((cat) => (
-            <NavPill key={cat.slug} href={`/category/${cat.slug}`} active={isActive(`/category/${cat.slug}`)} label={cat.label} />
-          ))}
-
-          <div className="relative">
-            <button
-              onClick={() => setMoreOpen((v) => !v)}
-              className="flex items-center gap-1 px-3.5 py-1.5 text-caption font-medium rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground transition-all duration-200 whitespace-nowrap"
-            >
-              More
-              <ChevronDown size={12} className={`transition-transform duration-200 ${moreOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {moreOpen && (
-              <div className="absolute top-full left-0 mt-1.5 w-44 bg-card border border-border rounded-xl shadow-elevated overflow-hidden z-50 animate-fade-in-up">
-                {TOPIC_CATEGORIES.slice(4).map((cat) => (
-                  <Link
-                    key={cat.slug}
-                    href={`/category/${cat.slug}`}
-                    onClick={() => setMoreOpen(false)}
-                    className={`block px-4 py-2.5 text-sm transition-all duration-150 ${
-                      isActive(`/category/${cat.slug}`)
-                        ? 'bg-secondary font-medium text-foreground'
-                        : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground hover:pl-5'
-                    }`}
-                  >
-                    {cat.label}
-                  </Link>
-                ))}
-              </div>
-            )}
+          <div className="flex flex-wrap items-center gap-1 md:gap-1.5">
+            {TOPIC_CATEGORIES.slice(0, 4).map((cat) => (
+              <NavPill key={cat.slug} href={`/category/${cat.slug}`} active={isActive(`/category/${cat.slug}`)} label={cat.label} />
+            ))}
+            <DesktopNavDropdown 
+              label="More" 
+              items={TOPIC_CATEGORIES.slice(4)} 
+              isActive={isActive} 
+              align="right"
+            />
           </div>
         </nav>
 
@@ -214,5 +198,35 @@ function NavPill({ href, active, label }) {
         <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full bg-accent" />
       )}
     </Link>
+  );
+}
+
+function DesktopNavDropdown({ label, items, isActive, align = 'left' }) {
+  return (
+    <div className="relative group cursor-pointer z-50">
+      <div className="flex items-center gap-1 px-3.5 py-1.5 text-caption font-medium rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground transition-all duration-200 whitespace-nowrap group-hover:bg-secondary group-hover:text-foreground">
+        {label}
+        <ChevronDown size={12} className="transition-transform duration-200 group-hover:rotate-180" />
+      </div>
+      
+      {/* Invisible bridge to maintain hover state */}
+      <div className="absolute top-full left-0 w-full h-3"></div>
+      
+      <div className={`absolute top-[calc(100%+0.5rem)] ${align === 'right' ? 'right-0' : 'left-0'} w-48 bg-card border border-border rounded-xl shadow-elevated opacity-0 invisible group-hover:opacity-100 group-hover:visible translate-y-2 group-hover:translate-y-0 transition-all duration-200 overflow-hidden`}>
+        {items.map((cat) => (
+          <Link
+            key={cat.slug}
+            href={`/category/${cat.slug}`}
+            className={`block px-4 py-2.5 text-sm transition-all duration-150 ${
+              isActive(`/category/${cat.slug}`)
+                ? 'bg-secondary/80 font-medium text-foreground border-l-2 border-primary'
+                : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground hover:pl-5 border-l-2 border-transparent hover:border-border'
+            }`}
+          >
+            {cat.label}
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }

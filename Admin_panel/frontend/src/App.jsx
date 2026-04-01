@@ -8,14 +8,13 @@ import Layout from './components/layout/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ArticlesPage from './pages/ArticlesPage';
-import CreateArticle from './pages/CreateArticle';
 import EditArticle from './pages/EditArticle';
 import AIEditor from './pages/AIEditor';
 import RawArticlesPipeline from './pages/RawArticlesPipeline';
 
 function App() {
   return (
-    <Router>
+    <Router basename="/admin">
       <AuthProvider>
         <DarkModeProvider>
           <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
@@ -26,7 +25,6 @@ function App() {
               <Route element={<Layout />}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/articles" element={<ArticlesPage />} />
-                <Route path="/articles/create" element={<CreateArticle />} />
                 <Route path="/articles/edit/:id" element={<EditArticle />} />
                 <Route path="/ai-editor" element={<AIEditor />} />
                 <Route path="/pipeline" element={<RawArticlesPipeline />} />

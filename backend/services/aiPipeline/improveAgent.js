@@ -38,6 +38,8 @@ STRICT RULES:
 - Keep all facts, names, dates, and figures exactly as given.
 - Write in third-person, active voice.
 - Target length: 500 to 700 words.
+- Keep EVERY single sentence under 18 words to maximize readability score.
+- Break content into 4 or more short paragraphs.
 - Include a max 2-sentence lead paragraph summarizing the who/what/when/where.
 
 Return ONLY valid JSON — no markdown, no extra text. Format:

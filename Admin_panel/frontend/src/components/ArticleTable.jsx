@@ -153,7 +153,7 @@ const ArticleTable = ({ refreshTrigger }) => {
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">Articles</h2>
-          <button onClick={() => navigate('/articles/create')} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors font-medium">
+          <button onClick={() => navigate('/ai-editor')} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors font-medium">
             Create Article
           </button>
         </div>

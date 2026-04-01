@@ -7,6 +7,7 @@ const { improve } = require("../services/aiPipeline/improveAgent");
 const { categorize } = require("../services/aiPipeline/categoryAgent");
 const { generateSeo } = require("../services/aiPipeline/seoAgent");
 const { checkQuality } = require("../services/aiPipeline/qualityAgent");
+const { cacheMiddleware, clearCache } = require("../middleware/cache");
 
 function withSeoMetrics(article) {
   const analysis = calculateSeoScore(article);
@@ -55,7 +56,7 @@ function getSourceId(sourceValue, callback) {
 }
 
 // 🔹 CREATE NEW ARTICLE
-router.post("/articles", (req, res) => {
+router.post("/articles", async (req, res) => {
   const {
     title,
     content,
@@ -93,84 +94,120 @@ router.post("/articles", (req, res) => {
   const catVal = category_id || category;
   const srcVal = source_id || source;
 
-  getCategoryId(catVal, (errCat, finalCategoryId) => {
-    if (errCat) return res.status(500).json({ error: errCat.message });
+  try {
+    const qualityData = await checkQuality(title, content);
+    const quality_score = Math.round(
+      qualityData.ai_confidence * 0.5 +
+      qualityData.readability_score * 0.3 +
+      seoData.seo_score * 0.2
+    );
 
-    getSourceId(srcVal, (errSrc, finalSourceId) => {
-      if (errSrc) return res.status(500).json({ error: errSrc.message });
+    getCategoryId(catVal, (errCat, finalCategoryId) => {
+      if (errCat) return res.status(500).json({ error: errCat.message });
 
-      db.query(
-        `INSERT INTO articles
-          (title, content, summary, category_id, status, seo_title, meta_description, slug, keywords, image_url, image_alt, tags, source_id, seo_score)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          title,
-          content,
-          summary || "",
-          finalCategoryId || null,
-          status || "draft",
-          seoData.seo_title,
-          seoData.meta_description,
-          seoData.slug,
-          seoData.keywords,
-          image_url || "",
-          seoData.image_alt,
-          typeof tags === "string" ? tags : JSON.stringify(tags || []),
-          finalSourceId || null,
-          seoData.seo_score,
-        ],
-        (err, result) => {
-          if (err) {
-            console.error("Error creating article:", err);
-            return res.status(500).json({ error: err.message });
+      getSourceId(srcVal, (errSrc, finalSourceId) => {
+        if (errSrc) return res.status(500).json({ error: errSrc.message });
+
+        db.query(
+          `INSERT INTO articles
+            (title, content, summary, category_id, status, seo_title, meta_description, slug, keywords, image_url, image_alt, tags, source_id, seo_score, quality_score, readability_score, ai_confidence)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            title,
+            content,
+            summary || "",
+            finalCategoryId || null,
+            status || "draft",
+            seoData.seo_title,
+            seoData.meta_description,
+            seoData.slug,
+            seoData.keywords,
+            image_url || "",
+            seoData.image_alt,
+            typeof tags === "string" ? tags : JSON.stringify(tags || []),
+            finalSourceId || null,
+            seoData.seo_score,
+            quality_score,
+            qualityData.readability_score,
+            qualityData.ai_confidence
+          ],
+          (err, result) => {
+            if (err) {
+              console.error("Error creating article:", err);
+              return res.status(500).json({ error: err.message });
+            }
+            clearCache().catch(console.error);
+            res.status(201).json({
+              success: true,
+              id: result.insertId,
+              message: "Article created",
+              seo_score: seoData.seo_score,
+              quality_score,
+              readability_score: qualityData.readability_score,
+              ai_confidence: qualityData.ai_confidence
+            });
           }
-          res.status(201).json({
-            success: true,
-            id: result.insertId,
-            message: "Article created",
-            seo_score: seoData.seo_score,
-          });
-        }
-      );
+        );
+      });
     });
-  });
+  } catch (err) {
+    console.error("Quality check failed in POST /articles:", err);
+    return res.status(500).json({ error: "Quality check failed" });
+  }
 });
 
 // 🔹 GET ALL ARTICLES (admin use)
 router.get("/articles", (req, res) => {
-  db.query(
-    `SELECT a.*, c.name as category_name, s.name as source_name 
-     FROM articles a 
-     LEFT JOIN categories c ON a.category_id = c.id 
-     LEFT JOIN sources s ON a.source_id = s.id 
-     ORDER BY a.created_at DESC`,
-    (err, results) => {
-      if (err) {
-        console.error("Error fetching articles:", err);
-        return res.status(500).json({ error: err.message });
-      }
-      res.json((results || []).map(withSeoMetrics));
+  const category = req.query.category;
+
+  let query = `SELECT a.*, c.name as category_name, c.slug as category_slug, s.name as source_name 
+               FROM articles a 
+               LEFT JOIN categories c ON a.category_id = c.id 
+               LEFT JOIN sources s ON a.source_id = s.id`;
+  const params = [];
+
+  if (category) {
+    query += ` WHERE c.slug = ?`;
+    params.push(category);
+  }
+
+  query += ` ORDER BY a.created_at DESC`;
+
+  db.query(query, params, (err, results) => {
+    if (err) {
+      console.error("Error fetching articles:", err);
+      return res.status(500).json({ error: err.message });
     }
-  );
+    res.json((results || []).map(withSeoMetrics));
+  });
 });
 
 // 🔹 GET PUBLISHED ARTICLES ONLY (public frontend)
 // ⚠️ Must be ABOVE /articles/:id so Express doesn't match "published" as :id
-router.get("/articles/published", (req, res) => {
-  db.query(
-    `SELECT a.*, c.name as category_name, s.name as source_name 
-     FROM articles a 
-     LEFT JOIN categories c ON a.category_id = c.id 
-     LEFT JOIN sources s ON a.source_id = s.id 
-     WHERE a.status='published' ORDER BY a.published_at DESC`,
-    (err, results) => {
-      if (err) {
-        console.error("Error fetching published articles:", err);
-        return res.status(500).json({ error: err.message });
-      }
-      res.json((results || []).map(withSeoMetrics));
+router.get("/articles/published", cacheMiddleware(300), (req, res) => {
+  const category = req.query.category;
+  
+  let query = `SELECT a.*, c.name as category_name, c.slug as category_slug, s.name as source_name 
+               FROM articles a 
+               LEFT JOIN categories c ON a.category_id = c.id 
+               LEFT JOIN sources s ON a.source_id = s.id 
+               WHERE a.status='published'`;
+  const params = [];
+
+  if (category) {
+    query += ` AND c.slug = ?`;
+    params.push(category);
+  }
+
+  query += ` ORDER BY a.published_at DESC`;
+
+  db.query(query, params, (err, results) => {
+    if (err) {
+      console.error("Error fetching published articles:", err);
+      return res.status(500).json({ error: err.message });
     }
-  );
+    res.json((results || []).map(withSeoMetrics));
+  });
 });
 
 // 🔹 TRACK ARTICLE VIEW
@@ -224,7 +261,7 @@ router.get("/articles/:id", (req, res) => {
 });
 
 // 🔹 GET ALL CATEGORIES
-router.get("/categories", (req, res) => {
+router.get("/categories", cacheMiddleware(3600), (req, res) => {
   db.query(
     "SELECT * FROM categories ORDER BY name ASC",
     (err, results) => {
@@ -238,7 +275,7 @@ router.get("/categories", (req, res) => {
 });
 
 // 🔹 GET ALL SOURCES
-router.get("/sources", (req, res) => {
+router.get("/sources", cacheMiddleware(3600), (req, res) => {
   db.query(
     "SELECT * FROM sources ORDER BY name ASC",
     (err, results) => {
@@ -261,6 +298,7 @@ router.put("/articles/:id/approve", (req, res) => {
         console.error("Error approving article:", err);
         return res.status(500).json({ error: err.message });
       }
+      clearCache().catch(console.error);
       res.json({ success: true, message: "Approved ✅" });
     }
   );
@@ -276,6 +314,7 @@ router.put("/articles/:id/publish", (req, res) => {
         console.error("Error publishing article:", err);
         return res.status(500).json({ error: err.message });
       }
+      clearCache().catch(console.error);
       res.json({ success: true, message: "Published 🚀" });
     }
   );
@@ -439,6 +478,8 @@ router.post("/articles/:id/improve", adminAuth, async (req, res) => {
       );
     });
 
+    clearCache().catch(console.error);
+    
     return res.json({
       success: true,
       message: "Article improved successfully",
@@ -459,7 +500,7 @@ router.post("/articles/:id/improve", adminAuth, async (req, res) => {
 });
 
 // 🔹 EDIT ARTICLE 
-router.put("/articles/:id", (req, res) => {
+router.put("/articles/:id", async (req, res) => {
   const {
     title,
     content,
@@ -505,49 +546,65 @@ router.put("/articles/:id", (req, res) => {
 
   const catVal = category_id || category;
 
-  getCategoryId(catVal, (errCat, finalCategoryId) => {
-    if (errCat) return res.status(500).json({ error: errCat.message });
-
-    db.query(
-      "UPDATE articles SET title=?, content=?, summary=?, category_id=?, tags=?, seo_title=?, meta_description=?, slug=?, keywords=?, image_url=?, image_alt=?, seo_score=? WHERE id=?",
-      [
-        title,
-        content,
-        summary || "",
-        finalCategoryId || null,
-        tagsValue,
-        seoData.seo_title,
-        seoData.meta_description,
-        seoData.slug,
-        seoData.keywords,
-        image_url || "",
-        seoData.image_alt,
-        seoData.seo_score,
-        req.params.id,
-      ],
-      (err) => {
-        if (err) {
-          console.error("Error updating article:", err);
-          return res.status(500).json({ error: err.message });
-        }
-        // Return the updated article so the frontend can reflect the saved state
-        db.query(
-          `SELECT a.*, c.name as category_name, s.name as source_name 
-           FROM articles a 
-           LEFT JOIN categories c ON a.category_id = c.id 
-           LEFT JOIN sources s ON a.source_id = s.id 
-           WHERE a.id=?`,
-          [req.params.id],
-          (err2, rows) => {
-            if (err2 || !rows || rows.length === 0) {
-              return res.json({ success: true, message: "Updated ✏️", seo_score: seoData.seo_score });
-            }
-            res.json({ ...withSeoMetrics(rows[0]), success: true });
-          }
-        );
-      }
+  try {
+    const qualityData = await checkQuality(title, content);
+    const quality_score = Math.round(
+      qualityData.ai_confidence * 0.5 +
+      qualityData.readability_score * 0.3 +
+      seoData.seo_score * 0.2
     );
-  });
+
+    getCategoryId(catVal, (errCat, finalCategoryId) => {
+      if (errCat) return res.status(500).json({ error: errCat.message });
+
+      db.query(
+        "UPDATE articles SET title=?, content=?, summary=?, category_id=?, tags=?, seo_title=?, meta_description=?, slug=?, keywords=?, image_url=?, image_alt=?, seo_score=?, quality_score=?, readability_score=?, ai_confidence=? WHERE id=?",
+        [
+          title,
+          content,
+          summary || "",
+          finalCategoryId || null,
+          tagsValue,
+          seoData.seo_title,
+          seoData.meta_description,
+          seoData.slug,
+          seoData.keywords,
+          image_url || "",
+          seoData.image_alt,
+          seoData.seo_score,
+          quality_score,
+          qualityData.readability_score,
+          qualityData.ai_confidence,
+          req.params.id,
+        ],
+        (err) => {
+          if (err) {
+            console.error("Error updating article:", err);
+            return res.status(500).json({ error: err.message });
+          }
+          // Return the updated article so the frontend can reflect the saved state
+          db.query(
+            `SELECT a.*, c.name as category_name, s.name as source_name 
+            FROM articles a 
+            LEFT JOIN categories c ON a.category_id = c.id 
+            LEFT JOIN sources s ON a.source_id = s.id 
+            WHERE a.id=?`,
+            [req.params.id],
+            (err2, rows) => {
+              clearCache().catch(console.error);
+              if (err2 || !rows || rows.length === 0) {
+                return res.json({ success: true, message: "Updated ✏️", seo_score: seoData.seo_score, quality_score, readability_score: qualityData.readability_score, ai_confidence: qualityData.ai_confidence });
+              }
+              res.json({ ...withSeoMetrics(rows[0]), success: true });
+            }
+          );
+        }
+      );
+    });
+  } catch (err) {
+    console.error("Quality check failed in PUT /articles/:id:", err);
+    return res.status(500).json({ error: "Quality check failed" });
+  }
 });
 
 // 🔹 DELETE ARTICLE
@@ -560,6 +617,7 @@ router.delete("/articles/:id", (req, res) => {
         console.error("Error deleting article:", err);
         return res.status(500).json({ error: err.message });
       }
+      clearCache().catch(console.error);
       res.json({ success: true, message: "Deleted 🗑️" });
     }
   );

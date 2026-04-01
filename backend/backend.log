@@ -1,0 +1,6 @@
+nohup: ignoring input
+[dotenv@17.3.1] injecting env (1) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+Server running on port 5000 🚀
+API: http://localhost:5000/api
+React: Connect to http://localhost:5173
+DB Connected ✅
