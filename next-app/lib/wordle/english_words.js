@@ -81,4 +81,4 @@ const ENGLISH_WORDS = [
   "WROTE", "YACHT", "YIELD", "YOUNG", "YOURS", "YOUTH", "ZEBRA", "ZONAL"
 ];
 
-module.exports = ENGLISH_WORDS;
+export default ENGLISH_WORDS;

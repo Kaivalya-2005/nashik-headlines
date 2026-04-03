@@ -177,4 +177,4 @@ const MARATHI_WORDS_FINAL = VALID_MARATHI_WORDS.filter(
   (w) => getCodepointLength(w) === 5
 );
 
-module.exports = MARATHI_WORDS_FINAL;
+export default MARATHI_WORDS_FINAL;

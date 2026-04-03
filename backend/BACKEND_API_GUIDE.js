@@ -20,16 +20,8 @@ router.get("/articles", (req, res) => {
   });
 });
 
-// 🔹 Get only published articles
-router.get("/articles/published", (req, res) => {
-  db.query(
-    "SELECT * FROM articles WHERE status='published' ORDER BY created_at DESC",
-    (err, data) => {
-      if (err) return res.status(500).send(err);
-      res.json(data);
-    }
-  );
-});
+// Note: Public website read APIs (published list/single/view tracking)
+// are served from next-app/app/api, not backend.
 
 // 🔹 Approve article (draft -> approved)
 router.put("/articles/:id/approve", (req, res) => {

@@ -1,8 +1,12 @@
 import { estimateReadTime } from '@/lib/format';
 
-const API_BASE = process.env.API_BASE_URL || 'http://localhost:5000/api';
-const PUBLISHED_URL = `${API_BASE}/articles/published`;
-const ARTICLES_URL = `${API_BASE}/articles`;
+const API_BASE =
+  process.env.INTERNAL_API_BASE_URL ||
+  (process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000');
+const PUBLISHED_URL = `${API_BASE}/api/articles/published`;
+const ARTICLES_URL = `${API_BASE}/api/articles`;
 
 async function fetchJSON(url, options = {}) {
   const res = await fetch(url, {

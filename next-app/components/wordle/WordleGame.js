@@ -6,7 +6,6 @@ import WordleKeyboard from "./WordleKeyboard";
 import WordleToast from "./WordleToast";
 import { Share2, HelpCircle, X, Globe } from "lucide-react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 const WORD_LENGTH = 5;
 const MAX_GUESSES = 6;
 const HELP_SEEN_SESSION_KEY = "nhWordleHelpSeenSession";
@@ -332,7 +331,7 @@ export default function WordleGame() {
   const fetchWord = useCallback(async (language) => {
     setLoading(true); setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/wordle/today?lang=${language}`);
+      const res = await fetch(`/api/wordle/today?lang=${language}`);
       if (!res.ok) throw new Error("Failed");
       const data = await res.json();
       setAnswer(data.word); setDate(data.date);

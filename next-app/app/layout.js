@@ -39,11 +39,14 @@ export const metadata = {
     shortcut: '/logo.jpeg',
     apple: '/logo.jpeg',
   },
-  themeColor: '#0f2b6b',
   verification: {
     // Add your Google Search Console verification code here
     // google: 'YOUR_VERIFICATION_CODE',
   },
+};
+
+export const viewport = {
+  themeColor: '#0f2b6b',
 };
 
 export default function RootLayout({ children }) {

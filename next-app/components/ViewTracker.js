@@ -2,8 +2,6 @@
 
 import { useEffect } from 'react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
-
 export default function ViewTracker({ articleId }) {
   useEffect(() => {
     if (!articleId) return;
@@ -11,7 +9,7 @@ export default function ViewTracker({ articleId }) {
     const key = `viewed_${articleId}`;
     if (sessionStorage.getItem(key)) return;
 
-    fetch(`${API_BASE}/articles/${articleId}/view`, {
+    fetch(`/api/articles/${articleId}/view`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     })
