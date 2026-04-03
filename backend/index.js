@@ -33,6 +33,7 @@ app.use("/api", require("./routes/articles"));
 app.use("/api", require("./routes/stats"));
 app.use("/api", require("./routes/ai"));
 app.use("/api/pipeline", require("./routes/pipeline"));
+app.use("/api/wordle", require("./routes/wordle"));
 
 // Health check endpoint
 app.get("/", (req, res) => {

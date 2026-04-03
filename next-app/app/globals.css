@@ -366,6 +366,55 @@
   50% { transform: translateY(-6px); }
 }
 
+/* ─── Wordle Game ───────────────────────────────────────────────────────────── */
+:root {
+  --wordle-green:  115 29% 40%;
+  --wordle-yellow: 49 90% 44%;
+  --wordle-gray:   200 4% 52%;
+  --wordle-empty:  var(--border);
+}
+.dark {
+  --wordle-green:  115 29% 38%;
+  --wordle-yellow: 49 82% 42%;
+  --wordle-gray:   200 4% 38%;
+}
+
+@keyframes wordleFlip {
+  0%   { transform: rotateX(0deg);    }
+  45%  { transform: rotateX(-90deg);  }
+  55%  { transform: rotateX(-90deg);  }
+  100% { transform: rotateX(0deg);    }
+}
+
+@keyframes wordleBounce {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); }
+  20%, 40%, 60%, 80%      { transform: translateX(6px);  }
+}
+
+@keyframes wordlePop {
+  0%, 100% { transform: scale(1);    }
+  50%       { transform: scale(1.12); }
+}
+
+@keyframes wordleReveal {
+  0%   { transform: rotateX(0);    background-color: transparent; }
+  49%  { transform: rotateX(-90deg); background-color: transparent; }
+  50%  { transform: rotateX(-90deg); }
+  100% { transform: rotateX(0); }
+}
+
+@keyframes wordleToastIn {
+  0%   { opacity: 0; transform: translateY(-12px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+@keyframes wordleToastOut {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+
 /* ─── Google Translate — Custom UI ─────────────────────────────────────────── */
 
 /* Hide Google's own widget mount point — off-screen so GT still renders its <select> */
