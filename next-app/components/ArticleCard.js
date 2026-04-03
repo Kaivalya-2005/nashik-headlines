@@ -1,6 +1,5 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { Clock } from 'lucide-react';
 import { CATEGORIES } from '@/lib/categories';
 import { timeAgo } from '@/lib/format';
 
@@ -10,43 +9,39 @@ export default function ArticleCard({ article, variant = 'default' }) {
 
   if (variant === 'featured') {
     return (
-      <article className="news-card relative group">
+      <article className="news-card border-b border-border pb-4 mb-4">
         <Link href={href} className="block">
-          <div className="relative">
+          <div className="relative mb-3">
             <div className="aspect-[16/9] overflow-hidden relative">
               <Image
                 src={article.image || 'https://images.unsplash.com/photo-1504711434969-e33886168d6c?w=800&h=500&fit=crop'}
                 alt={article.title}
                 fill
-                className="object-cover card-image"
+                className="object-cover"
                 sizes="(min-width: 1024px) 800px, 100vw"
                 priority
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             </div>
           </div>
-          <div className="p-5 md:p-6">
-            <div className="flex items-center gap-2 mb-3">
+          <div className="px-1">
+            <div className="flex items-center gap-2 mb-2">
               {cat && <span className={`category-badge ${cat.colorClass}`}>{cat.label}</span>}
               {article.isBreaking && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 text-[11px] font-semibold uppercase tracking-wider">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-500 text-white text-[11px] font-bold uppercase">
+                  <span className="w-1.5 h-1.5 bg-white animate-pulse" />
                   Breaking
                 </span>
               )}
             </div>
-            <h2 className="font-headline font-bold text-title-lg leading-tight mb-2.5 headline-link group-hover:text-accent transition-colors duration-200">{article.title}</h2>
-            <p className="text-muted-foreground text-body leading-relaxed line-clamp-2 mb-4">{article.description}</p>
-            <div className="flex items-center justify-between text-caption text-muted-foreground">
+            <h2 className="font-bold text-2xl leading-tight mb-2 headline-link hover:text-accent transition-colors">{article.title}</h2>
+            <p className="text-muted-foreground text-base leading-relaxed line-clamp-3 mb-3">{article.description}</p>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-foreground/70">Nashik Headlines</span>
-                <span className="text-muted-foreground/40">·</span>
+                <span className="font-semibold">Nashik Headlines</span>
+                <span>·</span>
                 <span>{timeAgo(article.publishedAt)}</span>
               </div>
-              <div className="flex items-center gap-1 text-muted-foreground/60">
-                <Clock size={12} />
-                <span>{article.readTime} min read</span>
-              </div>
+              <span>{article.readTime} min read</span>
             </div>
           </div>
         </Link>
@@ -55,34 +50,31 @@ export default function ArticleCard({ article, variant = 'default' }) {
   }
 
   return (
-    <article className="news-card relative group">
+    <article className="news-card border-b border-border pb-4 mb-4 hover:bg-secondary/50 transition-colors p-0">
       <Link href={href} className="block">
-        <div className="aspect-[16/10] overflow-hidden relative">
-          <Image
-            src={article.image || 'https://images.unsplash.com/photo-1504711434969-e33886168d6c?w=800&h=500&fit=crop'}
-            alt={article.title}
-            fill
-            className="object-cover card-image"
-            sizes="(min-width: 768px) 400px, 100vw"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-        </div>
-        <div className="p-4">
-          <div className="flex items-center gap-2 mb-2.5">
-            {cat && <span className={`category-badge ${cat.colorClass}`}>{cat.label}</span>}
+        <div className="grid grid-cols-3 gap-3 p-2">
+          <div className="col-span-2 min-w-0">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              {cat && <span className={`category-badge text-xs ${cat.colorClass}`}>{cat.label}</span>}
+            </div>
+            <h3 className="font-bold text-base leading-snug mb-1 line-clamp-2 headline-link hover:text-accent">{article.title}</h3>
+            <p className="text-muted-foreground text-sm leading-relaxed line-clamp-2 mb-2">{article.description}</p>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <span className="font-medium">Nashik Headlines</span>
+                <span>·</span>
+                <span>{timeAgo(article.publishedAt)}</span>
+              </div>
+            </div>
           </div>
-          <h3 className="font-headline font-semibold text-base leading-snug mb-1.5 line-clamp-2 headline-link group-hover:text-accent transition-colors duration-200">{article.title}</h3>
-          <p className="text-muted-foreground text-sm leading-relaxed line-clamp-2 mb-3">{article.description}</p>
-          <div className="flex items-center justify-between text-caption text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <span className="font-medium text-foreground/60">Nashik Headlines</span>
-              <span className="text-muted-foreground/40">·</span>
-              <span>{timeAgo(article.publishedAt)}</span>
-            </div>
-            <div className="flex items-center gap-1 text-muted-foreground/50">
-              <Clock size={11} />
-              <span>{article.readTime}m</span>
-            </div>
+          <div className="col-span-1 aspect-[4/3] overflow-hidden relative min-h-24">
+            <Image
+              src={article.image || 'https://images.unsplash.com/photo-1504711434969-e33886168d6c?w=800&h=500&fit=crop'}
+              alt={article.title}
+              fill
+              className="object-cover"
+              sizes="200px"
+            />
           </div>
         </div>
       </Link>

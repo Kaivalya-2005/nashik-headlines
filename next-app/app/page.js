@@ -1,13 +1,50 @@
 import BreakingBanner from '@/components/BreakingBanner';
 import ArticleCard from '@/components/ArticleCard';
-import TopNewsSlider from '@/components/TopNewsSlider';
 import TrendingSection from '@/components/TrendingSection';
+import CricketScoreCorner from '@/components/CricketScoreCorner';
+import MarketCorner from '@/components/MarketCorner';
 import { fetchArticles, fetchTrendingArticles } from '@/lib/api';
-import { Newspaper } from 'lucide-react';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
 export const revalidate = 300;
+
+async function fetchMarketSnapshot() {
+  try {
+    const response = await fetch('https://www.nseindia.com/api/allIndices', {
+      headers: {
+        'user-agent': 'Mozilla/5.0',
+        accept: 'application/json',
+        referer: 'https://www.nseindia.com/',
+      },
+      next: { revalidate: 300 },
+    });
+
+    if (!response.ok) return [];
+
+    const json = await response.json();
+    const rows = Array.isArray(json?.data) ? json.data : [];
+
+    const pick = (symbol, label) => {
+      const found = rows.find((item) => item.indexSymbol === symbol || item.index === symbol);
+      if (!found) return null;
+      return {
+        symbol,
+        label,
+        last: Number(found.last),
+        change: Number(found.variation),
+        percentChange: Number(found.percentChange),
+      };
+    };
+
+    return [
+      pick('NIFTY 50', 'NIFTY 50'),
+      pick('NIFTY BANK', 'NIFTY BANK'),
+    ].filter(Boolean);
+  } catch {
+    return [];
+  }
+}
 
 export async function generateMetadata({ searchParams }) {
   const q = searchParams?.q;
@@ -39,6 +76,9 @@ export default async function Home({ searchParams }) {
   const sorted = [...articles].sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
   const [featured, ...rest] = sorted;
   const trending = await fetchTrendingArticles(5);
+  const marketData = await fetchMarketSnapshot();
+  const sportsArticles = sorted.filter((article) => article.category === 'sports');
+  const cricketPanelItems = sportsArticles.length ? sportsArticles : trending;
 
   const websiteJsonLd = {
     '@context': 'https://schema.org',
@@ -68,56 +108,36 @@ export default async function Home({ searchParams }) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
       <BreakingBanner articles={sorted} />
 
-      {/* Hero section */}
-      {!query && (
-        <section className="relative overflow-hidden bg-gradient-to-br from-primary/8 via-accent/3 to-highlight/5 border-b border-border/50">
-          <div className="container mx-auto px-4 py-10 md:py-14">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Newspaper size={20} className="text-primary" />
+      {/* Hero section - removed for BBC-like simplicity */}
+
+      <main className="w-full py-4 md:py-6">
+        <div className="max-w-[1450px] mx-auto px-3 md:px-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <section className="lg:col-span-8 border border-border bg-card p-3 md:p-4">
+              <div className="flex items-end justify-between mb-4 border-b border-border pb-3">
+                <h2 className="font-headline text-2xl md:text-3xl font-bold">Latest News</h2>
+                <span className="text-sm text-muted-foreground font-medium">{sorted.length} stories</span>
               </div>
-              <h1 className="font-headline font-bold text-display text-gradient">Nashik Headlines</h1>
-            </div>
-            <p className="text-body-lg text-muted-foreground max-w-xl">
-              Your trusted source for breaking news, local stories, and in-depth coverage from Nashik and Maharashtra.
-            </p>
+
+              {featured ? <ArticleCard article={featured} variant="featured" /> : null}
+
+              {rest.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                  {rest.map((article) => (
+                    <ArticleCard key={article.slug} article={article} />
+                  ))}
+                </div>
+              ) : !featured ? (
+                <p className="text-base text-muted-foreground py-8">No news available right now.</p>
+              ) : null}
+            </section>
+
+            <aside className="lg:col-span-4 space-y-4">
+              <TrendingSection articles={trending} />
+              <CricketScoreCorner sportsArticles={cricketPanelItems} />
+              <MarketCorner marketData={marketData} />
+            </aside>
           </div>
-          {/* Decorative dots */}
-          <div className="absolute top-4 right-8 w-24 h-24 bg-accent/5 rounded-full blur-3xl" />
-          <div className="absolute bottom-2 right-1/3 w-16 h-16 bg-primary/5 rounded-full blur-2xl" />
-        </section>
-      )}
-
-      <main className="container mx-auto px-4 py-8 space-y-8">
-        <TopNewsSlider articles={sorted.slice(0, 6)} />
-
-        {/* Decorative divider */}
-        <div className="relative">
-          <div className="border-t border-border" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 bg-background">
-            <div className="w-2 h-2 rounded-full bg-accent/40" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-8 space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="font-headline font-bold text-title section-accent pb-2">Latest News</h2>
-              <span className="text-overline text-muted-foreground">{sorted.length} articles</span>
-            </div>
-
-            {featured && <ArticleCard article={featured} variant="featured" />}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 stagger-children">
-              {rest.map((article) => (
-                <ArticleCard key={article.slug} article={article} />
-              ))}
-            </div>
-          </div>
-
-          <aside className="lg:col-span-4 space-y-6">
-            <TrendingSection articles={trending} />
-          </aside>
         </div>
       </main>
     </>

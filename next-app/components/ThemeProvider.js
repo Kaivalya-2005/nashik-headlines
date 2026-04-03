@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useCallback, useMemo, useState } from "react";
 
 const ThemeContext = createContext({ theme: "light", setTheme: () => {}, toggleTheme: () => {} });
 
@@ -30,17 +30,17 @@ export function ThemeProvider({ children }) {
     applyTheme(initial);
   }, []);
 
-  const setTheme = (value) => {
+  const setTheme = useCallback((value) => {
     setThemeState(value);
     applyTheme(value);
     if (typeof window !== "undefined") {
       window.localStorage.setItem("nh-theme", value);
     }
-  };
+  }, []);
 
-  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
+  const toggleTheme = useCallback(() => setTheme(theme === "dark" ? "light" : "dark"), [theme, setTheme]);
 
-  const value = useMemo(() => ({ theme, setTheme, toggleTheme }), [theme]);
+  const value = useMemo(() => ({ theme, setTheme, toggleTheme }), [theme, setTheme, toggleTheme]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -35,9 +35,14 @@ function LiveDate() {
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
+  const moreMenuRef = useRef(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [query, setQuery] = useState('');
+
+  const featuredTopics = TOPIC_CATEGORIES.slice(0, 4);
+  const moreTopics = TOPIC_CATEGORIES.slice(4);
 
   const isActive = (path) => pathname === path;
 
@@ -52,18 +57,31 @@ export default function Navbar() {
   // Close mobile menu on route change
   useEffect(() => {
     setMenuOpen(false);
+    setMoreOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!moreOpen) return;
+      if (!moreMenuRef.current?.contains(event.target)) {
+        setMoreOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [moreOpen]);
+
   return (
-    <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/60">
-      <div className="container mx-auto">
-        <div className="flex items-center justify-between h-16 px-4">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative h-11 w-11 rounded-xl overflow-hidden border border-border bg-white shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md">
-              <Image src="/logo.jpeg" alt="Nashik Headlines" fill sizes="44px" className="object-cover" priority />
+    <header className="sticky top-0 z-50 bg-background border-b border-border">
+      <div className="max-w-[1450px] mx-auto">
+        <div className="flex items-center justify-between h-16 px-3 md:px-4">
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="relative h-10 w-10 md:h-11 md:w-11 overflow-hidden border border-transparent md:border-border bg-transparent">
+              <Image src="/logo.jpeg" alt="Nashik Headlines" fill sizes="44px" className="object-contain" priority />
             </div>
             <div className="flex flex-col">
-              <span className="font-headline font-bold text-lg leading-tight tracking-tight">Nashik Headlines</span>
+              <span className="font-bold text-lg leading-tight">Nashik Headlines</span>
               <LiveDate />
             </div>
           </Link>
@@ -71,7 +89,7 @@ export default function Navbar() {
           <div className="flex items-center gap-1">
             <button
               onClick={() => setSearchOpen((v) => !v)}
-              className="p-2.5 rounded-lg hover:bg-secondary transition-colors"
+              className="p-2 hover:bg-secondary transition-colors"
               aria-label="Search"
             >
               <Search size={18} className="text-muted-foreground" />
@@ -80,7 +98,7 @@ export default function Navbar() {
             <GoogleTranslate />
             <button
               onClick={() => setMenuOpen((v) => !v)}
-              className="p-2.5 rounded-lg hover:bg-secondary transition-colors md:hidden"
+              className="p-2 hover:bg-secondary transition-colors md:hidden"
               aria-label="Menu"
             >
               {menuOpen ? <X size={18} /> : <Menu size={18} />}
@@ -89,59 +107,90 @@ export default function Navbar() {
         </div>
 
         {searchOpen && (
-          <div className="px-4 pb-3 animate-fade-in-up">
-            <form onSubmit={onSearch} className="relative max-w-xl mx-auto">
+          <div className="px-3 md:px-4 pb-3 animate-fade-in-up">
+            <form onSubmit={onSearch} className="relative max-w-xl">
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search Nashik news..."
                 autoFocus
-                className="w-full h-11 pl-11 pr-4 rounded-xl bg-secondary text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-shadow"
+                className="w-full h-10 pl-10 pr-3 bg-secondary text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-1 focus:ring-ring transition-shadow"
               />
-              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             </form>
           </div>
         )}
 
-        <nav className="hidden md:flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 pb-3">
-          <div className="flex flex-wrap items-center gap-1 md:gap-1.5">
-            <NavPill href="/" active={isActive('/')} label="Home" />
-            
-            <NavPill href="/category/nashik" active={isActive('/category/nashik')} label="Nashik" />
-            <DesktopNavDropdown 
-              label="Cities" 
-              items={LOCATION_CATEGORIES.filter(c => !['nashik', 'maharashtra', 'india', 'international'].includes(c.slug))} 
-              isActive={isActive} 
-            />
-            <NavPill href="/category/maharashtra" active={isActive('/category/maharashtra')} label="Maharashtra" />
-            <NavPill href="/category/india" active={isActive('/category/india')} label="India" />
-            <NavPill href="/category/international" active={isActive('/category/international')} label="World" />
+        <nav className="hidden md:flex items-center justify-between gap-4 px-3 md:px-4 border-t border-border/50">
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+            <NavLink href="/" active={isActive('/')} label="Home" />
+            {LOCATION_CATEGORIES.map((cat) => (
+              <NavLink
+                key={cat.slug}
+                href={`/category/${cat.slug}`}
+                active={isActive(`/category/${cat.slug}`)}
+                label={cat.label}
+              />
+            ))}
           </div>
 
-          <div className="flex flex-wrap items-center gap-1 md:gap-1.5">
-            {TOPIC_CATEGORIES.slice(0, 4).map((cat) => (
-              <NavPill key={cat.slug} href={`/category/${cat.slug}`} active={isActive(`/category/${cat.slug}`)} label={cat.label} />
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {featuredTopics.map((cat) => (
+              <NavLink
+                key={cat.slug}
+                href={`/category/${cat.slug}`}
+                active={isActive(`/category/${cat.slug}`)}
+                label={cat.label}
+              />
             ))}
-            <DesktopNavDropdown 
-              label="More" 
-              items={TOPIC_CATEGORIES.slice(4)} 
-              isActive={isActive} 
-              align="right"
-            />
-            <NavPill href="/wordle" active={isActive('/wordle')} label="🎮 Wordle" />
+            <WordleQuickLink active={isActive('/wordle')} />
+
+            {moreTopics.length > 0 ? (
+              <div ref={moreMenuRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setMoreOpen((v) => !v)}
+                  className={`px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors duration-200 flex items-center gap-1 ${
+                    moreOpen ? 'text-foreground bg-secondary' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  aria-expanded={moreOpen}
+                  aria-haspopup="menu"
+                >
+                  More
+                  <ChevronDown size={14} className={`transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {moreOpen ? (
+                  <div className="absolute right-0 top-full mt-1 min-w-[180px] border border-border bg-card shadow-sm z-50">
+                    {moreTopics.map((cat) => (
+                      <Link
+                        key={cat.slug}
+                        href={`/category/${cat.slug}`}
+                        className={`block px-3 py-2 text-sm transition-colors ${
+                          isActive(`/category/${cat.slug}`)
+                            ? 'bg-secondary text-foreground font-medium'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-secondary/70'
+                        }`}
+                      >
+                        {cat.label}
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </nav>
 
         {/* Mobile menu */}
         {menuOpen && (
-          <nav className="md:hidden border-t border-border/50 animate-fade-in-up max-h-[70vh] overflow-y-auto">
-            <div className="px-4 py-3 space-y-0.5">
+          <nav className="md:hidden border-t border-border animate-fade-in-up max-h-[70vh] overflow-y-auto">
+            <div className="px-4 py-3 space-y-0">
               <Link
                 href="/"
                 onClick={() => setMenuOpen(false)}
-                className={`block px-4 py-2.5 text-sm rounded-lg transition-all duration-150 ${
-                  isActive('/') ? 'bg-primary text-primary-foreground font-medium' : 'hover:bg-secondary hover:pl-5'
+                className={`block px-3 py-2.5 text-sm ${
+                  isActive('/') ? 'bg-primary text-primary-foreground font-medium' : 'hover:bg-secondary'
                 }`}
               >
                 All News
@@ -149,37 +198,39 @@ export default function Navbar() {
               <Link
                 href="/wordle"
                 onClick={() => setMenuOpen(false)}
-                className={`block px-4 py-2.5 text-sm rounded-lg transition-all duration-150 ${
-                  isActive('/wordle') ? 'bg-primary text-primary-foreground font-medium' : 'hover:bg-secondary hover:pl-5'
+                className={`block px-3 py-2.5 text-sm border border-transparent ${
+                  isActive('/wordle')
+                    ? 'bg-secondary text-foreground font-semibold border-accent/40'
+                    : 'hover:bg-secondary text-foreground border-border/60'
                 }`}
               >
-                🎮 Wordle
+                🎮 Play Wordle
               </Link>
 
-              <p className="px-4 pt-4 pb-1.5 text-overline text-muted-foreground font-semibold tracking-widest">Places</p>
+              <p className="px-3 pt-3 pb-1 text-xs text-muted-foreground font-semibold">PLACES</p>
               {LOCATION_CATEGORIES.map((cat) => (
                 <Link
                   key={cat.slug}
                   href={`/category/${cat.slug}`}
                   onClick={() => setMenuOpen(false)}
-                  className={`block px-4 py-2.5 text-sm rounded-lg transition-all duration-150 ${
-                    isActive(`/category/${cat.slug}`) ? 'bg-primary text-primary-foreground font-medium' : 'hover:bg-secondary hover:pl-5'
+                  className={`block px-3 py-2.5 text-sm ${
+                    isActive(`/category/${cat.slug}`) ? 'bg-primary text-primary-foreground font-medium' : 'hover:bg-secondary'
                   }`}
                 >
                   {cat.label}
                 </Link>
               ))}
 
-              <div className="my-2 border-t border-border/50" />
+              <div className="my-1 border-t border-border/50" />
 
-              <p className="px-4 pt-2 pb-1.5 text-overline text-muted-foreground font-semibold tracking-widest">Topics</p>
+              <p className="px-3 pt-2 pb-1 text-xs text-muted-foreground font-semibold">TOPICS</p>
               {TOPIC_CATEGORIES.map((cat) => (
                 <Link
                   key={cat.slug}
                   href={`/category/${cat.slug}`}
                   onClick={() => setMenuOpen(false)}
-                  className={`block px-4 py-2.5 text-sm rounded-lg transition-all duration-150 ${
-                    isActive(`/category/${cat.slug}`) ? 'bg-primary text-primary-foreground font-medium' : 'hover:bg-secondary hover:pl-5'
+                  className={`block px-3 py-2.5 text-sm ${
+                    isActive(`/category/${cat.slug}`) ? 'bg-primary text-primary-foreground font-medium' : 'hover:bg-secondary'
                   }`}
                 >
                   {cat.label}
@@ -193,50 +244,36 @@ export default function Navbar() {
   );
 }
 
-function NavPill({ href, active, label }) {
+function NavLink({ href, active, label }) {
   return (
     <Link
       href={href}
-      className={`relative px-3.5 py-1.5 text-caption font-medium rounded-full transition-all duration-200 whitespace-nowrap ${
+      className={`px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors duration-200 ${
         active
-          ? 'bg-primary text-primary-foreground shadow-sm'
-          : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+          ? 'bg-secondary text-foreground border-b-2 border-accent'
+          : 'text-muted-foreground hover:text-foreground'
       }`}
     >
       {label}
-      {active && (
-        <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full bg-accent" />
-      )}
     </Link>
   );
 }
 
-function DesktopNavDropdown({ label, items, isActive, align = 'left' }) {
+function WordleQuickLink({ active }) {
   return (
-    <div className="relative group cursor-pointer z-50">
-      <div className="flex items-center gap-1 px-3.5 py-1.5 text-caption font-medium rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground transition-all duration-200 whitespace-nowrap group-hover:bg-secondary group-hover:text-foreground">
-        {label}
-        <ChevronDown size={12} className="transition-transform duration-200 group-hover:rotate-180" />
-      </div>
-      
-      {/* Invisible bridge to maintain hover state */}
-      <div className="absolute top-full left-0 w-full h-3"></div>
-      
-      <div className={`absolute top-[calc(100%+0.5rem)] ${align === 'right' ? 'right-0' : 'left-0'} w-48 bg-card border border-border rounded-xl shadow-elevated opacity-0 invisible group-hover:opacity-100 group-hover:visible translate-y-2 group-hover:translate-y-0 transition-all duration-200 overflow-hidden`}>
-        {items.map((cat) => (
-          <Link
-            key={cat.slug}
-            href={`/category/${cat.slug}`}
-            className={`block px-4 py-2.5 text-sm transition-all duration-150 ${
-              isActive(`/category/${cat.slug}`)
-                ? 'bg-secondary/80 font-medium text-foreground border-l-2 border-primary'
-                : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground hover:pl-5 border-l-2 border-transparent hover:border-border'
-            }`}
-          >
-            {cat.label}
-          </Link>
-        ))}
-      </div>
-    </div>
+    <Link
+      href="/wordle"
+      className={`px-3 py-2 text-sm font-semibold whitespace-nowrap transition-colors duration-200 border-b-2 flex items-center gap-1 ${
+        active
+          ? 'border-accent text-foreground bg-secondary'
+          : 'border-transparent text-foreground hover:bg-secondary'
+      }`}
+      aria-label="Open Wordle"
+      title="Play Wordle"
+    >
+      <span aria-hidden>🎮</span>
+      <span>Wordle</span>
+      <span className="text-[10px] text-accent uppercase tracking-wide">Play</span>
+    </Link>
   );
 }

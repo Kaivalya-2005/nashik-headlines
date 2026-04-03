@@ -16,8 +16,6 @@ export default function TopNewsSlider({ articles }) {
   const items = articles?.slice(0, 6) || [];
   const count = items.length;
 
-  if (count === 0) return null;
-
   const scrollToIndex = useCallback((index) => {
     if (!scrollRef.current) return;
     const container = scrollRef.current;
@@ -63,6 +61,8 @@ export default function TopNewsSlider({ articles }) {
     container.addEventListener('scroll', onScroll, { passive: true });
     return () => container.removeEventListener('scroll', onScroll);
   }, [count]);
+
+  if (count === 0) return null;
 
   return (
     <section

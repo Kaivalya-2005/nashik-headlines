@@ -9,8 +9,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        headline: ['Playfair Display', 'Georgia', 'Times New Roman', 'serif'],
-        sans: ['Source Sans 3', 'ui-sans-serif', 'system-ui'],
+        headline: ['Merriweather', 'Georgia', 'Times New Roman', 'serif'],
+        sans: ['Inter', 'ui-sans-serif', 'system-ui'],
       },
       colors: {
         background: 'hsl(var(--background))',
