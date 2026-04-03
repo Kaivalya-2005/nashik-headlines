@@ -216,7 +216,7 @@ const AIEditor = () => {
       toast.error(`You can only upload up to ${maxImages} images.`);
       return;
     }
-    const newImages = files.map(file => ({ file, preview: URL.createObjectURL(file) }));
+    const newImages = files.map(file => ({ file, preview: URL.createObjectURL(file), altText: '', caption: '' }));
     setImages(prev => [...prev, ...newImages]);
   };
 
@@ -480,7 +480,7 @@ const AIEditor = () => {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {images.map((img, idx) => (
                 <div key={idx} className="relative group rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 aspect-video border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center">
-                  <img src={img.preview} alt={`upload-${idx}`} className="object-cover w-full h-full" />
+                  <img src={img.preview} alt={img.altText || `upload-${idx}`} className="object-cover w-full h-full" />
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <button onClick={() => removeImage(idx)} className="p-3 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-lg transform hover:scale-110 transition-transform">
                       <X size={20} />
@@ -491,16 +491,87 @@ const AIEditor = () => {
 
               {images.length < maxImages && (
                 <label className="border-2 border-dashed border-indigo-300 dark:border-indigo-800 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-xl aspect-video flex flex-col items-center justify-center text-indigo-500 dark:text-indigo-400 cursor-pointer transition-colors bg-indigo-50/50 dark:bg-indigo-950/20 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 group">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    multiple
+                    className="hidden"
+                    onChange={handleImageUpload}
+                  />
                   <ImagePlus size={28} className="mb-2 group-hover:scale-110 transition-transform" />
                   <span className="text-sm font-semibold">Click to Upload Image</span>
                 </label>
               )}
             </div>
 
-            <div>
-              <FieldLabel label="Image SEO (Alt Text) — Describe the image for Google" fieldKey="imageAlt" setter={setImageAlt} />
-              <input type="text" value={imageAlt} onChange={(e) => setImageAlt(e.target.value)} placeholder="e.g. Nashik police standing outside the main bank..." className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/50 text-slate-900 dark:text-slate-100 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 outline-none transition-all" />
-            </div>
+            {/* Per-image caption + alt text cards */}
+            {images.length > 0 && (
+              <div className="space-y-4 mt-2">
+                {images.map((img, idx) => {
+                  const altLen = (img.altText || '').length;
+                  const altGood = altLen >= 50 && altLen <= 125;
+                  const altMissing = !img.altText?.trim();
+                  return (
+                    <div key={idx} className={`border rounded-xl p-4 bg-slate-50 dark:bg-slate-950 relative shadow-sm transition-colors ${altMissing ? 'border-amber-300 dark:border-amber-700' : 'border-slate-200 dark:border-slate-700'}`}>
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        {/* Thumbnail */}
+                        <div className="flex-shrink-0">
+                          <img
+                            src={img.preview}
+                            alt={img.altText || `Image ${idx + 1}`}
+                            className="w-28 h-28 object-cover rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900"
+                          />
+                          <p className="text-xs text-center text-slate-400 dark:text-slate-500 mt-1 font-medium">Image {idx + 1}</p>
+                        </div>
+
+                        {/* Fields */}
+                        <div className="flex-grow space-y-3">
+                          {/* Caption */}
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+                              Caption <span className="text-slate-400 font-normal normal-case">(optional)</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={img.caption || ''}
+                              onChange={(e) => setImages(prev => prev.map((im, i) => i === idx ? { ...im, caption: e.target.value } : im))}
+                              className="w-full text-sm px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors outline-none"
+                              placeholder="प्रतिमेसाठी मथळा... (optional)"
+                            />
+                          </div>
+
+                          {/* Alt Text */}
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className={`block text-xs font-semibold uppercase tracking-wide ${altMissing ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                                Alt Text (SEO) <span className="text-red-500">*</span>
+                                {altLen > 0 && (
+                                  <span className={`ml-2 font-normal normal-case ${altGood ? 'text-green-500' : 'text-slate-400'}`}>
+                                    {altLen} chars {altGood ? '✓' : '(50–125 recommended)'}
+                                  </span>
+                                )}
+                              </label>
+                            </div>
+                            <input
+                              type="text"
+                              value={img.altText || ''}
+                              onChange={(e) => setImages(prev => prev.map((im, i) => i === idx ? { ...im, altText: e.target.value } : im))}
+                              className={`w-full text-sm px-3 py-2 border rounded-lg focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors outline-none ${altMissing ? 'border-amber-400 dark:border-amber-600' : 'border-slate-300 dark:border-slate-700'}`}
+                              placeholder="प्रतिमेचे वर्णन करा... (SEO साठी आवश्यक)"
+                            />
+                            {altMissing && (
+                              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                                ⚠️ Alt text improves SEO — please add a short image description
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
           
           {/* Prompt Engine Box (Hidden to the bottom for Non-Tech users) */}

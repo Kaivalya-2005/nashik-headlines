@@ -217,19 +217,21 @@ ${article.content}`;
   }
 });
 
-router.post("/ai/generate-image", async (req, res) => {
+router.post("/ai/generate-image-alt", async (req, res) => {
   const { id } = req.body;
   try {
     const article = await getArticleById(id);
     if (!article) return res.status(404).json({ message: "Article not found" });
 
-    const prompt = `Based on the following Marathi article, write a brief, descriptive english prompt that could be fed into an image generation model like Midjourney to create a thumbnail image.
+    const prompt = `You are an SEO expert. Based on the following Marathi news article title and content, write a concise, descriptive image alt-text (50-120 characters) in Marathi that describes what the featured image of this article would likely show. The alt-text should naturally include the main topic/keywords.
 
-${article.title}
-${article.content}`;
+Respond with ONLY the alt-text string, no explanation, no quotes.
+
+Title: ${article.title}
+Summary: ${article.summary || article.content.substring(0, 200)}`;
 
     const aiText = await askGroq(prompt);
-    res.json({ prompt: aiText.trim() });
+    res.json({ altText: aiText.trim() });
   } catch(e) {
     res.status(500).json({ message: e.message });
   }

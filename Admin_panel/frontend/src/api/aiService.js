@@ -20,8 +20,8 @@ const generateTags = async (id) => {
     return response.data;
 };
 
-const generateImagePrompt = async (id) => {
-    const response = await api.post('/ai/generate-image', { id });
+const generateImageAlt = async (id) => {
+    const response = await api.post('/ai/generate-image-alt', { id });
     return response.data;
 };
 
@@ -31,9 +31,6 @@ const generateArticle = async (data) => {
 };
 
 const regenerateArticle = async (data) => {
-    // POST /api/articles/regenerate
-    // Auth is handled automatically by the api.js request interceptor (Bearer token).
-    // Only send the fields the backend validates: title and content.
     const payload = {
         title: data.title || '',
         content: data.content || ''
@@ -47,7 +44,7 @@ const aiService = {
     summarizeArticle,
     generateSEO,
     generateTags,
-    generateImagePrompt,
+    generateImageAlt,
     generateArticle,
     regenerateArticle
 };

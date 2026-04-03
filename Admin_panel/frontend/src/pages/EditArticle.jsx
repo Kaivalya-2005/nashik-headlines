@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Save, Sparkles, Wand2, AlignCenter, ImagePlus, RefreshCw, XCircle, CheckCircle, Rocket } from 'lucide-react';
+import { ArrowLeft, Save, Sparkles, Wand2, AlignCenter, RefreshCw, XCircle, CheckCircle, Rocket } from 'lucide-react';
 import articleService from '../api/articleService';
 import aiService from '../api/aiService';
 import * as newsroomService from '../services/newsroomService';
@@ -24,7 +24,7 @@ const EditArticle = () => {
     const [tagsInput, setTagsInput] = useState('');
     const [seo, setSEO] = useState({ metaTitle: '', metaDescription: '', keywords: [], slug: '', imageAlt: '' });
     const [images, setImages] = useState([]);
-    const [imagePrompt, setImagePrompt] = useState('');
+    const [generatingAlt, setGeneratingAlt] = useState(null); // imageId being alt-generated
 
     // Score state — updated on load and after AI regeneration
     const [seoScore, setSeoScore] = useState(null);
@@ -90,6 +90,17 @@ const EditArticle = () => {
 
     const handleSave = async () => {
         console.log('[handleSave] Saving article id:', id);
+
+        // Warn if any image is missing alt-text (soft warning, not a hard block)
+        const missingAlt = images.filter(img => !img.altText?.trim());
+        if (missingAlt.length > 0) {
+            toast(`⚠️ ${missingAlt.length} image(s) are missing alt-text. This affects SEO score.`, {
+                icon: '⚠️',
+                duration: 5000,
+                style: { background: '#fef3c7', color: '#92400e' }
+            });
+        }
+
         setProcessing(true);
         try {
             const newFiles = images.filter(img => img.file);
@@ -100,10 +111,17 @@ const EditArticle = () => {
                     const formData = new FormData();
                     newFiles.forEach(img => formData.append('images', img.file));
                     const uploaded = await articleService.uploadImages(id, formData);
-                    currentImages = (uploaded || []).map((img, idx) => ({
-                        ...img,
-                        id: img.id || `${idx}-${img.url || 'image'}`
-                    }));
+                    // Merge uploaded URLs with local alt-text/caption the admin already filled in
+                    currentImages = (uploaded || []).map((upImg, idx) => {
+                        const localImg = newFiles[idx];
+                        return {
+                            ...upImg,
+                            id: upImg.id || `${idx}-${upImg.url || 'image'}`,
+                            altText: localImg?.altText || upImg.altText || '',
+                            caption: localImg?.caption || upImg.caption || '',
+                            isFeatured: localImg?.isFeatured ?? upImg.isFeatured,
+                        };
+                    });
                     setImages(currentImages);
                 } catch (imgErr) {
                     toast.error('Image upload failed — saving article without new images.');
@@ -294,22 +312,18 @@ const EditArticle = () => {
         }
     };
 
-    const handleGenerateImagePrompt = async () => {
-        setProcessing(true);
-        setAiStatus(prev => ({...prev, image: 'processing', imageMsg: ''}));
+    const handleGenerateAltText = async (imageId) => {
+        setGeneratingAlt(imageId);
         try {
-            const result = await aiService.generateImagePrompt(id);
-            setImagePrompt(result.prompt || '');
-            toast.success('Image prompt generated');
-            setAiStatus(prev => ({...prev, image: 'success', imageMsg: 'Prompt ready'}));
-            setTimeout(() => setAiStatus(prev => ({...prev, image: null, imageMsg: ''})), 4000);
+            const result = await aiService.generateImageAlt(id);
+            const altText = result.altText || '';
+            setImages(prev => prev.map(img => img.id === imageId ? { ...img, altText } : img));
+            toast.success('Alt text generated!');
         } catch (error) {
-            const msg = error.response?.data?.message || error.message || 'Image prompt failed';
+            const msg = error.response?.data?.message || error.message || 'Alt text generation failed';
             toast.error(msg);
-            setAiStatus(prev => ({...prev, image: 'failed', imageMsg: msg}));
-            setTimeout(() => setAiStatus(prev => ({...prev, image: null, imageMsg: ''})), 6000);
         } finally {
-            setProcessing(false);
+            setGeneratingAlt(null);
         }
     };
 
@@ -410,12 +424,15 @@ const EditArticle = () => {
                 <div className="pt-4 border-t border-gray-200 dark:border-slate-800">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-bold flex items-center text-gray-800 dark:text-gray-100">Article Images</h3>
-                        <div className="flex items-center gap-3">
-                            {imagePrompt && <span className="text-xs text-gray-500 truncate max-w-[200px]">Prompt saved</span>}
-                            <button type="button" onClick={handleGenerateImagePrompt} disabled={processing} className="text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded flex items-center"><ImagePlus size={12} className="mr-1"/> Generate Prompt</button>
-                        </div>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">Upload images · AI can generate alt-text for SEO</p>
                     </div>
-                    <ImageUpload images={images} onImagesChange={setImages} maxImages={3} articleId={id} />
+                    <ImageUpload
+                        images={images}
+                        onImagesChange={setImages}
+                        onGenerateAltText={handleGenerateAltText}
+                        maxImages={4}
+                        generatingAlt={generatingAlt}
+                    />
                 </div>
 
                 {/* SEO Panel */}

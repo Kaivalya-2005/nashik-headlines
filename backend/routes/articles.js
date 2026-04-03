@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
+const path = require("path");
+const multer = require("multer");
 const { buildSeoPayload, calculateSeoScore } = require("../services/seo");
 const { adminAuth } = require("../middleware/auth");
 const { improve } = require("../services/aiPipeline/improveAgent");
@@ -8,6 +10,29 @@ const { categorize } = require("../services/aiPipeline/categoryAgent");
 const { generateSeo } = require("../services/aiPipeline/seoAgent");
 const { checkQuality } = require("../services/aiPipeline/qualityAgent");
 const { cacheMiddleware, clearCache } = require("../middleware/cache");
+
+// Multer config: save images to /uploads, unique filenames
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, "../uploads"));
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `article-${req.params.id || Date.now()}-${Date.now()}${ext}`);
+  },
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit
+  fileFilter: (req, file, cb) => {
+    const allowed = [".jpg", ".jpeg", ".png", ".webp"];
+    if (allowed.includes(path.extname(file.originalname).toLowerCase())) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only JPG, PNG, WEBP files are allowed"));
+    }
+  },
+});
 
 function withSeoMetrics(article) {
   const analysis = calculateSeoScore(article);
@@ -605,6 +630,32 @@ router.put("/articles/:id", async (req, res) => {
     console.error("Quality check failed in PUT /articles/:id:", err);
     return res.status(500).json({ error: "Quality check failed" });
   }
+});
+
+// 🔹 UPLOAD IMAGES FOR ARTICLE
+router.post("/articles/:id/images", upload.array("images", 5), (req, res) => {
+  const articleId = req.params.id;
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ error: "No image files uploaded" });
+  }
+
+  const BASE_URL = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+  const uploadedImages = req.files.map((file, idx) => ({
+    id: `${articleId}-${Date.now()}-${idx}`,
+    url: `${BASE_URL}/uploads/${file.filename}`,
+    caption: "",
+    altText: "",
+    isFeatured: idx === 0,
+  }));
+
+  // Update article image_url with the first (featured) image
+  const featuredUrl = uploadedImages.find(i => i.isFeatured)?.url || "";
+  db.query("UPDATE articles SET image_url = ? WHERE id = ?", [featuredUrl, articleId], (err) => {
+    if (err) console.error("Could not update image_url:", err);
+  });
+
+  clearCache().catch(console.error);
+  res.json(uploadedImages);
 });
 
 // 🔹 DELETE ARTICLE

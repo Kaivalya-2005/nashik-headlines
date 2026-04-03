@@ -19,8 +19,8 @@ api.interceptors.response.use(
         if (error.response?.status === 401) {
             localStorage.removeItem('token');
             // Avoid infinite redirect if already on login page
-            if (window.location.pathname !== '/login') {
-                window.location.href = '/login';
+            if (!window.location.pathname.startsWith('/admin/login')) {
+                window.location.href = '/admin/login';
             }
         }
         return Promise.reject(error);
