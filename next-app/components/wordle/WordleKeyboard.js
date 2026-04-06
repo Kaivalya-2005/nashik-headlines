@@ -28,6 +28,7 @@ function Key({ label, state, onClick, isMarathi }) {
 
   return (
     <button
+      type="button"
       onMouseDown={(e) => { e.preventDefault(); onClick(label); }}
       className={`
         border rounded font-semibold select-none cursor-pointer

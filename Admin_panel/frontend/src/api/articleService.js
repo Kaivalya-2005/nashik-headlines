@@ -55,7 +55,8 @@ const uploadImages = async (id, files) => {
     const response = await api.post(`/articles/${id}/images`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     });
-    return response.data;
+        // Handle both old format (array) and new format (object with images property)
+        return response.data.images || response.data;
 };
 
 const articleService = {

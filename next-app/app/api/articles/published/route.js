@@ -37,7 +37,7 @@ export async function GET(request) {
     }
 
     if (query) {
-      sql += ` AND (a.title LIKE ? OR a.summary LIKE ? OR a.content LIKE ?)`;
+      sql += ` AND (a.title ILIKE ? OR a.summary ILIKE ? OR a.content ILIKE ?)`;
       const like = `%${query}%`;
       params.push(like, like, like);
     }

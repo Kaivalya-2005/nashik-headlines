@@ -174,12 +174,14 @@ function HowToPlayModal({ lang, onClose }) {
 }
 
 /* ─── Result / Share Modal ─────────────────────────────────────────────────── */
-function ResultModal({ won, evaluations, lang, date, onClose }) {
+function ResultModal({ won, evaluations, lang, date, answer, onClose }) {
   const [copied, setCopied] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const isM = lang === "mr";
 
-  const score = won ? `${evaluations.length}/${MAX_GUESSES}` : `X/${MAX_GUESSES}`;
+  const attemptsUsed = evaluations.length;
+  const attemptsScore = won ? `${attemptsUsed}/${MAX_GUESSES}` : `X/${MAX_GUESSES}`;
+  const points = won ? (MAX_GUESSES - attemptsUsed + 1) * 10 : 0;
   const winMessages = ["Genius! 🧠", "Brilliant! 🎉", "Impressive! 🌟", "Splendid! 👏", "Great! 🏆", "Phew! 😅"];
   const winMsg = won ? (isM ? "शाब्बास! 🎉" : winMessages[Math.min(evaluations.length - 1, 5)]) : (isM ? "पुढच्या वेळी! 💪" : "Better luck tomorrow! 💪");
   
@@ -219,7 +221,10 @@ function ResultModal({ won, evaluations, lang, date, onClose }) {
           <p className="text-5xl mb-3">{won ? "🏆" : "💪"}</p>
           <p className="text-3xl font-headline font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-emerald-500 mb-1">{winMsg}</p>
           <p className="text-sm text-muted-foreground">
-            {isM ? `तुम्ही ${score} मध्ये ओळखले` : `You guessed it in ${score}`}
+            {won
+              ? (isM ? `तुम्ही ${attemptsScore} मध्ये ओळखले` : `You guessed it in ${attemptsScore}`)
+              : (isM ? `तुम्ही ${MAX_GUESSES} प्रयत्न वापरले` : `You used all ${MAX_GUESSES} tries`)
+            }
           </p>
         </div>
 
@@ -230,8 +235,22 @@ function ResultModal({ won, evaluations, lang, date, onClose }) {
             <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-2">
               {isM ? "आज का स्कोर" : "Today's Score"}
             </p>
-            <p className="text-3xl font-mono font-bold text-primary">{score}</p>
+            <p className="text-3xl font-mono font-bold text-primary">{points}</p>
+            {won && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {isM ? `${attemptsUsed} प्रयत्न • जास्त गुण` : `${attemptsUsed} attempts • higher points for fewer tries`}
+              </p>
+            )}
           </div>
+
+          {!won && answer && (
+            <div className="bg-card rounded-2xl p-4 text-center border border-border">
+              <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-2">
+                {isM ? "योग्य शब्द" : "Correct Word"}
+              </p>
+              <p className="text-3xl font-mono font-bold text-foreground tracking-[0.22em]">{answer}</p>
+            </div>
+          )}
 
           {/* Share Button with Dropdown */}
           <div className="relative z-[210]">
@@ -417,8 +436,26 @@ export default function WordleGame() {
   }, [gameStatus, answer, currentInput, lang, submitGuess]);
 
   useEffect(() => {
-    if (lang !== "en") return;
-    const fn = (e) => { if (!e.ctrlKey && !e.metaKey && !e.altKey) handleKey(e.key); };
+    const fn = (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      if (e.key === "Backspace") {
+        e.preventDefault();
+        handleKey(e.key);
+        return;
+      }
+
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleKey(e.key);
+        return;
+      }
+
+      if (lang === "en") {
+        handleKey(e.key);
+      }
+    };
+
     window.addEventListener("keydown", fn);
     return () => window.removeEventListener("keydown", fn);
   }, [lang, handleKey]);
@@ -532,6 +569,7 @@ export default function WordleGame() {
           evaluations={evaluations}
           lang={lang}
           date={date}
+          answer={answer}
           onClose={() => setShowResult(false)}
         />
       )}

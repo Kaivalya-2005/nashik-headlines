@@ -16,7 +16,8 @@ export async function POST(_request, { params }) {
       `
         INSERT INTO analytics (article_id, view_date, views)
         VALUES (?, ?, 1)
-        ON DUPLICATE KEY UPDATE views = views + 1
+        ON CONFLICT (article_id, view_date)
+        DO UPDATE SET views = analytics.views + 1
       `,
       [articleId, today]
     );

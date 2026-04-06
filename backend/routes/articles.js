@@ -10,6 +10,7 @@ const { categorize } = require("../services/aiPipeline/categoryAgent");
 const { generateSeo } = require("../services/aiPipeline/seoAgent");
 const { checkQuality } = require("../services/aiPipeline/qualityAgent");
 const { cacheMiddleware, clearCache } = require("../middleware/cache");
+const { uploadImages } = require("../services/cloudinaryService");
 
 // Multer config: save images to /uploads, unique filenames
 const storage = multer.diskStorage({
@@ -555,29 +556,37 @@ router.put("/articles/:id", async (req, res) => {
 });
 
 // 🔹 UPLOAD IMAGES FOR ARTICLE
-router.post("/articles/:id/images", upload.array("images", 5), (req, res) => {
+router.post("/articles/:id/images", upload.array("images", 5), async (req, res) => {
   const articleId = req.params.id;
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: "No image files uploaded" });
   }
 
-  const BASE_URL = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
-  const uploadedImages = req.files.map((file, idx) => ({
-    id: `${articleId}-${Date.now()}-${idx}`,
-    url: `${BASE_URL}/uploads/${file.filename}`,
-    caption: "",
-    altText: "",
-    isFeatured: idx === 0,
-  }));
+  try {
+    // Upload images to Cloudinary
+    const cloudinaryResults = await uploadImages(req.files);
 
-  // Update article image_url with the first (featured) image
-  const featuredUrl = uploadedImages.find(i => i.isFeatured)?.url || "";
-  db.query("UPDATE articles SET image_url = ? WHERE id = ?", [featuredUrl, articleId], (err) => {
-    if (err) console.error("Could not update image_url:", err);
-  });
+    const uploadedImages = cloudinaryResults.map((result, idx) => ({
+      id: `${articleId}-${Date.now()}-${idx}`,
+      url: result.secure_url,
+      publicId: result.public_id,
+      caption: "",
+      altText: "",
+      isFeatured: idx === 0,
+    }));
 
-  clearCache().catch(console.error);
-  res.json(uploadedImages);
+    // Update article image_url with the first (featured) image
+    const featuredUrl = uploadedImages.find(i => i.isFeatured)?.url || "";
+    db.query("UPDATE articles SET image_url = ? WHERE id = ?", [featuredUrl, articleId], (err) => {
+      if (err) console.error("Could not update image_url:", err);
+    });
+
+    clearCache().catch(console.error);
+    res.json({ success: true, images: uploadedImages });
+  } catch (error) {
+    console.error("Image upload to Cloudinary failed:", error);
+    return res.status(500).json({ error: "Image upload failed", details: error.message });
+  }
 });
 
 // 🔹 DELETE ARTICLE
