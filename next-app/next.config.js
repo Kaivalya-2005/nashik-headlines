@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const adminPanelUrl = (process.env.ADMIN_PANEL_URL || 'http://localhost:5173').replace(/\/$/, '');
+const backendApiUrl = (process.env.BACKEND_API_URL || 'http://localhost:5000').replace(/\/$/, '');
 
 const nextConfig = {
   images: {
@@ -13,6 +14,12 @@ const nextConfig = {
   },
   async rewrites() {
     return [
+      // Proxy all /api/* calls to the backend — solves CORS for the admin panel
+      {
+        source: '/api/:path*',
+        destination: `${backendApiUrl}/api/:path*`,
+      },
+      // Proxy admin panel static assets and pages
       {
         source: '/admin',
         destination: `${adminPanelUrl}/admin`,
