@@ -3,14 +3,24 @@ import { dbQuery } from '@/lib/server/db';
 
 export const revalidate = 300;
 
+function resolveBackendBase() {
+  const candidates = [
+    process.env.BACKEND_API_BASE_URL,
+    process.env.NEXT_PUBLIC_BACKEND_URL,
+    process.env.PUBLIC_API_URL,
+  ];
+
+  const value = candidates.find((item) => String(item || '').trim().length > 0) || '';
+  return String(value).replace(/\/$/, '');
+}
+
 export async function GET(request) {
-  const backendBase = String(process.env.BACKEND_API_BASE_URL || '').replace(/\/$/, '');
+  const backendBase = resolveBackendBase();
+  const { searchParams } = new URL(request.url);
+  const category = searchParams.get('category');
+  const query = searchParams.get('q');
 
   try {
-    const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
-    const query = searchParams.get('q');
-
     let sql = `
       SELECT
         a.id,
@@ -77,6 +87,6 @@ export async function GET(request) {
       }
     }
 
-    return NextResponse.json({ error: 'Failed to fetch published articles' }, { status: 500 });
+    return NextResponse.json([]);
   }
 }

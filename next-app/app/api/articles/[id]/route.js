@@ -3,8 +3,19 @@ import { dbQuery } from '@/lib/server/db';
 
 export const revalidate = 60;
 
+function resolveBackendBase() {
+  const candidates = [
+    process.env.BACKEND_API_BASE_URL,
+    process.env.NEXT_PUBLIC_BACKEND_URL,
+    process.env.PUBLIC_API_URL,
+  ];
+
+  const value = candidates.find((item) => String(item || '').trim().length > 0) || '';
+  return String(value).replace(/\/$/, '');
+}
+
 export async function GET(_request, { params }) {
-  const backendBase = String(process.env.BACKEND_API_BASE_URL || '').replace(/\/$/, '');
+  const backendBase = resolveBackendBase();
 
   try {
     const idOrSlug = params?.id;
