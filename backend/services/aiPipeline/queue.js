@@ -3,38 +3,12 @@ const IORedis = require("ioredis");
 const { runPipeline, log } = require("./pipelineService");
 const db = require("../../db");
 
+// ── Redis / BullMQ setup (crash-safe) ────────────────────────────────────────
 let connection = null;
 let articleQueue = null;
 let articleWorker = null;
 
-try {
-  const redisUrl = process.env.REDIS_URL || process.env.REDIS_PRIVATE_URL || "redis://127.0.0.1:6379";
-  connection = new IORedis(redisUrl, { 
-    maxRetriesPerRequest: null,
-    lazyConnect: true,
-    enableOfflineQueue: false,
-    connectTimeout: 5000,
-    retryStrategy: (times) => {
-      if (times > 3) {
-        console.warn("⚠️  Redis unavailable — BullMQ queue disabled. Article pipeline will not run.");
-        return null; // stop retrying
-      }
-      return Math.min(times * 500, 2000);
-    }
-  });
-
-  connection.on("error", (err) => {
-    if (err.code === "ECONNREFUSED" || err.code === "ENOTFOUND") {
-      // Silently ignore — queue is disabled
-    } else {
-      console.error("Redis error:", err.message);
-    }
-  });
-
-  articleQueue = new Queue("article-processing", { connection });
-
-
-// ── DB Promise Helpers ───────────────────────────────────────────────────────
+// ── DB Promise Helpers ────────────────────────────────────────────────────────
 function dbQuery(sql, params = []) {
   return new Promise((resolve, reject) => {
     db.query(sql, params, (err, results) => {
@@ -97,7 +71,7 @@ async function ensureUniqueSlug(slug) {
     if (rows.length === 0) return candidate;
     attempt++;
     candidate = `${slug}-${Date.now().toString(36)}`;
-    if (attempt > 5) break; 
+    if (attempt > 5) break;
   }
   return candidate;
 }
@@ -129,26 +103,50 @@ async function saveArticle(processed) {
   return result.insertId;
 }
 
-  // ── Worker ──────────────────────────────────────────────────────────────
+// ── Initialize BullMQ queue + worker (safe — won't crash if Redis is down) ────
+try {
+  const redisUrl = process.env.REDIS_URL || process.env.REDIS_PRIVATE_URL || "redis://127.0.0.1:6379";
+  connection = new IORedis(redisUrl, {
+    maxRetriesPerRequest: null,
+    lazyConnect: true,
+    enableOfflineQueue: false,
+    connectTimeout: 5000,
+    retryStrategy: (times) => {
+      if (times > 3) {
+        console.warn("⚠️  Redis unavailable — BullMQ queue disabled. Article pipeline will not run.");
+        return null; // stop retrying
+      }
+      return Math.min(times * 500, 2000);
+    }
+  });
+
+  connection.on("error", (err) => {
+    if (err.code === "ECONNREFUSED" || err.code === "ENOTFOUND") {
+      // Silently ignore — queue disabled
+    } else {
+      console.error("Redis error:", err.message);
+    }
+  });
+
+  articleQueue = new Queue("article-processing", { connection });
+
   articleWorker = new Worker("article-processing", async job => {
     const rawArticle = job.data.rawArticle;
     const rawId = rawArticle.id;
-    
+
     log("worker", `Processing job ${job.id} for raw_article #${rawId}`);
-    
-    // Set to processing
     await dbQuery("UPDATE raw_articles SET status='processing' WHERE id=?", [rawId]);
-    
+
     try {
       const processed = await runPipeline(rawArticle);
-      
+
       const dupId = await findDuplicate(processed.title);
       if (dupId) {
         log("worker", `Duplicate detected for #${rawId} -> dup of articles.id=${dupId}`, "warning");
         await dbQuery("UPDATE raw_articles SET status='duplicate' WHERE id=?", [rawId]);
         return { success: true, duplicate: true, duplicate_of: dupId };
       }
-      
+
       const articleId = await saveArticle(processed);
       await dbQuery("UPDATE raw_articles SET status='processed' WHERE id=?", [rawId]);
       log("worker", `Job ${job.id} completed. Saved as articles.id=${articleId}`);
@@ -161,7 +159,7 @@ async function saveArticle(processed) {
       }
       throw err;
     }
-  }, { 
+  }, {
     connection,
     concurrency: 1,
     limiter: {
