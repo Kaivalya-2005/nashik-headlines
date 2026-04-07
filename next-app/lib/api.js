@@ -14,14 +14,26 @@ function resolveApiBase() {
   return process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 }
 
-const API_BASE = resolveApiBase();
 const MEDIA_BASE =
   process.env.NEXT_PUBLIC_MEDIA_BASE_URL ||
   process.env.NEXT_PUBLIC_BACKEND_URL ||
   'http://localhost:5000';
 const FALLBACK_IMAGE = '/placeholder-news.svg';
-const PUBLISHED_URL = `${API_BASE}/api/articles/published`;
-const ARTICLES_URL = `${API_BASE}/api/articles`;
+
+function resolveApiBases() {
+  const candidates = [
+    resolveApiBase(),
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '',
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
+  ];
+
+  return [...new Set(candidates.map((value) => String(value || '').trim().replace(/\/$/, '')).filter(Boolean))];
+}
+
+function buildApiUrl(base, path) {
+  return `${base}${path}`;
+}
 
 function isRenderableImageUrl(url = '') {
   const value = String(url || '').trim();
@@ -126,31 +138,49 @@ function mapArticle(raw) {
 }
 
 export async function fetchArticles({ category, query } = {}, options = {}) {
-  const url = new URL(PUBLISHED_URL);
-  if (category) url.searchParams.set('category', category);
-  if (query) url.searchParams.set('q', query);
+  const bases = resolveApiBases();
+  const errors = [];
 
-  try {
-    const data = await fetchJSON(url.toString(), {
-      next: { revalidate: options.revalidate ?? 300 },
-    });
-    return Array.isArray(data) ? data.map(mapArticle) : [];
-  } catch (err) {
-    console.error('Failed to fetch articles:', err.message);
-    return [];
+  for (const base of bases) {
+    const url = new URL(buildApiUrl(base, '/api/articles/published'));
+    if (category) url.searchParams.set('category', category);
+    if (query) url.searchParams.set('q', query);
+
+    try {
+      const data = await fetchJSON(url.toString(), {
+        next: { revalidate: options.revalidate ?? 300 },
+      });
+
+      const mapped = Array.isArray(data) ? data.map(mapArticle) : [];
+      if (mapped.length > 0 || base === bases[bases.length - 1]) {
+        return mapped;
+      }
+    } catch (err) {
+      errors.push(`${base}: ${err.message}`);
+    }
   }
+
+  if (errors.length) {
+    console.error('Failed to fetch articles:', errors.join(' | '));
+  }
+
+  return [];
 }
 
 export async function fetchArticleBySlug(slug, { cache } = {}) {
-  // Try direct endpoint
-  try {
-    const res = await fetch(`${ARTICLES_URL}/${slug}`, { cache: cache || 'no-store' });
-    if (res.ok) {
-      const data = await res.json();
-      return mapArticle(data);
+  const bases = resolveApiBases();
+
+  // Try direct endpoint across known hosts
+  for (const base of bases) {
+    try {
+      const res = await fetch(`${buildApiUrl(base, '/api/articles')}/${slug}`, { cache: cache || 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        return mapArticle(data);
+      }
+    } catch (err) {
+      console.warn('Direct article fetch failed, trying next base:', err.message);
     }
-  } catch (err) {
-    console.warn('Direct article fetch failed, falling back:', err.message);
   }
 
   // Fallback: fetch list and find
