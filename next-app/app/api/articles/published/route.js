@@ -4,6 +4,8 @@ import { dbQuery } from '@/lib/server/db';
 export const revalidate = 300;
 
 export async function GET(request) {
+  const backendBase = String(process.env.BACKEND_API_BASE_URL || '').replace(/\/$/, '');
+
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
@@ -53,6 +55,28 @@ export async function GET(request) {
     return NextResponse.json(rows || []);
   } catch (error) {
     console.error('GET /api/articles/published failed:', error);
+
+    if (backendBase) {
+      try {
+        const backendUrl = new URL(`${backendBase}/api/articles`);
+        if (category) backendUrl.searchParams.set('category', category);
+        const backendRes = await fetch(backendUrl.toString(), { cache: 'no-store' });
+        if (backendRes.ok) {
+          const data = await backendRes.json();
+          const published = (Array.isArray(data) ? data : []).filter((item) => item?.status === 'published');
+          const filtered = query
+            ? published.filter((item) => {
+                const q = String(query).toLowerCase();
+                return [item?.title, item?.summary, item?.content].some((v) => String(v || '').toLowerCase().includes(q));
+              })
+            : published;
+          return NextResponse.json(filtered);
+        }
+      } catch (fallbackError) {
+        console.error('Backend fallback for /api/articles/published failed:', fallbackError);
+      }
+    }
+
     return NextResponse.json({ error: 'Failed to fetch published articles' }, { status: 500 });
   }
 }

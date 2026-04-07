@@ -4,6 +4,8 @@ import { dbQuery } from '@/lib/server/db';
 export const revalidate = 60;
 
 export async function GET(_request, { params }) {
+  const backendBase = String(process.env.BACKEND_API_BASE_URL || '').replace(/\/$/, '');
+
   try {
     const idOrSlug = params?.id;
     if (!idOrSlug) {
@@ -79,6 +81,22 @@ export async function GET(_request, { params }) {
     return NextResponse.json(article);
   } catch (error) {
     console.error('GET /api/articles/[id] failed:', error);
+
+    if (backendBase) {
+      try {
+        const idOrSlug = params?.id;
+        const backendRes = await fetch(`${backendBase}/api/articles/${idOrSlug}`, { cache: 'no-store' });
+        if (backendRes.ok) {
+          const data = await backendRes.json();
+          if (data?.status === 'published') {
+            return NextResponse.json(data);
+          }
+        }
+      } catch (fallbackError) {
+        console.error('Backend fallback for /api/articles/[id] failed:', fallbackError);
+      }
+    }
+
     return NextResponse.json({ error: 'Failed to fetch article' }, { status: 500 });
   }
 }

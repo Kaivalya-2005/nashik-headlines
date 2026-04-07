@@ -1,10 +1,20 @@
 import { estimateReadTime } from '@/lib/format';
 
-const API_BASE =
-  process.env.INTERNAL_API_BASE_URL ||
-  (process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000');
+function resolveApiBase() {
+  const internal = String(process.env.INTERNAL_API_BASE_URL || '').trim();
+  const isLocalInternal = /localhost|127\.0\.0\.1/.test(internal);
+  if (internal && !(process.env.VERCEL_URL && isLocalInternal)) {
+    return internal;
+  }
+
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+
+  return process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+}
+
+const API_BASE = resolveApiBase();
 const MEDIA_BASE =
   process.env.NEXT_PUBLIC_MEDIA_BASE_URL ||
   process.env.NEXT_PUBLIC_BACKEND_URL ||
