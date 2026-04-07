@@ -7,6 +7,49 @@ import * as newsroomService from '../services/newsroomService';
 import toast from 'react-hot-toast';
 import ImageUpload from '../components/ImageUpload';
 
+const normalizeImageItem = (img, idx = 0) => {
+    if (!img) return null;
+
+    if (typeof img === 'string') {
+        return {
+            id: `image-${idx}`,
+            url: img,
+            caption: '',
+            altText: '',
+            isFeatured: idx === 0,
+        };
+    }
+
+    const url = img.url || img.secure_url || img.image_url || '';
+    if (!url) return null;
+
+    return {
+        id: img.id || `image-${idx}`,
+        url,
+        publicId: img.publicId || img.public_id || '',
+        caption: img.caption || '',
+        altText: img.altText || img.alt_text || '',
+        isFeatured: Boolean(img.isFeatured ?? img.is_featured ?? idx === 0),
+    };
+};
+
+const parseImages = (images) => {
+    if (!images) return [];
+    let list = images;
+    if (typeof images === 'string') {
+        try {
+            list = JSON.parse(images);
+        } catch {
+            return [];
+        }
+    }
+    if (!Array.isArray(list)) return [];
+    return list.map((img, idx) => normalizeImageItem(img, idx)).filter(Boolean).map((img, idx) => ({
+        ...img,
+        isFeatured: idx === 0 ? true : img.isFeatured,
+    }));
+};
+
 const EditArticle = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -75,11 +118,14 @@ const EditArticle = () => {
                 slug: data.slug || '',
                 imageAlt: data.image_alt || ''
             });
-            const normalizedImages = (data.images || []).map((img, idx) => ({
-                ...img,
-                id: img.id || `${idx}-${img.url || 'image'}`
-            }));
-            setImages(normalizedImages);
+            const parsedImages = parseImages(data.images);
+            if (parsedImages.length > 0) {
+                setImages(parsedImages);
+            } else if (data.image_url) {
+                setImages([{ id: `image-${data.id || id}`, url: data.image_url, caption: '', altText: data.image_alt || '', isFeatured: true }]);
+            } else {
+                setImages([]);
+            }
         } catch (error) {
             toast.error('Failed to load article');
             navigate('/articles');
@@ -111,22 +157,32 @@ const EditArticle = () => {
                     const formData = new FormData();
                     newFiles.forEach(img => formData.append('images', img.file));
                     const uploaded = await articleService.uploadImages(id, formData);
-                    // Merge uploaded URLs with local alt-text/caption the admin already filled in
-                    currentImages = (uploaded || []).map((upImg, idx) => {
-                        const localImg = newFiles[idx];
+                    const uploadedQueue = Array.isArray(uploaded) ? uploaded : [];
+                    let uploadIndex = 0;
+
+                    // Preserve existing images and replace only the newly uploaded placeholders
+                    currentImages = images.map((img) => {
+                        if (!img.file) return { ...img };
+
+                        const upImg = uploadedQueue[uploadIndex++] || {};
                         return {
                             ...upImg,
-                            id: upImg.id || `${idx}-${upImg.url || 'image'}`,
-                            altText: localImg?.altText || upImg.altText || '',
-                            caption: localImg?.caption || upImg.caption || '',
-                            isFeatured: localImg?.isFeatured ?? upImg.isFeatured,
+                            id: upImg.id || img.id || `${uploadIndex}-${upImg.url || 'image'}`,
+                            url: upImg.url || img.url,
+                            altText: img.altText || upImg.altText || '',
+                            caption: img.caption || upImg.caption || '',
+                            isFeatured: img.isFeatured ?? upImg.isFeatured,
                         };
                     });
+
                     setImages(currentImages);
                 } catch (imgErr) {
+                    currentImages = images.filter(img => !img.file);
                     toast.error('Image upload failed — saving article without new images.');
                 }
             }
+
+            const featuredImage = currentImages.find((img) => img.isFeatured) || currentImages[0] || null;
 
             // Send flat SEO fields the backend reads, plus nested seo for compatibility
             const payload = {
@@ -139,7 +195,7 @@ const EditArticle = () => {
                 seo_title: seo.metaTitle || '',
                 meta_description: seo.metaDescription || '',
                 slug: seo.slug || '',
-                image_alt: seo.imageAlt || '',
+                image_alt: featuredImage?.altText || seo.imageAlt || '',
                 keywords: Array.isArray(seo.keywords) ? seo.keywords.join(', ') : (seo.keywords || ''),
                 seo,
                 images: currentImages.map(img => ({
@@ -481,11 +537,6 @@ const EditArticle = () => {
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Keywords (comma separated)</label>
                             <input type="text" value={typeof seo.keywords === 'string' ? seo.keywords : (seo.keywords || []).join(', ')} onChange={(e) => setSEO({...seo, keywords: e.target.value})} className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-md text-gray-800 dark:text-gray-100 bg-white dark:bg-slate-950 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors" />
-                        </div>
-                        
-                        <div>
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Image Alt Text</label>
-                            <input type="text" value={seo.imageAlt || ''} onChange={(e) => setSEO({...seo, imageAlt: e.target.value})} className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-md text-gray-800 dark:text-gray-100 bg-white dark:bg-slate-950 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors" />
                         </div>
                     </div>
                 </div>

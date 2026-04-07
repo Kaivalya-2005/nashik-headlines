@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { CATEGORIES } from '@/lib/categories';
 import { timeAgo } from '@/lib/format';
 
+const FALLBACK_IMAGE = '/placeholder-news.svg';
+
 export default function ArticleCard({ article, variant = 'default' }) {
   const cat = CATEGORIES.find((c) => c.slug === article.category);
   const href = `/news/${article.slug}`;
@@ -14,7 +16,7 @@ export default function ArticleCard({ article, variant = 'default' }) {
           <div className="relative mb-3">
             <div className="aspect-[16/9] overflow-hidden relative">
               <Image
-                src={article.image || 'https://images.unsplash.com/photo-1504711434969-e33886168d6c?w=800&h=500&fit=crop'}
+                src={article.image || FALLBACK_IMAGE}
                 alt={article.title}
                 fill
                 className="object-cover"
@@ -69,7 +71,7 @@ export default function ArticleCard({ article, variant = 'default' }) {
           </div>
           <div className="col-span-1 aspect-[4/3] overflow-hidden relative min-h-24">
             <Image
-              src={article.image || 'https://images.unsplash.com/photo-1504711434969-e33886168d6c?w=800&h=500&fit=crop'}
+              src={article.image || FALLBACK_IMAGE}
               alt={article.title}
               fill
               className="object-cover"

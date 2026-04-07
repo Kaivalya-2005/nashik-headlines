@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { X, CheckCircle2, Rocket } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, CheckCircle2, Rocket, FilePenLine } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as newsroomService from '../services/newsroomService';
 
 const ArticlePreviewModal = ({ article, onClose, onActionSuccess }) => {
   const [actionLoading, setActionLoading] = useState(false);
+  const navigate = useNavigate();
 
   const parsedTags = (() => {
     if (!article?.tags) return [];
@@ -27,6 +29,22 @@ const ArticlePreviewModal = ({ article, onClose, onActionSuccess }) => {
     .split(/\n{2,}/)
     .map((chunk) => chunk.trim())
     .filter(Boolean);
+
+  const parsedImages = (() => {
+    if (!article?.images) return [];
+    if (Array.isArray(article.images)) return article.images.filter((img) => img?.url);
+    if (typeof article.images === 'string') {
+      try {
+        const decoded = JSON.parse(article.images);
+        return Array.isArray(decoded) ? decoded.filter((img) => img?.url) : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  })();
+
+  const heroImage = article?.image || article?.image_url || article?.imageUrl || parsedImages.find((img) => img.isFeatured)?.url || parsedImages[0]?.url || '';
 
   const handleApprove = async () => {
     if (article.status === 'draft') {
@@ -106,6 +124,24 @@ const ArticlePreviewModal = ({ article, onClose, onActionSuccess }) => {
             </p>
           </div>
 
+          {/* Hero image */}
+          {heroImage && (
+            <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800">
+              <div className="aspect-[16/9] w-full">
+                <img
+                  src={heroImage}
+                  alt={article.title || 'Article image'}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              {(article.image_alt || parsedImages.find((img) => img.isFeatured)?.altText) && (
+                <p className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 border-t border-slate-200 dark:border-slate-800">
+                  {article.image_alt || parsedImages.find((img) => img.isFeatured)?.altText}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Metadata */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {article.category && (
@@ -182,6 +218,26 @@ const ArticlePreviewModal = ({ article, onClose, onActionSuccess }) => {
             </div>
           </div>
 
+          {parsedImages.length > 1 && (
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">Image Gallery</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {parsedImages.map((img, idx) => (
+                  <figure key={img.id || `${img.url}-${idx}`} className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800">
+                    <div className="aspect-[4/3] w-full">
+                      <img src={img.url} alt={img.altText || `${article.title} ${idx + 1}`} className="w-full h-full object-cover" />
+                    </div>
+                    {(img.caption || img.altText) && (
+                      <figcaption className="px-3 py-2 text-sm text-slate-600 dark:text-slate-400">
+                        {img.caption || img.altText}
+                      </figcaption>
+                    )}
+                  </figure>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* SEO Title (if available) */}
           <div className="space-y-2">
             <p className="text-sm font-medium text-slate-700 dark:text-slate-300">SEO Snapshot</p>
@@ -216,6 +272,17 @@ const ArticlePreviewModal = ({ article, onClose, onActionSuccess }) => {
 
         {/* Actions */}
         <div className="flex items-center gap-3 p-5 md:p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+          <button
+            onClick={() => {
+              onClose?.();
+              navigate(`/articles/edit/${article.id}`);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-md font-medium transition-colors"
+          >
+            <FilePenLine size={18} />
+            Edit
+          </button>
+
           {article.status?.toLowerCase() === 'draft' && (
             <button
               onClick={handleApprove}

@@ -67,7 +67,7 @@ export default function Footer() {
               </Link>
               <p className="text-sm text-muted-foreground pt-2">
                 Got a story tip?<br />
-                <span className="text-foreground/70 font-medium">tips@nashikheadlines.com</span>
+                <span className="text-foreground/70 font-medium">nashikheadlines@gmail.com</span>
               </p>
             </div>
           </div>

@@ -5,8 +5,31 @@ const API_BASE =
   (process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
     : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000');
+const MEDIA_BASE =
+  process.env.NEXT_PUBLIC_MEDIA_BASE_URL ||
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  'http://localhost:5000';
+const FALLBACK_IMAGE = '/placeholder-news.svg';
 const PUBLISHED_URL = `${API_BASE}/api/articles/published`;
 const ARTICLES_URL = `${API_BASE}/api/articles`;
+
+function isRenderableImageUrl(url = '') {
+  const value = String(url || '').trim();
+  if (!value) return false;
+  if (value.startsWith('blob:') || value.startsWith('data:')) return false;
+  if (value.startsWith('http://') || value.startsWith('https://')) return true;
+  if (value.startsWith('/')) return true;
+  return false;
+}
+
+function normalizeImageUrl(url = '') {
+  const value = String(url || '').trim();
+  if (!value) return '';
+  if (value.startsWith('/uploads/')) return `${MEDIA_BASE}${value}`;
+  if (value.startsWith('uploads/')) return `${MEDIA_BASE}/${value}`;
+  if (value.startsWith('//')) return `https:${value}`;
+  return value;
+}
 
 async function fetchJSON(url, options = {}) {
   const res = await fetch(url, {
@@ -27,7 +50,48 @@ async function fetchJSON(url, options = {}) {
 
 function mapArticle(raw) {
   const content = raw.content || '';
-  const summary = raw.seo_description || raw.description || content.slice(0, 180);
+  const summary = raw.meta_description || raw.seo_description || raw.description || content.slice(0, 180);
+  let images = [];
+
+  if (Array.isArray(raw.images)) {
+    images = raw.images;
+  } else if (typeof raw.images === 'string') {
+    try {
+      const parsed = JSON.parse(raw.images);
+      images = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      images = [];
+    }
+  }
+
+  const normalizedImages = images
+    .map((img) => ({ ...img, url: normalizeImageUrl(img?.url) }))
+    .filter((img) => isRenderableImageUrl(img?.url))
+    .map((img, idx) => ({
+      id: img.id || `${raw.id}-${idx}`,
+      url: img.url,
+      caption: img.caption || '',
+      altText: img.altText || img.alt_text || '',
+      isFeatured: Boolean(img.isFeatured ?? img.is_featured ?? idx === 0),
+    }));
+
+  const heroImageCandidate = normalizeImageUrl(raw.image_url || raw.imageUrl);
+  const heroImage = isRenderableImageUrl(heroImageCandidate)
+    ? heroImageCandidate
+    : normalizedImages.find((img) => img?.isFeatured)?.url || normalizedImages[0]?.url || FALLBACK_IMAGE;
+  const parsedTags = (() => {
+    if (!raw.tags) return [];
+    if (Array.isArray(raw.tags)) return raw.tags.map((tag) => String(tag).trim()).filter(Boolean);
+    if (typeof raw.tags === 'string') {
+      try {
+        const decoded = JSON.parse(raw.tags);
+        if (Array.isArray(decoded)) return decoded.map((tag) => String(tag).trim()).filter(Boolean);
+      } catch {
+        return raw.tags.split(',').map((tag) => tag.trim()).filter(Boolean);
+      }
+    }
+    return [];
+  })();
 
   return {
     id: raw.id,
@@ -37,12 +101,15 @@ function mapArticle(raw) {
     description: summary,
     content,
     category: raw.category_name || raw.category,
-    image: raw.image_url || raw.imageUrl,
-    publishedAt: raw.published_at || raw.publishedAt,
+    image: heroImage,
+    imageAlt: raw.image_alt || normalizedImages.find((img) => img?.isFeatured)?.altText || '',
+    images: normalizedImages,
+    publishedAt: raw.published_at || raw.publishedAt || raw.created_at || raw.updated_at,
     readTime: raw.read_time || estimateReadTime(content),
     seoTitle: raw.seo_title || raw.title,
     seoDescription: summary,
     keywords: raw.keywords || '',
+    tags: parsedTags,
     views: raw.views || 0,
     isBreaking: raw.is_breaking || raw.isBreaking || false,
   };

@@ -2,6 +2,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { timeAgo } from '@/lib/format';
 
+const FALLBACK_IMAGE = '/placeholder-news.svg';
+
 export default function TrendingSection({ articles = [] }) {
   if (!articles.length) return null;
 
@@ -25,7 +27,7 @@ export default function TrendingSection({ articles = [] }) {
             </span>
             <div className="relative w-12 h-12 overflow-hidden flex-shrink-0">
               <Image
-                src={article.image || 'https://images.unsplash.com/photo-1504711434969-e33886168d6c?w=800&h=500&fit=crop'}
+                src={article.image || FALLBACK_IMAGE}
                 alt={article.title}
                 fill
                 className="object-cover"

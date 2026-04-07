@@ -12,6 +12,85 @@ const { checkQuality } = require("../services/aiPipeline/qualityAgent");
 const { cacheMiddleware, clearCache } = require("../middleware/cache");
 const { uploadImages } = require("../services/cloudinaryService");
 
+const sanitizeMediaUrl = (value = "") => {
+  const url = String(value || "").trim();
+  if (!url) return "";
+  if (url.startsWith("blob:") || url.startsWith("data:")) return "";
+  return url;
+};
+
+const normalizeImageRecord = (image, idx = 0, articleId = null) => {
+  if (!image) return null;
+
+  if (typeof image === "string") {
+    const normalizedUrl = sanitizeMediaUrl(image);
+    if (!normalizedUrl) return null;
+    return {
+      id: `${articleId || "article"}-${idx}`,
+      url: normalizedUrl,
+      publicId: "",
+      caption: "",
+      altText: "",
+      isFeatured: idx === 0,
+    };
+  }
+
+  const url = sanitizeMediaUrl(image.url || image.secure_url || image.image_url || "");
+  if (!url) return null;
+
+  return {
+    id: image.id || `${articleId || "article"}-${idx}`,
+    url,
+    publicId: image.publicId || image.public_id || "",
+    caption: image.caption || "",
+    altText: image.altText || image.alt_text || "",
+    isFeatured: Boolean(image.isFeatured ?? image.is_featured ?? idx === 0),
+  };
+};
+
+const parseArticleImages = (images, articleId = null) => {
+  if (!images) return [];
+
+  let list = images;
+  if (typeof images === "string") {
+    try {
+      list = JSON.parse(images);
+    } catch {
+      return [];
+    }
+  }
+
+  if (!Array.isArray(list)) return [];
+
+  return list
+    .map((image, idx) => normalizeImageRecord(image, idx, articleId))
+    .filter(Boolean)
+    .map((image, idx) => ({
+      ...image,
+      isFeatured: idx === 0 ? true : image.isFeatured,
+    }));
+};
+
+const serializeArticleImages = (images, articleId = null) => JSON.stringify(parseArticleImages(images, articleId));
+
+const normalizeArticle = (article) => ({
+  ...article,
+  images: parseArticleImages(article?.images, article?.id),
+});
+
+const ensureArticleImagesColumn = async () => {
+  try {
+    await db.query("ALTER TABLE articles ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb");
+    await db.query("UPDATE articles SET images = '[]'::jsonb WHERE images IS NULL");
+  } catch (error) {
+    console.error("Failed to ensure articles.images column exists:", error.message);
+  }
+};
+
+ensureArticleImagesColumn().catch((error) => {
+  console.error("Failed to initialize article image storage:", error.message);
+});
+
 // Multer config: save images to /uploads, unique filenames
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -38,10 +117,11 @@ const upload = multer({
 function withSeoMetrics(article) {
   const analysis = calculateSeoScore(article);
   return {
-    ...article,
+    ...normalizeArticle(article),
     category: article.category_name || "Uncategorized",
     source: article.source_name || "system",
-    seo_score: article.seo_score ?? analysis.score,
+    seo_score: analysis.score,
+    seo_score_stored: article.seo_score ?? null,
     seo_analysis: analysis,
   };
 }
@@ -97,6 +177,7 @@ router.post("/articles", async (req, res) => {
     image_url,
     image_alt,
     tags,
+    images,
     source_id,
     source,
   } = req.body;
@@ -119,9 +200,23 @@ router.post("/articles", async (req, res) => {
 
   const catVal = category_id || category;
   const srcVal = source_id || source;
+  const parsedImages = parseArticleImages(images);
+  const imagesValue = JSON.stringify(parsedImages);
+  const featuredImage = parsedImages.find((img) => img.isFeatured) || parsedImages[0] || null;
+  const normalizedImageUrl = sanitizeMediaUrl(image_url) || featuredImage?.url || "";
 
   try {
-    const qualityData = await checkQuality(title, content);
+    let qualityData;
+    try {
+      qualityData = await checkQuality(title, content);
+    } catch (qualityErr) {
+      console.error("Quality check failed in POST /articles, using fallback:", qualityErr.message);
+      qualityData = {
+        readability_score: 70,
+        ai_confidence: 70,
+      };
+    }
+
     const quality_score = Math.round(
       qualityData.ai_confidence * 0.5 +
       qualityData.readability_score * 0.3 +
@@ -136,8 +231,8 @@ router.post("/articles", async (req, res) => {
 
         db.query(
           `INSERT INTO articles
-            (title, content, summary, category_id, status, seo_title, meta_description, slug, keywords, image_url, image_alt, tags, source_id, seo_score, quality_score, readability_score, ai_confidence)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            (title, content, summary, category_id, status, seo_title, meta_description, slug, keywords, image_url, image_alt, tags, images, source_id, seo_score, quality_score, readability_score, ai_confidence)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             title,
             content,
@@ -148,9 +243,10 @@ router.post("/articles", async (req, res) => {
             seoData.meta_description,
             seoData.slug,
             seoData.keywords,
-            image_url || "",
+            normalizedImageUrl,
             seoData.image_alt,
             typeof tags === "string" ? tags : JSON.stringify(tags || []),
+            imagesValue,
             finalSourceId || null,
             seoData.seo_score,
             quality_score,
@@ -160,6 +256,9 @@ router.post("/articles", async (req, res) => {
           (err, result) => {
             if (err) {
               console.error("Error creating article:", err);
+              if (err.code === "23505") {
+                return res.status(409).json({ error: "An article with this slug already exists. Please change the title or slug." });
+              }
               return res.status(500).json({ error: err.message });
             }
             clearCache().catch(console.error);
@@ -206,6 +305,33 @@ router.get("/articles", (req, res) => {
     }
     res.json((results || []).map(withSeoMetrics));
   });
+});
+
+// 🔹 GET SINGLE ARTICLE
+router.get("/articles/:id", (req, res) => {
+  const articleId = req.params.id;
+
+  db.query(
+    `SELECT a.*, c.name as category_name, c.slug as category_slug, s.name as source_name 
+     FROM articles a 
+     LEFT JOIN categories c ON a.category_id = c.id 
+     LEFT JOIN sources s ON a.source_id = s.id 
+     WHERE a.id = ? OR a.slug = ?
+     LIMIT 1`,
+    [articleId, articleId],
+    (err, results) => {
+      if (err) {
+        console.error("Error fetching article:", err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      if (!results || results.length === 0) {
+        return res.status(404).json({ error: "Article not found" });
+      }
+
+      res.json(withSeoMetrics(results[0]));
+    }
+  );
 });
 
 // 🔹 GET ALL CATEGORIES
@@ -463,6 +589,7 @@ router.put("/articles/:id", async (req, res) => {
     keywords: flat_keywords,
     image_url,
     image_alt,
+    images,
     seo,
   } = req.body;
 
@@ -493,9 +620,23 @@ router.put("/articles/:id", async (req, res) => {
   });
 
   const catVal = category_id || category;
+  const parsedImages = parseArticleImages(images, req.params.id);
+  const imagesValue = JSON.stringify(parsedImages);
+  const featuredImage = parsedImages.find((img) => img.isFeatured) || parsedImages[0] || null;
+  const normalizedImageUrl = sanitizeMediaUrl(image_url) || featuredImage?.url || "";
 
   try {
-    const qualityData = await checkQuality(title, content);
+    let qualityData;
+    try {
+      qualityData = await checkQuality(title, content);
+    } catch (qualityErr) {
+      console.error("Quality check failed in PUT /articles/:id, using fallback:", qualityErr.message);
+      qualityData = {
+        readability_score: 70,
+        ai_confidence: 70,
+      };
+    }
+
     const quality_score = Math.round(
       qualityData.ai_confidence * 0.5 +
       qualityData.readability_score * 0.3 +
@@ -506,7 +647,7 @@ router.put("/articles/:id", async (req, res) => {
       if (errCat) return res.status(500).json({ error: errCat.message });
 
       db.query(
-        "UPDATE articles SET title=?, content=?, summary=?, category_id=?, tags=?, seo_title=?, meta_description=?, slug=?, keywords=?, image_url=?, image_alt=?, seo_score=?, quality_score=?, readability_score=?, ai_confidence=? WHERE id=?",
+        "UPDATE articles SET title=?, content=?, summary=?, category_id=?, tags=?, seo_title=?, meta_description=?, slug=?, keywords=?, image_url=?, image_alt=?, images=?, seo_score=?, quality_score=?, readability_score=?, ai_confidence=? WHERE id=?",
         [
           title,
           content,
@@ -517,8 +658,9 @@ router.put("/articles/:id", async (req, res) => {
           seoData.meta_description,
           seoData.slug,
           seoData.keywords,
-          image_url || "",
+          normalizedImageUrl,
           seoData.image_alt,
+          imagesValue,
           seoData.seo_score,
           quality_score,
           qualityData.readability_score,
@@ -528,6 +670,9 @@ router.put("/articles/:id", async (req, res) => {
         (err) => {
           if (err) {
             console.error("Error updating article:", err);
+            if (err.code === "23505") {
+              return res.status(409).json({ error: "Slug already in use by another article. Please use a different slug." });
+            }
             return res.status(500).json({ error: err.message });
           }
           // Return the updated article so the frontend can reflect the saved state
@@ -550,8 +695,8 @@ router.put("/articles/:id", async (req, res) => {
       );
     });
   } catch (err) {
-    console.error("Quality check failed in PUT /articles/:id:", err);
-    return res.status(500).json({ error: "Quality check failed" });
+    console.error("Error in PUT /articles/:id:", err);
+    return res.status(500).json({ error: "Failed to update article" });
   }
 });
 
@@ -577,8 +722,17 @@ router.post("/articles/:id/images", upload.array("images", 5), async (req, res) 
 
     // Update article image_url with the first (featured) image
     const featuredUrl = uploadedImages.find(i => i.isFeatured)?.url || "";
-    db.query("UPDATE articles SET image_url = ? WHERE id = ?", [featuredUrl, articleId], (err) => {
-      if (err) console.error("Could not update image_url:", err);
+    db.query("SELECT images FROM articles WHERE id = ?", [articleId], (selectErr, rows) => {
+      if (selectErr) {
+        console.error("Could not read existing images:", selectErr);
+      }
+
+      const existingImages = parseArticleImages(rows?.[0]?.images, articleId);
+      const mergedImages = [...existingImages, ...uploadedImages];
+
+      db.query("UPDATE articles SET image_url = ?, images = ? WHERE id = ?", [featuredUrl, JSON.stringify(mergedImages), articleId], (err) => {
+        if (err) console.error("Could not update image_url/images:", err);
+      });
     });
 
     clearCache().catch(console.error);

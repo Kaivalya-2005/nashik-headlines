@@ -22,12 +22,13 @@ export async function generateMetadata({ params }) {
 
   const title = article.seoTitle || article.title;
   const description = article.seoDescription || article.description;
-  const keywords = article.keywords || undefined;
+  const keywords = [article.keywords, ...(article.tags || [])].filter(Boolean).join(', ') || undefined;
   const canonical = `${siteUrl}/news/${article.slug}`;
-  const ogImage = article.image
-    ? article.image.startsWith('http')
-      ? article.image
-      : `${siteUrl}${article.image}`
+  const heroImage = article.image || article.images?.find((img) => img.isFeatured)?.url || article.images?.[0]?.url;
+  const ogImage = heroImage
+    ? heroImage.startsWith('http')
+      ? heroImage
+      : `${siteUrl}${heroImage}`
     : undefined;
 
   return {
@@ -35,13 +36,30 @@ export async function generateMetadata({ params }) {
     description,
     keywords,
     alternates: { canonical },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    },
     openGraph: {
       title,
       description,
       type: 'article',
       url: canonical,
       publishedTime: article.publishedAt,
+      tags: article.tags || [],
       images: ogImage ? [{ url: ogImage }] : [],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ogImage ? [ogImage] : [],
     },
   };
 }
@@ -52,10 +70,44 @@ export default async function ArticlePage({ params }) {
 
   const related = await fetchRelatedArticles(article);
   const cat = CATEGORIES.find((c) => c.slug === article.category);
-  const ogImage = article.image
-    ? article.image.startsWith('http')
-      ? article.image
-      : `${siteUrl}${article.image}`
+  const heroImage = article.image || article.images?.find((img) => img.isFeatured)?.url || article.images?.[0]?.url;
+  const featuredFromList = article.images?.find((img) => img.isFeatured) || article.images?.[0] || null;
+  const inlineImages = (article.images || []).filter((img) => img?.url && img.url !== featuredFromList?.url);
+  const contentBlocks = String(article.content || '')
+    .split(/\n\n+/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+  const inlineImageByBlock = (() => {
+    const blockToImage = new Map();
+    const totalBlocks = contentBlocks.length;
+    const totalInline = inlineImages.length;
+    if (!totalBlocks || !totalInline) return blockToImage;
+
+    const used = new Set();
+
+    for (let idx = 0; idx < totalInline; idx++) {
+      let afterBlock = Math.min(
+        totalBlocks - 1,
+        Math.max(0, Math.floor(((idx + 1) * totalBlocks) / (totalInline + 1)) - 1)
+      );
+
+      while (used.has(afterBlock) && afterBlock < totalBlocks - 1) {
+        afterBlock += 1;
+      }
+      while (used.has(afterBlock) && afterBlock > 0) {
+        afterBlock -= 1;
+      }
+
+      used.add(afterBlock);
+      blockToImage.set(afterBlock, inlineImages[idx]);
+    }
+
+    return blockToImage;
+  })();
+  const ogImage = heroImage
+    ? heroImage.startsWith('http')
+      ? heroImage
+      : `${siteUrl}${heroImage}`
     : undefined;
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -107,31 +159,96 @@ export default async function ArticlePage({ params }) {
                   <span>{article.readTime} min read</span>
                 </div>
               </div>
-              <ShareButtons title={article.title} slug={article.slug} />
+              <ShareButtons title={article.title} slug={article.slug} canonicalUrl={`${siteUrl}/news/${article.slug}`} />
             </div>
           </div>
 
-          <div className="w-full h-[320px] md:h-[420px] relative mb-10 rounded-xl overflow-hidden shadow-elevated">
-            <Image
-              src={article.image || 'https://images.unsplash.com/photo-1504711434969-e33886168d6c?w=800&h=500&fit=crop'}
-              alt={article.title}
-              fill
-              className="object-cover"
-              sizes="(min-width: 1024px) 900px, 100vw"
-              priority
-            />
-          </div>
+          {heroImage && (
+            <figure className="w-full relative mb-10 rounded-2xl overflow-hidden shadow-elevated border border-border bg-card/60">
+              <div className="relative w-full aspect-[16/9]">
+              <Image
+                src={heroImage}
+                alt={article.imageAlt || article.title}
+                fill
+                className="object-cover object-center"
+                sizes="(min-width: 1024px) 900px, 100vw"
+                priority
+              />
+              </div>
+            </figure>
+          )}
 
           <div className="max-w-none space-y-5 text-body-lg leading-[1.8] text-foreground/85 drop-cap">
-            {(article.content || '').split(/\n\n+/).map((paragraph, idx) => (
-              <p key={idx}>{paragraph}</p>
-            ))}
+            {contentBlocks.map((block, idx) => {
+              const h3Match = block.match(/^###\s+(.+)/);
+              const h2Match = block.match(/^##\s+(.+)/);
+              const h1Match = block.match(/^#\s+(.+)/);
+              const headingLineMatch = block.match(/^#{1,3}\s+.+/);
+              const bodyText = headingLineMatch
+                ? block.replace(/^#{1,3}\s+.+\n?/, '').trim()
+                : block;
+
+              const inlineImage = inlineImageByBlock.get(idx) || null;
+
+              return (
+                <div key={`block-${idx}`} className="space-y-5">
+                  {h1Match ? (
+                    <>
+                      <h2 className="font-headline font-bold text-title">{h1Match[1]}</h2>
+                      {bodyText && <p>{bodyText}</p>}
+                    </>
+                  ) : h2Match ? (
+                    <>
+                      <h2 className="font-headline font-bold text-title">{h2Match[1]}</h2>
+                      {bodyText && <p>{bodyText}</p>}
+                    </>
+                  ) : h3Match ? (
+                    <>
+                      <h3 className="font-headline font-bold text-xl">{h3Match[1]}</h3>
+                      {bodyText && <p>{bodyText}</p>}
+                    </>
+                  ) : (
+                    <p>{block}</p>
+                  )}
+
+                  {inlineImage && (
+                    <figure className="rounded-xl overflow-hidden border border-border bg-card/60 shadow-sm my-1">
+                      <div className="relative aspect-[16/10] md:aspect-[16/9]">
+                        <Image
+                          src={inlineImage.url}
+                          alt={inlineImage.altText || article.title}
+                          fill
+                          className="object-cover object-center"
+                          sizes="(min-width: 1024px) 900px, 100vw"
+                        />
+                      </div>
+                      {inlineImage.caption && (
+                        <figcaption className="px-3 py-2 text-sm text-muted-foreground">
+                          {inlineImage.caption}
+                        </figcaption>
+                      )}
+                    </figure>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          {/* Bottom share */}
-          <div className="mt-10 pt-6 border-t border-border">
-            <ShareButtons title={article.title} slug={article.slug} />
-          </div>
+          {article.tags?.length > 0 && (
+            <section className="mt-10 pt-6 border-t border-border">
+              <h2 className="font-headline font-bold text-title mb-4">Tags</h2>
+              <div className="flex flex-wrap gap-2">
+                {article.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-3 py-1 rounded-full border border-border bg-secondary/40 text-sm text-foreground/80"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
         </article>
 
         {related.length > 0 && (

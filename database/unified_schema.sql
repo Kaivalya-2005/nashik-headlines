@@ -182,6 +182,7 @@ CREATE TABLE articles (
 
   image_url TEXT,
   image_alt VARCHAR(255),
+  images JSONB DEFAULT '[]'::jsonb,
 
   seo_score INT DEFAULT 0,
 

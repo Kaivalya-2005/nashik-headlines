@@ -19,8 +19,13 @@ export async function GET(request) {
         a.seo_title,
         a.meta_description,
         a.keywords,
+        a.tags,
         a.image_url,
+        a.image_alt,
+        a.images,
         a.published_at,
+        a.created_at,
+        a.updated_at,
         a.views,
         c.name AS category_name,
         c.slug AS category_slug
@@ -42,7 +47,7 @@ export async function GET(request) {
       params.push(like, like, like);
     }
 
-    sql += ` ORDER BY a.published_at DESC LIMIT 200`;
+    sql += ` ORDER BY COALESCE(a.published_at, a.created_at) DESC LIMIT 200`;
 
     const rows = await dbQuery(sql, params);
     return NextResponse.json(rows || []);

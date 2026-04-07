@@ -7,6 +7,40 @@ const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
+const AI_EDITOR_FULL_ARTICLE_GUARDRAILS = `
+
+CRITICAL OVERRIDES (MUST FOLLOW):
+- Output language must be English only.
+- Article content must be at least 300 words.
+- Include markdown H2/H3 subheadings.
+- Include at least one internal link to nashikheadlines.com.
+- Include at least one external source link.
+- Mention Nashik, Maharashtra, or India.
+- Meta description must be between 100 and 160 characters.
+- Ensure focus keyphrase appears in title or seo title.
+- Return only valid JSON without markdown or explanation.
+
+Return ONLY a JSON object with EXACTLY these keys and no extra keys:
+{
+  "title": "...",
+  "slug": "...",
+  "metaDesc": "...",
+  "category": "...",
+  "content": "...",
+  "summary": "...",
+  "imageAlt": "...",
+  "keywords": "...",
+  "tags": "..."
+}
+`;
+
+const AI_EDITOR_FIELD_GUARDRAILS = `
+
+CRITICAL OVERRIDES (MUST FOLLOW):
+- Output language must be English only.
+- Return only valid JSON without markdown or explanation.
+`;
+
 async function askGroq(prompt, jsonFormat = false) {
   try {
     const payload = {
@@ -67,21 +101,25 @@ router.post("/ai/generate-article", async (req, res) => {
 
   if (prompt) {
     // AIEditor.jsx flow
+    const isFieldPrompt = /"result"\s*:/i.test(String(prompt));
     fullPrompt = prompt
       .replace("[Write Topic Here]", topic || "General News")
       .replace("[Write Focus Keyphrase]", focusKeyword || topic || "News");
+    fullPrompt += isFieldPrompt ? AI_EDITOR_FIELD_GUARDRAILS : AI_EDITOR_FULL_ARTICLE_GUARDRAILS;
   } else {
     // CreateArticle.jsx flow
     isCreateFlow = true;
-    fullPrompt = `Write a ${length || 'medium'} Marathi news article about: "${topic}". 
+    fullPrompt = `Write a ${length || 'medium'} English news article about: "${topic}". 
 The category is ${category || 'general'} and the tone should be ${tone || 'neutral'}.
+Use markdown with H2/H3 subheadings. Include at least one internal link to nashikheadlines.com and one external credible source link.
+Mention Nashik, Maharashtra, or India naturally when relevant.
 Format the response strictly as JSON with this structure:
 {
   "title": "Article Title",
   "content": "Full article content in markdown format...",
   "summary": "Short 2 sentence summary",
   "seo_title": "SEO optimized title",
-  "meta_description": "SEO meta description",
+  "meta_description": "SEO meta description between 100 and 160 chars",
   "slug": "url-friendly-slug"
 }`;
   }

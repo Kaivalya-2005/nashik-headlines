@@ -90,14 +90,14 @@ function calculateSeoScore(article = {}) {
 
   const checks = {
     seoTitlePresent: seoTitle.length > 0,
-    metaDescriptionPresent: metaDescription.length >= 150 && metaDescription.length <= 160,
+    metaDescriptionPresent: metaDescription.length >= 100 && metaDescription.length <= 160,
     keywordInTitle,
-    contentLength: contentWordCount >= 600,
+    contentLength: contentWordCount >= 300,
     headings: hasHeadingStructure(content),
     imageAlt: imageAlt.length > 0,
     internalLinks: hasInternalLink(content),
     externalLinks: hasExternalLink(content),
-    slug: slug.length > 0,
+    slugPresent: slug.length > 0,
     locationSignals:
       containsLocationSignals(`${title} ${seoTitle} ${metaDescription} ${content.slice(0, 600)}`),
     keywordDensity: keywordDensityOk,
@@ -112,7 +112,7 @@ function calculateSeoScore(article = {}) {
   score += checks.imageAlt ? 10 : 0;
   score += checks.internalLinks ? 10 : 0;
   score += checks.externalLinks ? 10 : 0;
-  score += checks.slug ? 10 : 0;
+  score += checks.slugPresent ? 10 : 0;
   score += checks.locationSignals ? 10 : 0;
 
   return {

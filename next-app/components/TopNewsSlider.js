@@ -7,6 +7,8 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { CATEGORIES } from '@/lib/categories';
 import { timeAgo } from '@/lib/format';
 
+const FALLBACK_IMAGE = '/placeholder-news.svg';
+
 export default function TopNewsSlider({ articles }) {
   const scrollRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -101,7 +103,7 @@ export default function TopNewsSlider({ articles }) {
             <Link key={article.slug} href={`/news/${article.slug}`} className={`flex-shrink-0 w-[280px] md:w-[340px] snap-start group transition-all duration-300 ${isActive ? 'scale-[1.02]' : 'scale-100 opacity-80'}`}>
               <div className={`relative rounded-xl overflow-hidden aspect-[16/9] transition-shadow duration-300 ${isActive ? 'shadow-elevated ring-2 ring-accent/20' : ''}`}>
                 <Image
-                  src={article.image || 'https://images.unsplash.com/photo-1504711434969-e33886168d6c?w=800&h=500&fit=crop'}
+                  src={article.image || FALLBACK_IMAGE}
                   alt={article.title}
                   fill
                   className="object-cover transition-transform duration-500 group-hover:scale-110"

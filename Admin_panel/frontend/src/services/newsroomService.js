@@ -167,6 +167,9 @@ export const getPublishedArticles = async () => {
 
 export const createArticle = async (data) => {
   try {
+    const payloadImages = Array.isArray(data.images) ? data.images : [];
+    const featuredImage = payloadImages.find((img) => img?.isFeatured) || payloadImages[0] || null;
+
     const response = await api.post('/articles', {
       ...data,
       title: data.title,
@@ -178,7 +181,10 @@ export const createArticle = async (data) => {
       meta_description: data.meta_description || '',
       slug: data.slug || '',
       keywords: data.keywords || '',
-      image_alt: data.image_alt || ''
+      image_alt: data.image_alt || featuredImage?.altText || '',
+      image_url: data.image_url || featuredImage?.url || '',
+      tags: data.tags || '',
+      images: payloadImages
     });
     return response.data;
   } catch (error) {

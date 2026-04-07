@@ -1,7 +1,6 @@
 import BreakingBanner from '@/components/BreakingBanner';
 import ArticleCard from '@/components/ArticleCard';
 import TrendingSection from '@/components/TrendingSection';
-import CricketScoreCorner from '@/components/CricketScoreCorner';
 import MarketCorner from '@/components/MarketCorner';
 import { fetchArticles, fetchTrendingArticles } from '@/lib/api';
 
@@ -77,8 +76,6 @@ export default async function Home({ searchParams }) {
   const [featured, ...rest] = sorted;
   const trending = await fetchTrendingArticles(5);
   const marketData = await fetchMarketSnapshot();
-  const sportsArticles = sorted.filter((article) => article.category === 'sports');
-  const cricketPanelItems = sportsArticles.length ? sportsArticles : trending;
 
   const websiteJsonLd = {
     '@context': 'https://schema.org',
@@ -134,7 +131,6 @@ export default async function Home({ searchParams }) {
 
             <aside className="lg:col-span-4 space-y-4">
               <TrendingSection articles={trending} />
-              <CricketScoreCorner sportsArticles={cricketPanelItems} />
               <MarketCorner marketData={marketData} />
             </aside>
           </div>

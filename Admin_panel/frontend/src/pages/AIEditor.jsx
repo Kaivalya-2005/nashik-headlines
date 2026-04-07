@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import * as newsroomService from '../services/newsroomService';
 import { calculateSeoScore } from '../utils/seoScore';
 import aiService from '../api/aiService';
+import articleService from '../api/articleService';
 
 const VALID_CATEGORIES = [
   { slug: 'nashik', label: 'Nashik' },
@@ -25,68 +26,51 @@ const VALID_CATEGORIES = [
   { slug: 'crime', label: 'Crime' },
 ];
 
-const DEFAULT_PROMPT = `Act as a professional Indian journalist and SEO expert.
+const DEFAULT_PROMPT = `You are a senior English news editor and SEO specialist for nashikheadlines.com.
 
-Write a Marathi news article (330–350 words) in Google News friendly journalism style.
+Write a clear, factual English news article in Google News-friendly style.
 
 Topic:
 [Write Topic Here]
 
---------------------------------
-
-Writing Guidelines (Must Follow)
-
-• Article length must be 400 to 500 words strictly
-• Language must be simple and clear Marathi
-• Journalism style writing
-• No spelling or grammar mistakes
-• Avoid sentence repetition
-• Use passive voice where appropriate
-• Keep EVERY single sentence under 15 words for maximum readability
-• Separate content into multiple short paragraphs
-
-Use transition words in at least 30% of sentences such as:
-मात्र, तसेच, दरम्यान, त्यामुळे, याशिवाय, दुसरीकडे, अखेरीस, शिवाय.
-
---------------------------------
-
-Paragraph Structure
-
-• Each paragraph must start with a clear subheading
-• Each paragraph should contain around 20–25 words
-• Paragraphs must be short and readable
-• Focus keyphrase must appear in the FIRST paragraph
-
---------------------------------
-
-SEO Requirements
-
 Focus Keyphrase:
 [Write Focus Keyphrase]
 
-Focus keyphrase must appear in:
-1. SEO Title
-2. First paragraph
-3. Meta description
-4. At least 3 times in article
+Mandatory Content Rules:
+- Language must be English only.
+- Article length must be 350-500 words.
+- Use short paragraphs with clear markdown subheadings (H2/H3 style, e.g., ## Heading).
+- Mention at least one local signal: Nashik, Maharashtra, or India.
+- Include at least one internal link to another nashikheadlines.com article.
+- Include at least one external credible source link.
+- Keep tone journalistic, neutral, and readable.
 
---------------------------------
+SEO Checklist (must pass):
+- SEO Title added.
+- Meta Description length: 100-160 characters.
+- Focus Keyphrase found in title.
+- Article is 300+ words.
+- Subheadings used (H2/H3).
+- Feature Image Alt Text added.
+- Internal Link present.
+- External Source Link present.
+- Smart URL slug added.
+- Local signals found (Nashik, Maharashtra, India).
 
-SEO Metadata
-
-Return ONLY a perfectly formatted JSON object with no wrapping markdown text like \`\`\`json. The keys must match exactly:
+Return ONLY a valid JSON object (no markdown fences, no explanation) with exactly these keys:
 {
-  "title": "SEO Title (Max 55 characters)",
-  "slug": "url-friendly-slug-in-marathi-english-letters",
-  "metaDesc": "Meta Description (Max 155 characters)",
+  "title": "Article headline",
+  "slug": "smart-url-slug-in-english-lowercase-hyphens",
+  "metaDesc": "Meta description between 100 and 160 characters",
   "category": "Pick exactly ONE: Nashik, Maharashtra, India, International, Entertainment, Sports, Politics, Business, Technology, Health, Education, Crime",
-  "content": "The full markdown formatted article including Subtitles, Quote Blocks, Source url, etc.",
-  "summary": "Short 2 sentence summary excerpt",
-  "imageAlt": "Primary image alt text relevant to topic",
-  "keywords": "25 high-traffic tags separated by commas"
+  "content": "Full markdown news article with H2/H3 and links",
+  "summary": "Short 2 sentence summary",
+  "imageAlt": "English feature image alt text",
+  "keywords": "SEO keywords separated by commas",
+  "tags": "Relevant tags separated by commas"
 }
 
-Do not return conversational text. Return only the JSON object.`;
+Do not return any conversational text. Return only the JSON object.`;
 
 // Custom hook for localStorage caching
 function useLocalDraft(key, initialValue) {
@@ -124,12 +108,31 @@ const AIEditor = () => {
   const [seoTitle, setSeoTitle] = useLocalDraft('aiEdit_seoTitle', '');
   const [metaDesc, setMetaDesc] = useLocalDraft('aiEdit_metaDesc', '');
   const [keywords, setKeywords] = useLocalDraft('aiEdit_keywords', '');
+  const [tags, setTags] = useLocalDraft('aiEdit_tags', '');
   const [slug, setSlug] = useLocalDraft('aiEdit_slug', '');
   const [imageAlt, setImageAlt] = useLocalDraft('aiEdit_imageAlt', '');
 
   // Prompt Configuration
   const [showPromptConfig, setShowPromptConfig] = useState(false);
   const [promptTemplate, setPromptTemplate] = useLocalDraft('aiEdit_promptTemplate', DEFAULT_PROMPT);
+
+  useEffect(() => {
+    const current = String(promptTemplate || '');
+    const legacyMarkers = [
+      'Write a Marathi news article',
+      'Language must be simple and clear Marathi',
+      'Write a detailed Marathi news report',
+      'Write a 2-sentence summary in Marathi',
+    ];
+
+    const hasMarathiWord = /\bmarathi\b|मराठी/i.test(current);
+    const hasEnglishGuard = /Language must be English only\./i.test(current);
+    const isLegacyMarathiPrompt = legacyMarkers.some((marker) => current.includes(marker)) || (hasMarathiWord && !hasEnglishGuard);
+    if (isLegacyMarathiPrompt) {
+      setPromptTemplate(DEFAULT_PROMPT);
+      toast.success('AI prompt upgraded to English SEO checklist mode.');
+    }
+  }, [promptTemplate, setPromptTemplate]);
 
   // Images
   const [images, setImages] = useState([]);
@@ -141,12 +144,37 @@ const AIEditor = () => {
 
   const maxImages = 4;
 
+  const getSerializableImages = (list = []) =>
+    (list || []).map((img, idx) => ({
+      id: img?.id || `image-${idx}`,
+      url: img?.url || img?.preview || '',
+      preview: img?.preview || img?.url || '',
+      altText: img?.altText || '',
+      caption: img?.caption || '',
+      isFeatured: Boolean(img?.isFeatured ?? idx === 0),
+    })).filter((img) => img.url || img.preview);
+
+  const getPersistableImages = (list = []) =>
+    (list || [])
+      .map((img, idx) => ({
+        id: img?.id || `image-${idx}`,
+        url: img?.url || '',
+        altText: img?.altText || '',
+        caption: img?.caption || '',
+        isFeatured: Boolean(img?.isFeatured ?? idx === 0),
+      }))
+      .filter((img) => {
+        const url = String(img.url || '').trim();
+        return Boolean(url) && !url.startsWith('blob:') && !url.startsWith('data:');
+      });
+
   const saveToHistory = () => {
     if (content.trim() || title.trim()) {
       setHistory([
         {
           id: Date.now(),
-          title, content, summary, category, seoTitle, metaDesc, keywords, slug, imageAlt,
+          title, content, summary, category, seoTitle, metaDesc, keywords, tags, slug, imageAlt,
+          images: getSerializableImages(images),
           timestamp: new Date().toLocaleTimeString()
         },
         ...history,
@@ -163,8 +191,10 @@ const AIEditor = () => {
     setSeoTitle(snapshot.seoTitle || '');
     setMetaDesc(snapshot.metaDesc || '');
     setKeywords(snapshot.keywords || '');
+    setTags(snapshot.tags || '');
     setSlug(snapshot.slug || '');
     setImageAlt(snapshot.imageAlt || '');
+    setImages(getSerializableImages(snapshot.images || []));
     toast.success('Restored from history');
   };
 
@@ -176,7 +206,11 @@ const AIEditor = () => {
 
     setSaving(true);
     try {
-      await newsroomService.createArticle({
+      const localFileImages = (images || []).filter((img) => img?.file);
+      const persistableImages = getPersistableImages(images);
+      const featuredPersisted = persistableImages.find((img) => img.isFeatured) || persistableImages[0] || null;
+
+      const created = await newsroomService.createArticle({
         title: (title || '').trim(),
         content: (content || '').trim(),
         summary: (summary || '').trim(),
@@ -185,13 +219,67 @@ const AIEditor = () => {
         meta_description: (metaDesc || '').trim(),
         slug: (slug || '').trim(),
         keywords: String(keywords || '').split(',').map(k => k.trim()).filter(Boolean).join(','),
-        image_alt: (imageAlt || '').trim(),
+        tags: String(tags || '').split(',').map(t => t.trim()).filter(Boolean).join(','),
+        image_alt: (imageAlt || featuredPersisted?.altText || '').trim(),
+        image_url: featuredPersisted?.url || '',
+        images: persistableImages,
         status: status
       });
+
+      if (created?.id && localFileImages.length > 0) {
+        const formData = new FormData();
+        localFileImages.forEach((img) => formData.append('images', img.file));
+        const uploaded = await articleService.uploadImages(created.id, formData);
+        const uploadedQueue = Array.isArray(uploaded) ? uploaded : [];
+        let uploadIndex = 0;
+
+        const mergedImages = (images || []).map((img, idx) => {
+          if (!img?.file) {
+            return {
+              id: img?.id || `image-${idx}`,
+              url: img?.url || '',
+              altText: img?.altText || '',
+              caption: img?.caption || '',
+              isFeatured: Boolean(img?.isFeatured ?? idx === 0),
+            };
+          }
+
+          const upImg = uploadedQueue[uploadIndex++] || {};
+          return {
+            id: upImg.id || img?.id || `image-${idx}`,
+            url: upImg.url || upImg.secure_url || '',
+            altText: img?.altText || upImg.altText || '',
+            caption: img?.caption || upImg.caption || '',
+            isFeatured: Boolean(img?.isFeatured ?? upImg.isFeatured ?? idx === 0),
+          };
+        }).filter((img) => {
+          const url = String(img.url || '').trim();
+          return Boolean(url) && !url.startsWith('blob:') && !url.startsWith('data:');
+        });
+
+        const featuredMerged = mergedImages.find((img) => img.isFeatured) || mergedImages[0] || null;
+
+        await newsroomService.updateArticle(created.id, {
+          title: (title || '').trim(),
+          content: (content || '').trim(),
+          summary: (summary || '').trim(),
+          category: (category || '').trim(),
+          seo_title: (seoTitle || '').trim(),
+          meta_description: (metaDesc || '').trim(),
+          slug: (slug || '').trim(),
+          keywords: String(keywords || '').split(',').map(k => k.trim()).filter(Boolean).join(','),
+          tags: String(tags || '').split(',').map(t => t.trim()).filter(Boolean).join(','),
+          image_alt: (imageAlt || featuredMerged?.altText || '').trim(),
+          image_url: featuredMerged?.url || '',
+          images: mergedImages,
+        });
+      }
+
       toast.success(status === 'published' ? 'Article published successfully!' : 'Article saved to drafts');
       if (status === 'published') resetForm();
     } catch (error) {
-      toast.error('Failed to save: ' + error.message);
+      const msg = error?.response?.data?.error || error?.response?.data?.message || error.message;
+      toast.error('Failed to save: ' + msg);
     } finally {
       setSaving(false);
     }
@@ -200,7 +288,7 @@ const AIEditor = () => {
   const resetForm = () => {
     if (window.confirm("Are you sure you want to clear all fields? This will delete your current draft.")) {
       setTopic(''); setFocusKeyphrase(''); setTitle(''); setContent(''); setSummary(''); setCategory('');
-      setSeoTitle(''); setMetaDesc(''); setKeywords(''); setSlug(''); setImageAlt('');
+      setSeoTitle(''); setMetaDesc(''); setKeywords(''); setTags(''); setSlug(''); setImageAlt('');
       setImages([]);
     }
   };
@@ -261,6 +349,7 @@ const AIEditor = () => {
         setSeoTitle(parsed.title || parsed.seo_title || '');
         setMetaDesc(parsed.metaDesc || parsed.meta_description || '');
         setKeywords(Array.isArray(parsed.keywords) ? parsed.keywords.join(', ') : (parsed.keywords || ''));
+        setTags(Array.isArray(parsed.tags) ? parsed.tags.join(', ') : (parsed.tags || parsed.keywords || ''));
         setSlug(parsed.slug || '');
         setImageAlt(parsed.imageAlt || '');
         toast.success("Full News Article smoothly generated and fields populated!");
@@ -281,15 +370,16 @@ const AIEditor = () => {
       let promptSnippet = "";
       
       switch (field) {
-        case 'title': promptSnippet = `Write a short, catchy Marathi news headline about: "${baseText}". Return ONLY the exact title string without quotes or json.`; break;
-        case 'content': promptSnippet = `Write a detailed Marathi news report about: "${baseText}" with focus keyword "${baseKey}". Format in Markdown with headings. Return ONLY the content string.`; break;
-        case 'summary': promptSnippet = `Write a 2-sentence summary in Marathi for the news topic: "${baseText}". Return ONLY the summary string without quotes or json.`; break;
+        case 'title': promptSnippet = `Write a short, catchy English news headline about: "${baseText}". Include the focus keyphrase "${baseKey}" naturally. Return ONLY the exact title string without quotes or json.`; break;
+        case 'content': promptSnippet = `Write a detailed English news report about: "${baseText}" with focus keyword "${baseKey}". Use markdown with H2/H3 subheadings, include one internal nashikheadlines.com link, one external source link, and mention Nashik, Maharashtra, or India. Return ONLY the content string.`; break;
+        case 'summary': promptSnippet = `Write a 2-sentence summary in English for the news topic: "${baseText}". Return ONLY the summary string without quotes or json.`; break;
         case 'category': promptSnippet = `Suggest exactly one English news category for: "${baseText}" from exactly this list: Nashik, Maharashtra, India, International, Entertainment, Sports, Politics, Business, Technology, Health, Education, Crime. Return ONLY the category word(s) without quotes.`; break;
-        case 'seoTitle': promptSnippet = `Write an SEO optimized Marathi news title for: "${baseText}" (max 55 chars). Return ONLY the title string.`; break;
-        case 'metaDesc': promptSnippet = `Write an SEO meta description in Marathi (max 150 chars) for: "${baseText}". Return ONLY the description string.`; break;
-        case 'keywords': promptSnippet = `List 5 to 10 comma-separated SEO keywords for: "${baseKey}", including Nashik and Maharashtra. Return ONLY the comma separated keywords string.`; break;
+        case 'seoTitle': promptSnippet = `Write an SEO optimized English news title for: "${baseText}" (max 55 chars) and include "${baseKey}" naturally. Return ONLY the title string.`; break;
+        case 'metaDesc': promptSnippet = `Write an SEO meta description in English between 100 and 160 characters for: "${baseText}". Return ONLY the description string.`; break;
+        case 'keywords': promptSnippet = `List 5 to 10 comma-separated SEO keywords in English for: "${baseKey}", including Nashik and Maharashtra where relevant. Return ONLY the comma separated keywords string.`; break;
+        case 'tags': promptSnippet = `Generate 8 to 15 relevant English tags for: "${baseText}" as a comma-separated list. Return ONLY the comma separated tags string.`; break;
         case 'slug': promptSnippet = `Create a URL-friendly slug using english letters, numbers, and hyphens only for the topic: "${baseText}". Return ONLY the slug, no spaces or quotes.`; break;
-        case 'imageAlt': promptSnippet = `Write a short, descriptive image alt text for an image representing: "${baseKey}". Return ONLY the alt text string.`; break;
+        case 'imageAlt': promptSnippet = `Write a short, descriptive English image alt text for an image representing: "${baseKey}". Return ONLY the alt text string.`; break;
       }
       
       promptSnippet += `\n\nReturn EXACTLY a JSON object in this format: { "result": "your generated text here" }`;
@@ -643,6 +733,11 @@ const AIEditor = () => {
               <div>
                 <FieldLabel label="Search Keywords" fieldKey="keywords" setter={setKeywords} />
                 <textarea rows={2} value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="comma, separated" className="w-full p-2.5 text-sm border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg focus:border-indigo-500 outline-none transition-all resize-none" />
+              </div>
+
+              <div>
+                <FieldLabel label="Tags" fieldKey="tags" setter={setTags} />
+                <textarea rows={2} value={tags} onChange={(e) => setTags(e.target.value)} placeholder="news tags, comma separated" className="w-full p-2.5 text-sm border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg focus:border-indigo-500 outline-none transition-all resize-none" />
               </div>
 
               <div>

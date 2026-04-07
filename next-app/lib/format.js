@@ -1,6 +1,8 @@
 export function timeAgo(dateString) {
+  if (!dateString) return 'Just now';
   const now = new Date();
   const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return 'Just now';
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
   if (seconds < 60) return 'Just now';
@@ -16,7 +18,10 @@ export function timeAgo(dateString) {
 }
 
 export function formatDate(dateString) {
-  return new Date(dateString).toLocaleDateString('en-IN', {
+  if (!dateString) return 'Recently';
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return 'Recently';
+  return date.toLocaleDateString('en-IN', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',

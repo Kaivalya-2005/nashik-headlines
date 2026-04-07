@@ -19,12 +19,13 @@ function FacebookIcon({ size = 16 }) {
   );
 }
 
-export default function ShareButtons({ title, slug }) {
+export default function ShareButtons({ title, slug, canonicalUrl }) {
   const [copied, setCopied] = useState(false);
 
-  const url = typeof window !== "undefined"
-    ? `${window.location.origin}/news/${slug}`
-    : `/news/${slug}`;
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
+  const normalizedBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+
+  const url = canonicalUrl || `${normalizedBase}/news/${slug}`;
 
   const encodedUrl = encodeURIComponent(url);
   const encodedTitle = encodeURIComponent(title);
