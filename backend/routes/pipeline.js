@@ -225,4 +225,74 @@ router.post("/cancel", async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ROUTE 5  POST /api/pipeline/reprocess-failed
+// Reset all 'failed' articles back to 'pending' and queue them for reprocessing
+// ─────────────────────────────────────────────────────────────────────────────
+router.post("/reprocess-failed", async (req, res) => {
+  let failed;
+  try {
+    failed = await dbQuery("SELECT * FROM raw_articles WHERE status='failed' ORDER BY created_at ASC");
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+
+  if (!failed || failed.length === 0) {
+    return res.json({ success: true, message: "No skipped articles to reprocess." });
+  }
+
+  // Reset all to pending
+  try {
+    await dbQuery("UPDATE raw_articles SET status='pending' WHERE status='failed'");
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+
+  // Re-fetch with fresh 'pending' status
+  const pending = failed.map(a => ({ ...a, status: "pending" }));
+
+  // ── Try BullMQ, fall back to direct ──────────────────────────────────────
+  if (articleQueue) {
+    try {
+      const jobs = pending.map((rawArticle) => ({
+        name: "process-batch",
+        data: { rawArticle },
+        opts: { jobId: `article-${rawArticle.id}-retry` },
+      }));
+      await articleQueue.addBulk(jobs);
+      return res.json({
+        success: true,
+        message: `${pending.length} skipped articles reset to pending and added to queue.`,
+      });
+    } catch (err) {
+      if (!isRedisError(err)) {
+        return res.status(500).json({ error: err.message });
+      }
+      log("pipeline", "Redis unavailable for /reprocess-failed — falling back to direct mode", "warning");
+    }
+  }
+
+  // ── Direct fallback ───────────────────────────────────────────────────────
+  res.json({
+    success: true,
+    message: `${pending.length} skipped articles reset and queued for reprocessing (direct mode).`,
+    isProcessing: true,
+    total: pending.length,
+  });
+
+  (async () => {
+    let done = 0;
+    for (const rawArticle of pending) {
+      try {
+        await runDirect(rawArticle);
+      } catch (_) {
+        // logged inside runDirect
+      }
+      done++;
+      log("batch", `Reprocess batch: ${done}/${pending.length} done`);
+    }
+    log("batch", `Reprocess batch complete. ${done}/${pending.length} articles done.`);
+  })();
+});
+
 module.exports = router;

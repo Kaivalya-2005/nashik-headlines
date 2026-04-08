@@ -94,6 +94,16 @@ export const cancelPipeline = async () => {
   }
 };
 
+export const reprocessFailed = async () => {
+  try {
+    const response = await api.post('/pipeline/reprocess-failed');
+    return response.data;
+  } catch (error) {
+    console.error('Failed to reprocess skipped articles:', error);
+    throw error;
+  }
+};
+
 export const processSingleArticle = async (id) => {
   try {
     const response = await api.post(`/pipeline/process/${id}`);

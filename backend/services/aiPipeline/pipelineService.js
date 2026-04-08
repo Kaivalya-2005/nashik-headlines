@@ -20,7 +20,7 @@ const { generateImage } = require("./imageAgent");
 // ── Quality Thresholds ────────────────────────────────────────────────────────
 const QUALITY_THRESHOLD   = 50;   // ai_confidence below this → fail
 const READABILITY_MINIMUM = 40;   // readability below this → flag for review
-const MIN_WORD_COUNT      = 60;   // fewer words than this → fail (raw articles avg ~60-100 words)
+const MIN_WORD_COUNT      = 20;   // min words for final output (input can be short RSS summary — AI expands it)
 
 // ── DB Logging Helper ─────────────────────────────────────────────────────────
 
@@ -54,7 +54,7 @@ async function runPipeline(rawArticle) {
 
   const { clean_title, clean_content, language } = cleaned;
 
-  if (clean_content.split(/\s+/).filter(Boolean).length < 30) {
+  if (clean_content.split(/\s+/).filter(Boolean).length < 10) {
     log("clean", "Content too short after cleaning — article skipped", "warning");
     throw new Error("Article content too short to process");
   }

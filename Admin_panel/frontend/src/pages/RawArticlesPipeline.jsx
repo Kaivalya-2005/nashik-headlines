@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   RefreshCw, Zap, Eye, Play, Trash2, CheckCircle, XCircle,
-  Clock, Copy, AlertCircle, Info, ChevronDown, ChevronUp, StopCircle
+  Clock, Copy, AlertCircle, Info, ChevronDown, ChevronUp, StopCircle, RotateCcw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as newsroomService from '../services/newsroomService';
@@ -300,6 +300,27 @@ const RawArticlesPipeline = ({ refreshTrigger }) => {
     }
   };
 
+  const handleReprocessFailed = async () => {
+    const failedCount = counts.failed || 0;
+    if (failedCount === 0) {
+      toast('No skipped articles to reprocess', { icon: 'ℹ️' });
+      return;
+    }
+    const toastId = toast.loading(`Reprocessing ${failedCount} skipped articles…`);
+    try {
+      const res = await newsroomService.reprocessFailed();
+      if (res && res.success) {
+        toast.success(res.message, { id: toastId, duration: 5000 });
+        await fetchRawArticles(false);
+        await fetchPipelineStatus();
+      } else {
+        toast.error(res?.message || 'Reprocess failed', { id: toastId });
+      }
+    } catch (err) {
+      toast.error('Could not reprocess: ' + err.message, { id: toastId });
+    }
+  };
+
   // ── Process Single ─────────────────────────────────────────────────────
   const handleProcessSingle = async (article) => {
     if (pipelineStatus.isProcessing) {
@@ -414,6 +435,31 @@ const RawArticlesPipeline = ({ refreshTrigger }) => {
           <p className="text-sm text-emerald-800 dark:text-emerald-200">
             All caught up! No articles waiting. Run the scraper from the Dashboard to fetch new articles.
           </p>
+        </div>
+      )}
+
+      {/* Reprocess Skipped Banner */}
+      {!pipelineStatus.isProcessing && (counts.failed || 0) > 0 && (
+        <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-950/30 rounded-xl border border-orange-200 dark:border-orange-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <AlertCircle size={20} className="text-orange-600 dark:text-orange-400 shrink-0" />
+            <div>
+              <p className="font-semibold text-sm text-orange-900 dark:text-orange-100">
+                {counts.failed} skipped article{counts.failed !== 1 ? 's' : ''} — retry with AI?
+              </p>
+              <p className="text-xs text-orange-700 dark:text-orange-300 mt-0.5">
+                These were skipped earlier (content too short). The AI will now try to expand and rewrite them.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleReprocessFailed}
+            disabled={pipelineStatus.isProcessing}
+            className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold text-sm transition-colors whitespace-nowrap shadow-sm disabled:opacity-50"
+          >
+            <RotateCcw size={15} />
+            Retry All Skipped
+          </button>
         </div>
       )}
 
