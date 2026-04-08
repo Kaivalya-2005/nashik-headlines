@@ -81,11 +81,18 @@ async function saveArticle(processed) {
   const sourceId = await resolveSourceId(processed.source);
   const slug = await ensureUniqueSlug(processed.slug);
 
+  // Safely serialize quality_warnings (array → JSON string)
+  const qualityWarnings = Array.isArray(processed.quality_warnings)
+    ? JSON.stringify(processed.quality_warnings)
+    : (processed.quality_warnings || "[]");
+
   const result = await dbQuery(
     `INSERT INTO articles
       (title, content, summary, category_id, status,
-       seo_title, meta_description, slug, keywords, seo_score, source_id)
-     VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?)`,
+       seo_title, meta_description, slug, keywords, seo_score,
+       image_url, readability_score, ai_confidence, quality_score,
+       needs_review, language, raw_article_id, quality_warnings, source_id)
+     VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       processed.title,
       processed.content,
@@ -96,10 +103,18 @@ async function saveArticle(processed) {
       slug,
       processed.keywords || "",
       processed.seo_score || 0,
+      processed.image_url || "",
+      processed.readability_score || 0,
+      processed.ai_confidence || 0,
+      processed.quality_score || 0,
+      processed.needs_review ? true : false,
+      processed.language || "mr",
+      processed.raw_article_id || null,
+      qualityWarnings,
       sourceId || null,
     ]
   );
-  log("save", `Article saved — articles.id=${result.insertId}, slug="${slug}"`);
+  log("save", `Article saved — articles.id=${result.insertId}, slug="${slug}", quality:${processed.quality_score}`);
   return result.insertId;
 }
 

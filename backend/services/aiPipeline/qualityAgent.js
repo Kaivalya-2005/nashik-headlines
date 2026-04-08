@@ -159,8 +159,9 @@ ${snippet}
 // ── Main Quality Agent ────────────────────────────────────────────────────────
 
 /**
- * Run all quality checks on the rewritten article.
- * AI confidence is fetched in parallel with synchronous checks.
+ * Run all quality checks on the rewritten article (pure JS, fast, no API calls).
+ * NOTE: ai_confidence is NOT computed here — it comes from unifiedAgent and is
+ * injected by pipelineService after calling this function.
  *
  * @param {string} title   - Rewritten article title
  * @param {string} content - Rewritten article content
@@ -169,7 +170,6 @@ ${snippet}
 async function checkQuality(title, content) {
   const warnings = [];
 
-  // Run sync checks immediately
   const { word_count, ok: lengthOk } = checkContentLength(content);
   const readability_score = calcReadability(content);
   const clickbaitWarnings = detectClickbait(title);
@@ -186,26 +186,13 @@ async function checkQuality(title, content) {
     warnings.push(`Low readability score: ${readability_score}/100 — consider shorter sentences`);
   }
 
-  // AI confidence — run in parallel, fallback to 70 on failure
-  let ai_confidence = 70; // sensible default
-  try {
-    ai_confidence = await getAiConfidence(title, content);
-  } catch (err) {
-    const is429 = err?.response?.status === 429;
-    if (is429) {
-      console.warn(`⏳ qualityAgent: Rate limited — waiting ${RATE_LIMIT_PENALTY_MS / 1000}s...`);
-      await new Promise((r) => setTimeout(r, RATE_LIMIT_PENALTY_MS));
-    }
-    warnings.push(`AI confidence check skipped: ${err.message}`);
-    console.warn("⚠️  qualityAgent: AI confidence check failed:", err.message);
-  }
-
   return {
     readability_score,
-    ai_confidence,
+    ai_confidence: 70, // placeholder — overwritten by pipelineService with unifiedAgent's value
     content_length: word_count,
     warnings,
   };
 }
 
 module.exports = { checkQuality };
+
