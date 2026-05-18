@@ -1,12 +1,10 @@
-const { Queue, Worker } = require("bullmq");
-const IORedis = require("ioredis");
-const { runPipeline, log } = require("./pipelineService");
+const { log } = require("./pipelineService");
 const db = require("../../db");
 
-// ── Redis / BullMQ setup (crash-safe) ────────────────────────────────────────
-let connection = null;
-let articleQueue = null;
-let articleWorker = null;
+// BullMQ/Redis has been disabled. This module keeps the shared DB helpers
+// used by the pipeline routes, but no queue/worker is initialized.
+const articleQueue = null;
+const articleWorker = null;
 
 // ── DB Promise Helpers ────────────────────────────────────────────────────────
 function dbQuery(sql, params = []) {
@@ -116,80 +114,6 @@ async function saveArticle(processed) {
   );
   log("save", `Article saved — articles.id=${result.insertId}, slug="${slug}", quality:${processed.quality_score}`);
   return result.insertId;
-}
-
-// ── Initialize BullMQ queue + worker (safe — won't crash if Redis is down) ────
-try {
-  const redisUrl = process.env.REDIS_URL || process.env.REDIS_PRIVATE_URL || "redis://127.0.0.1:6379";
-  connection = new IORedis(redisUrl, {
-    maxRetriesPerRequest: null,
-    lazyConnect: true,
-    enableOfflineQueue: false,
-    connectTimeout: 5000,
-    retryStrategy: (times) => {
-      if (times > 3) {
-        console.warn("⚠️  Redis unavailable — BullMQ queue disabled. Article pipeline will not run.");
-        return null; // stop retrying
-      }
-      return Math.min(times * 500, 2000);
-    }
-  });
-
-  connection.on("error", (err) => {
-    if (err.code === "ECONNREFUSED" || err.code === "ENOTFOUND") {
-      // Silently ignore — queue disabled
-    } else {
-      console.error("Redis error:", err.message);
-    }
-  });
-
-  articleQueue = new Queue("article-processing", { connection });
-
-  articleWorker = new Worker("article-processing", async job => {
-    const rawArticle = job.data.rawArticle;
-    const rawId = rawArticle.id;
-
-    log("worker", `Processing job ${job.id} for raw_article #${rawId}`);
-    await dbQuery("UPDATE raw_articles SET status='processing' WHERE id=?", [rawId]);
-
-    try {
-      const processed = await runPipeline(rawArticle);
-
-      const dupId = await findDuplicate(processed.title);
-      if (dupId) {
-        log("worker", `Duplicate detected for #${rawId} -> dup of articles.id=${dupId}`, "warning");
-        await dbQuery("UPDATE raw_articles SET status='duplicate' WHERE id=?", [rawId]);
-        return { success: true, duplicate: true, duplicate_of: dupId };
-      }
-
-      const articleId = await saveArticle(processed);
-      await dbQuery("UPDATE raw_articles SET status='processed' WHERE id=?", [rawId]);
-      log("worker", `Job ${job.id} completed. Saved as articles.id=${articleId}`);
-      return { success: true, article_id: articleId };
-    } catch (err) {
-      log("worker", `Job ${job.id} failed: ${err.message}`, "error");
-      await dbQuery("UPDATE raw_articles SET status='failed' WHERE id=?", [rawId]);
-      if (err.qualityFail) {
-        throw new Error(`Quality check failed: ${err.message}`);
-      }
-      throw err;
-    }
-  }, {
-    connection,
-    concurrency: 1,
-    limiter: {
-      max: 1,
-      duration: 8000
-    }
-  });
-
-  articleWorker.on("failed", (job, err) => {
-    console.log(`Job ${job.id} failed with reason: ${err.message}`);
-  });
-
-  console.log("✅ BullMQ queue and worker initialized");
-} catch (err) {
-  console.warn("⚠️  BullMQ/Redis initialization failed — queue disabled.", err.message);
 }
 
 module.exports = {

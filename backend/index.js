@@ -17,8 +17,6 @@ const corsOrigins = process.env.CORS_ORIGINS
 // Serve uploaded images as static files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-require("./services/aiPipeline/queue"); // Initialize BullMQ Queue and Worker
-
 // Enable CORS for React frontend
 app.use(cors({
   origin: corsOrigins,
