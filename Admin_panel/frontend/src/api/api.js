@@ -20,9 +20,11 @@ api.interceptors.response.use(
     (error) => {
         if (error.response?.status === 401) {
             localStorage.removeItem('token');
+            localStorage.removeItem('user');
             // Avoid infinite redirect if already on login page
-            if (!window.location.pathname.startsWith('/admin/login')) {
-                window.location.href = '/admin/login';
+            const isLoginPage = window.location.pathname.startsWith('/admin/login') || window.location.pathname.startsWith('/login');
+            if (!isLoginPage) {
+                window.location.replace('/admin/login');
             }
         }
         return Promise.reject(error);

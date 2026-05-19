@@ -9,6 +9,7 @@ const ArticleTable = ({ refreshTrigger }) => {
   const navigate = useNavigate();
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedIds, setSelectedIds] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -101,6 +102,30 @@ const ArticleTable = ({ refreshTrigger }) => {
       toast.error('Failed to delete: ' + error.message);
     } finally {
       setActioningId(null);
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const copy = new Set(prev);
+      if (copy.has(id)) copy.delete(id); else copy.add(id);
+      return copy;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const handleBatchDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return toast('No articles selected');
+    if (!window.confirm(`Delete ${ids.length} articles permanently? This cannot be undone.`)) return;
+    try {
+      await newsroomService.deleteArticlesBatch(ids, true);
+      toast.success('Articles deleted permanently');
+      clearSelection();
+      fetchArticles();
+    } catch (err) {
+      toast.error('Batch delete failed: ' + err.message);
     }
   };
 
@@ -206,6 +231,16 @@ const ArticleTable = ({ refreshTrigger }) => {
         </p>
       </div>
 
+      {/* Batch actions */}
+      <div className="flex gap-2 items-center mb-4">
+        <button
+          onClick={handleBatchDelete}
+          disabled={selectedIds.size === 0}
+          className="px-3 py-2 bg-rose-800 text-white rounded disabled:opacity-50"
+        >Delete Permanently</button>
+        <div className="text-sm text-slate-500">{selectedIds.size} selected</div>
+      </div>
+
       {/* Table */}
       {loading ? (
         <div className="text-center py-12 text-slate-600 dark:text-slate-400">
@@ -239,7 +274,9 @@ const ArticleTable = ({ refreshTrigger }) => {
               <tbody>
                 {paginatedArticles.map((article) => (
                   <tr key={article.id} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 flex items-start gap-3">
+                      <input type="checkbox" checked={selectedIds.has(article.id)} onChange={() => toggleSelect(article.id)} className="mt-2" />
+                    
                       <div className="flex flex-col gap-1">
                         <p className="font-medium text-slate-900 dark:text-slate-100 truncate max-w-[200px] md:max-w-xs whitespace-normal line-clamp-2">
                           {article.title}

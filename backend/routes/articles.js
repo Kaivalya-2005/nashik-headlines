@@ -759,6 +759,28 @@ router.delete("/articles/:id", (req, res) => {
   );
 });
 
+// POST /api/articles/batch-delete
+router.post('/articles/batch-delete', adminAuth, (req, res) => {
+  const ids = Array.isArray(req.body.ids) ? req.body.ids.map(Number).filter(Boolean) : [];
+  const force = Boolean(req.body.force);
+  if (!ids.length) return res.status(400).json({ error: 'No ids provided' });
+
+  const placeholders = ids.map(() => '?').join(',');
+  if (force) {
+    db.query(`DELETE FROM articles WHERE id IN (${placeholders})`, ids, (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      clearCache().catch(console.error);
+      res.json({ success: true, message: `Deleted ${ids.length} articles` });
+    });
+  } else {
+    db.query(`UPDATE articles SET status='deleted' WHERE id IN (${placeholders})`, ids, (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      clearCache().catch(console.error);
+      res.json({ success: true, message: `Marked ${ids.length} articles as deleted` });
+    });
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 🔹 RAW ARTICLES ROUTES (scraped, unprocessed)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -795,6 +817,28 @@ router.delete("/raw-articles/:id", (req, res) => {
       res.json({ success: true, message: "Raw article deleted 🗑️" });
     }
   );
+});
+
+// POST /api/raw-articles/batch-delete
+router.post('/raw-articles/batch-delete', adminAuth, (req, res) => {
+  const ids = Array.isArray(req.body.ids) ? req.body.ids.map(Number).filter(Boolean) : [];
+  const force = Boolean(req.body.force);
+  if (!ids.length) return res.status(400).json({ error: 'No ids provided' });
+
+  const placeholders = ids.map(() => '?').join(',');
+  if (force) {
+    // hard delete
+    db.query(`DELETE FROM raw_articles WHERE id IN (${placeholders})`, ids, (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ success: true, message: `Deleted ${ids.length} raw articles` });
+    });
+  } else {
+    // soft mark as rejected to allow review / recovery
+    db.query(`UPDATE raw_articles SET status='rejected' WHERE id IN (${placeholders})`, ids, (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ success: true, message: `Marked ${ids.length} raw articles as rejected` });
+    });
+  }
 });
 
 // POST /api/raw-articles/:id/process — trigger single-article pipeline

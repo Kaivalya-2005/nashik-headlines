@@ -1,6 +1,6 @@
 // Use the shared axios instance from api.js.
 // It already reads 'token' from localStorage, attaches Authorization headers,
-// and redirects to /login on 401 — no duplication needed here.
+// and redirects to the admin login route on 401 — no duplication needed here.
 import api from '../api/api';
 
 // ============================================
@@ -120,6 +120,16 @@ export const deleteRawArticle = async (id) => {
     return response.data;
   } catch (error) {
     console.error('Failed to delete raw article:', error);
+    throw error;
+  }
+};
+
+export const deleteRawArticlesBatch = async (ids = [], force = false) => {
+  try {
+    const response = await api.post('/raw-articles/batch-delete', { ids, force });
+    return response.data;
+  } catch (error) {
+    console.error('Failed to batch-delete raw articles:', error);
     throw error;
   }
 };
@@ -259,6 +269,16 @@ export const deleteArticle = async (id) => {
     return response.data;
   } catch (error) {
     console.error('Failed to delete article:', error);
+    throw error;
+  }
+};
+
+export const deleteArticlesBatch = async (ids = [], force = false) => {
+  try {
+    const response = await api.post('/articles/batch-delete', { ids, force });
+    return response.data;
+  } catch (error) {
+    console.error('Failed to batch-delete articles:', error);
     throw error;
   }
 };

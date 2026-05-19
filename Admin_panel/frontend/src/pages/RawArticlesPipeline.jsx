@@ -205,6 +205,7 @@ const RawArticlesPipeline = ({ refreshTrigger }) => {
   const [processingIds, setProcessingIds] = useState(new Set());
   const [selectedRaw, setSelectedRaw]   = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
   const [filter, setFilter]             = useState('all');
   
   // Pipeline global status
@@ -370,6 +371,38 @@ const RawArticlesPipeline = ({ refreshTrigger }) => {
     { key: 'duplicate', label: 'Duplicate', count: counts.duplicate || 0 },
   ];
 
+  const toggleSelectOne = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredArticles.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredArticles.map(a => a.id)));
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.size === 0) {
+      toast('No articles selected', { icon: 'ℹ️' });
+      return;
+    }
+    const ids = Array.from(selectedIds);
+    const toastId = toast.loading('Deleting permanently…');
+    try {
+      await newsroomService.deleteRawArticlesBatch(ids, true);
+      toast.success('Deleted', { id: toastId });
+      setSelectedIds(new Set());
+      await fetchRawArticles(false);
+    } catch (err) {
+      toast.error('Batch operation failed: ' + (err.message || err), { id: toastId });
+    }
+  };
+
   return (
     <div className="bg-slate-50 dark:bg-slate-950 p-6 md:p-8 rounded-xl transition-colors">
 
@@ -479,6 +512,24 @@ const RawArticlesPipeline = ({ refreshTrigger }) => {
         </div>
       )}
 
+      {/* Selection toolbar for batch actions */}
+      {filteredArticles.length > 0 && (
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <label className="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <input type="checkbox" checked={selectedIds.size === filteredArticles.length && filteredArticles.length > 0} onChange={toggleSelectAll} className="w-4 h-4" />
+              <span>{selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select'}</span>
+            </label>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={handleBatchDelete} disabled={selectedIds.size === 0}
+              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm disabled:opacity-50">
+              Delete Permanently
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Articles List */}
       <div className="min-h-[300px]">
         {loading && rawArticles.length === 0 ? (
@@ -510,6 +561,16 @@ const RawArticlesPipeline = ({ refreshTrigger }) => {
                 <div key={article.id}
                   className="p-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between gap-4">
+                    {/* Select checkbox */}
+                    <div className="flex items-start mr-2 pt-1">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(article.id)}
+                        onChange={() => toggleSelectOne(article.id)}
+                        className="w-4 h-4 mt-1"
+                        aria-label={`Select article ${article.id}`}
+                      />
+                    </div>
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-1.5 line-clamp-2 text-sm leading-snug">

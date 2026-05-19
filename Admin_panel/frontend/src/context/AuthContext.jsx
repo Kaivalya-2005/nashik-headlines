@@ -9,11 +9,33 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const fetchUser = async () => {
+            const token = localStorage.getItem('token');
+            const storedUser = localStorage.getItem('user');
+
+            if (!token) {
+                setUser(null);
+                setLoading(false);
+                return;
+            }
+
+            if (storedUser) {
+                try {
+                    setUser(JSON.parse(storedUser));
+                } catch {
+                    localStorage.removeItem('user');
+                }
+            }
+
             try {
                 const current = await authService.getCurrentUser();
-                setUser(current);
+                if (current) {
+                    setUser(current);
+                    localStorage.setItem('user', JSON.stringify(current));
+                }
             } catch (error) {
                 setUser(null);
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
             } finally {
                 setLoading(false);
             }
@@ -24,9 +46,24 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         const data = await authService.login(email, password);
-        const current = await authService.getCurrentUser();
-        setUser(current || data);
-        return current || data;
+        const loggedInUser = data?.user || null;
+
+        if (loggedInUser) {
+            setUser(loggedInUser);
+            localStorage.setItem('user', JSON.stringify(loggedInUser));
+        }
+
+        try {
+            const current = await authService.getCurrentUser();
+            if (current) {
+                setUser(current);
+                localStorage.setItem('user', JSON.stringify(current));
+                return current;
+            }
+        } catch {
+        }
+
+        return loggedInUser;
     };
 
     const logout = async () => {

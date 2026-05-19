@@ -18,7 +18,6 @@ const createArticle = async (data) => {
 };
 
 const updateArticle = async (id, data) => {
-    console.log('[articleService] PUT /articles/' + id);
     const response = await api.put(`/articles/${id}`, data);
     return response.data;
 };
@@ -29,7 +28,6 @@ const deleteArticle = async (id) => {
 };
 
 const approveArticle = async (id) => {
-    console.log('[articleService] PUT /articles/' + id + '/approve');
     const response = await api.put(`/articles/${id}/approve`);
     return response.data;
 };
@@ -40,7 +38,6 @@ const rejectArticle = async (id) => {
 };
 
 const publishArticle = async (id) => {
-    console.log('[articleService] PUT /articles/' + id + '/publish');
     const response = await api.put(`/articles/${id}/publish`);
     return response.data;
 };

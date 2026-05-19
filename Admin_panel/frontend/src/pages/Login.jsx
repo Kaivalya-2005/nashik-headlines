@@ -2,7 +2,7 @@ import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { Lock, Mail, Eye, EyeOff, Moon, Sun } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { useDarkMode } from '../context/DarkModeContext';
 
 const Login = () => {
@@ -17,14 +17,19 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+        const loadingToastId = toast.loading('Logging in...');
         try {
             await login(email, password);
-            toast.success('Login successful!');
-            navigate('/articles');
+            toast.success('Login successful!', {
+                id: loadingToastId,
+                duration: 1800,
+            });
+            setTimeout(() => {
+                navigate('/');
+            }, 300);
         } catch (error) {
-            console.error(error);
             const msg = error.response?.data?.message || 'Login failed';
-            toast.error(msg);
+            toast.error(msg, { id: loadingToastId, duration: 2500 });
         } finally {
             setLoading(false);
         }
@@ -32,7 +37,6 @@ const Login = () => {
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-950 transition-colors p-4">
-            <Toaster position="top-right" />
             <div className="absolute top-4 right-4">
                 <button
                     onClick={toggleDarkMode}

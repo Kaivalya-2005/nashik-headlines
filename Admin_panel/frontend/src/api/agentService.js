@@ -5,8 +5,16 @@ import api from './api';
 
 // Manus AI API client (separate base URL for AI services)
 const manusApi = axios.create({
-    baseURL: import.meta.env.VITE_MANUS_API || 'http://localhost:8002',
+    baseURL: import.meta.env.VITE_MANUS_API || '/api',
     timeout: 60000,
+});
+
+manusApi.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

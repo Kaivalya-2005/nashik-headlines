@@ -20,6 +20,11 @@ const logout = async () => {
 };
 
 const getCurrentUser = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        return null;
+    }
+
     try {
         const response = await api.get('/auth/me');
         return response.data;

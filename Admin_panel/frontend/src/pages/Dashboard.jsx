@@ -1,25 +1,34 @@
-import React, { useState, useCallback } from 'react';
-import { Zap, Play, RotateCcw, RefreshCw, HelpCircle, X, ArrowRight } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Zap, Play, RotateCcw, RefreshCw, Activity, Power, StopCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StatusCards from '../components/StatusCards';
 import * as newsroomService from '../services/newsroomService';
 
 const Dashboard = () => {
-  const [showGuide, setShowGuide] = useState(() => {
-    return localStorage.getItem('hideWelcomeGuide') !== 'true';
-  });
   const [loading, setLoading] = useState({
     scraper: false,
     process: false,
     fullCycle: false,
-    refresh: false
+    refresh: false,
+    toggleScraper: false,
+    cancelPipeline: false
   });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [scraperStatus, setScraperStatus] = useState({ running: false, lastRun: null });
+  const [pipelineStatus, setPipelineStatus] = useState({ isProcessing: false, total: 0, current: 0, note: '' });
 
-  const dismissGuide = () => {
-    setShowGuide(false);
-    localStorage.setItem('hideWelcomeGuide', 'true');
-  };
+  const fetchControlState = useCallback(async () => {
+    try {
+      const [scraper, pipeline] = await Promise.all([
+        newsroomService.getScraperStatus(),
+        newsroomService.getPipelineStatus()
+      ]);
+      if (scraper) setScraperStatus(scraper);
+      if (pipeline) setPipelineStatus(pipeline);
+    } catch {
+      // Keep UI usable even if control status fails.
+    }
+  }, []);
 
   const handleScraper = async () => {
     setLoading(prev => ({ ...prev, scraper: true }));
@@ -53,6 +62,7 @@ const Dashboard = () => {
       await newsroomService.runFullCycle();
       toast.success('Full cycle completed');
       setTimeout(() => handleRefresh(), 2000);
+      fetchControlState();
     } catch (error) {
       toast.error('Full cycle failed: ' + error.message);
     } finally {
@@ -60,16 +70,54 @@ const Dashboard = () => {
     }
   };
 
+  const handleToggleScraper = async () => {
+    const nextEnabled = !scraperStatus.running;
+    setLoading(prev => ({ ...prev, toggleScraper: true }));
+    try {
+      const response = await newsroomService.toggleScraper(nextEnabled);
+      if (response?.running === true || response?.started) {
+        toast.success('Auto scraper started');
+      } else {
+        toast.success('Auto scraper stopped');
+      }
+      await fetchControlState();
+    } catch (error) {
+      toast.error('Failed to update scraper state: ' + error.message);
+    } finally {
+      setLoading(prev => ({ ...prev, toggleScraper: false }));
+    }
+  };
+
+  const handleCancelPipeline = async () => {
+    setLoading(prev => ({ ...prev, cancelPipeline: true }));
+    try {
+      const response = await newsroomService.cancelPipeline();
+      toast.success(response?.message || 'Pipeline cancel requested');
+      await fetchControlState();
+    } catch (error) {
+      toast.error('Could not cancel pipeline: ' + error.message);
+    } finally {
+      setLoading(prev => ({ ...prev, cancelPipeline: false }));
+    }
+  };
+
   const handleRefresh = useCallback(async () => {
     setLoading(prev => ({ ...prev, refresh: true }));
     try {
       setRefreshTrigger(prev => prev + 1);
+      await fetchControlState();
       await new Promise(resolve => setTimeout(resolve, 500));
       toast.success('Stats refreshed');
     } finally {
       setLoading(prev => ({ ...prev, refresh: false }));
     }
-  }, []);
+  }, [fetchControlState]);
+
+  useEffect(() => {
+    fetchControlState();
+    const id = setInterval(fetchControlState, 10000);
+    return () => clearInterval(id);
+  }, [fetchControlState]);
 
   const ActionButton = ({ icon, label, onClick, loading, color = 'blue', variant = 'primary' }) => {
     const primaryColors = {
@@ -134,44 +182,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Welcome Guide */}
-      {showGuide && (
-        <div className="mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 rounded-xl p-6 border border-indigo-200 dark:border-indigo-800/50 relative">
-          <button
-            onClick={dismissGuide}
-            className="absolute top-4 right-4 p-1 rounded hover:bg-white/50 dark:hover:bg-slate-800/50 text-slate-500"
-            title="Dismiss guide"
-          >
-            <X size={18} />
-          </button>
-          <div className="flex items-center gap-2 mb-3">
-            <HelpCircle size={20} className="text-indigo-600 dark:text-indigo-400" />
-            <h2 className="text-lg font-semibold text-indigo-900 dark:text-indigo-200">Welcome! Here's how to publish news</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {[
-              { step: '1', title: 'Run Scraper', desc: 'Click "Run Scraper" to fetch fresh news from sources' },
-              { step: '2', title: 'Process Pending', desc: 'AI rewrites and optimizes articles for SEO' },
-              { step: '3', title: 'Review Articles', desc: 'Go to Articles tab, review and approve content' },
-              { step: '4', title: 'Publish', desc: 'Click Publish on approved articles to go live!' },
-            ].map((item) => (
-              <div key={item.step} className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-indigo-600 dark:bg-indigo-500 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
-                  {item.step}
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{item.title}</p>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">{item.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-3 flex items-center gap-1">
-            Or use "Full Cycle" below to do steps 1 & 2 automatically <ArrowRight size={12} />
-          </p>
-        </div>
-      )}
-
       {/* Status Cards */}
       <StatusCards refreshTrigger={refreshTrigger} />
 
@@ -217,24 +227,68 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* System Information */}
+      {/* System Controls */}
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-800">
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">API Connection</h3>
-        <p className="text-slate-600 dark:text-slate-400 mb-3">
-          Backend: <span className="font-mono font-bold">http://localhost:5000/api</span>
-        </p>
-        <div className="grid grid-cols-3 gap-4 text-sm">
-          <div>
-            <p className="text-slate-500 dark:text-slate-400">Status</p>
-            <p className="font-semibold text-emerald-600 dark:text-emerald-400">Connected</p>
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">
+          System Controls
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="rounded-lg border border-slate-200 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-950">
+            <div className="flex items-center justify-between mb-3">
+              <p className="font-medium text-slate-900 dark:text-slate-100">Auto Scraper</p>
+              <span className={`text-xs px-2 py-1 rounded-full ${scraperStatus.running
+                ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+                {scraperStatus.running ? 'Running' : 'Stopped'}
+              </span>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+              {scraperStatus.lastRun?.at
+                ? `Last run: ${new Date(scraperStatus.lastRun.at).toLocaleString()}`
+                : 'No run recorded yet'}
+            </p>
+            <button
+              onClick={handleToggleScraper}
+              disabled={loading.toggleScraper}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-slate-200 text-slate-100 dark:text-slate-900 disabled:opacity-50"
+            >
+              <Power size={16} />
+              {loading.toggleScraper
+                ? 'Updating...'
+                : scraperStatus.running
+                  ? 'Stop Auto Scraper'
+                  : 'Start Auto Scraper'}
+            </button>
           </div>
-          <div>
-            <p className="text-slate-500 dark:text-slate-400">Database</p>
-            <p className="font-semibold text-slate-800 dark:text-slate-200">Active</p>
-          </div>
-          <div>
-            <p className="text-slate-500 dark:text-slate-400">Auto-refresh</p>
-            <p className="font-semibold text-slate-800 dark:text-slate-200">On demand</p>
+
+          <div className="rounded-lg border border-slate-200 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-950">
+            <div className="flex items-center justify-between mb-3">
+              <p className="font-medium text-slate-900 dark:text-slate-100">AI Pipeline</p>
+              <span className={`text-xs px-2 py-1 rounded-full ${pipelineStatus.isProcessing
+                ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
+                : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+                {pipelineStatus.isProcessing ? 'Processing' : 'Idle'}
+              </span>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+              {pipelineStatus.isProcessing
+                ? `In progress: ${pipelineStatus.current || 0}/${pipelineStatus.total || 0}`
+                : 'No active pipeline job'}
+            </p>
+            {pipelineStatus.note && (
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1">
+                <Activity size={12} /> {pipelineStatus.note}
+              </p>
+            )}
+            <button
+              onClick={handleCancelPipeline}
+              disabled={!pipelineStatus.isProcessing || loading.cancelPipeline}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-rose-700 hover:bg-rose-800 text-white disabled:opacity-50"
+            >
+              <StopCircle size={16} />
+              {loading.cancelPipeline ? 'Stopping...' : 'Stop Pipeline'}
+            </button>
           </div>
         </div>
       </div>

@@ -135,8 +135,6 @@ const EditArticle = () => {
     };
 
     const handleSave = async () => {
-        console.log('[handleSave] Saving article id:', id);
-
         // Warn if any image is missing alt-text (soft warning, not a hard block)
         const missingAlt = images.filter(img => !img.altText?.trim());
         if (missingAlt.length > 0) {
@@ -233,8 +231,6 @@ const EditArticle = () => {
     const handleRegenerate = async () => {
         if (processing) return;
 
-        console.log('[Regenerate] Button clicked — title len:', title?.length, '| content len:', content?.length);
-
         // Step 1: Waiting state — give the UI a moment to render before the async call
         setProcessing(true);
         setAiStatus(prev => ({...prev, regenerate: 'waiting', regenerateMsg: 'Preparing AI regeneration...'}));
@@ -246,9 +242,7 @@ const EditArticle = () => {
         setAiStatus(prev => ({...prev, regenerate: 'processing', regenerateMsg: 'AI is regenerating the article...'}));
 
         try {
-            console.log('[Regenerate] Sending POST /api/articles/regenerate...');
             const result = await aiService.regenerateArticle({ title, content });
-            console.log('[Regenerate] Response received:', result);
 
             // Update all editor fields with regenerated data
             setTitle(result.title || title);
@@ -277,7 +271,6 @@ const EditArticle = () => {
             setTimeout(() => setAiStatus(prev => ({...prev, regenerate: null, regenerateMsg: ''})), 3000);
         } catch (error) {
             const errMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Unknown error';
-            console.error('[Regenerate] FAILED — status:', error.response?.status, '| error:', errMsg);
             // Step 3 (failure): Failed
             toast.error(`AI regeneration failed: ${errMsg}`);
             setAiStatus(prev => ({...prev, regenerate: 'failed', regenerateMsg: 'AI regeneration failed'}));

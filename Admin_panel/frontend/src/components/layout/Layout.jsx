@@ -65,12 +65,6 @@ const Layout = () => {
 
                 {/* Bottom Section */}
                 <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
-                    {/* API Status */}
-                    <div className="rounded-md p-3 border border-emerald-200/70 dark:border-emerald-900 bg-emerald-50/80 dark:bg-emerald-950/40">
-                        <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium mb-1">API Status</p>
-                        <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Connected</p>
-                    </div>
-
                     {/* User Info */}
                     <div className="flex flex-col">
                         <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
