@@ -220,13 +220,13 @@ YOAST SEO नियम — सर्व काटेकोरपणे पाळ
 
     }
 
-    let articleContent = await askGroqFull(phase1Prompt, 3200);
+    let articleContent = await askGroqFull(phase1Prompt, 4096);
 
-    // All portals: enforce Yoast minimum word count for Marathi articles.
-    // MIN_WORDS is set to 250 so borderline articles don't waste an extra Groq call.
-    if (true) {
-      const MIN_WORDS = 250;
-      const TARGET_WORDS = 450;
+    // Enforce 600+ word minimum for all portals. Expand only if genuinely short
+    // (< 500 words) to avoid wasting a second Groq call on borderline articles.
+    {
+      const MIN_WORDS = 500;
+      const TARGET_WORDS = 650;
       let wordCount = countWordsFromHtml(articleContent);
       console.log(`[AI generate-full] Marathi word count (pass 1): ${wordCount}`);
 
@@ -238,16 +238,16 @@ YOAST SEO नियम — सर्व काटेकोरपणे पाळ
 विषय: ${topicShort}
 
 सध्याचा लेख (${wordCount} शब्द — खूप लहान):
-${articleContent.slice(0, 2500)}
+${articleContent.slice(0, 2000)}
 
 नियम:
-- किमान ${TARGET_WORDS} मराठी शब्द.
+- किमान ${TARGET_WORDS} मराठी शब्द लिहा. हे अत्यंत महत्त्वाचे आहे.
 - सुरुवातीची ओळ 👉 "${cityLabel} : प्रतिनिधी" ठेवा.
-- HTML structure ठेवा: किमान 4 <h2> आणि प्रत्येक खाली 2-3 <p>.
-- सर्व मूळ links ठेवा, नवीन माहिती जोडा.
+- HTML structure ठेवा: किमान 5 <h2> आणि प्रत्येक खाली 2-3 <p>.
+- सर्व मूळ links ठेवा, नवीन माहिती, संदर्भ आणि तपशील जोडा.
 - फक्त पूर्ण विस्तारित HTML लेख परत द्या. JSON नको.`;
 
-        articleContent = await askGroqFull(expandPrompt, 2000);
+        articleContent = await askGroqFull(expandPrompt, 2500);
         wordCount = countWordsFromHtml(articleContent);
         console.log(`[AI generate-full] Marathi word count (after expand): ${wordCount}`);
 
@@ -270,37 +270,39 @@ ${articleContent.slice(0, 2500)}
       : "Nashik, Maharashtra, India, International, Entertainment, Sports, Politics, Business, Technology, Health, Education, Crime";
     const tagCount = 16; // 16 Marathi tags for all portals
 
-    const phase2Prompt = `Based on the following ${seoLang} news article, generate SEO and social media metadata that ensures a Yoast SEO score of 90-100.
+    const cityName = isNaviMumbaiOnly ? "नवी मुंबई" : "नाशिक";
+
+    const phase2Prompt = `You are an expert Yoast SEO specialist. Based on the following ${seoLang} news article, generate SEO metadata that will achieve a Yoast SEO score of 90-100.
 
 ARTICLE CONTENT:
-${articleContent.slice(0, 1500)}
+${articleContent.slice(0, 1200)}
 
-CRITICAL YOAST SEO REQUIREMENTS FOR ALL FIELDS:
-1. "focus_keyword" MUST be 2-4 words (e.g., "Nashik road safety" not single words).
-2. "seo_title" MUST START WITH the exact focus_keyword (e.g., if focus_keyword is "Nashik road safety", title starts with "Nashik road safety:").
-3. "meta_description" MUST CONTAIN the focus_keyword or its synonym. Length: 120-155 chars exactly.
-4. "slug" MUST CONTAIN all words from the focus_keyword separated by hyphens (e.g., "nashik-road-safety-...").
-5. "image_alt" MUST CONTAIN at least half the words from the focus_keyword (e.g., "nashik road safety").
-6. All fields must be in ${seoLang}.
+STRICT YOAST SEO RULES — follow EXACTLY:
+1. "focus_keyword": Pick the SINGLE most important 2-3 Marathi words from the article topic (e.g., "नाशिक पोलीस"). NEVER use only 1 word. NEVER use more than 3 words. This keyphrase MUST appear naturally many times in the article content above.
+2. "seo_title": MUST START with the exact focus_keyword followed by colon and context. Max 60 chars total.
+3. "meta_description": MUST CONTAIN the exact focus_keyword. Length must be 130-150 characters.
+4. "slug": MUST be in English/Latin only (no Devanagari). Use transliterated versions of focus_keyword words separated by hyphens (e.g., focus_keyword "नाशिक पोलीस" → slug "nashik-police-latest-news").
+5. "image_alt": Must contain at least the first word of focus_keyword. 60-100 chars in ${seoLang}.
+6. All text fields (except slug) must be in ${seoLang}.
 
-Return ONLY a valid JSON object with these exact keys (no extra text, no markdown fences):
+Return ONLY a valid JSON object with these exact keys (no extra text, no markdown):
 {
-  "title": "Main headline (can start with focus_keyword)",
-  "seo_title": "MUST start with focus_keyword, max 60 chars",
-  "focus_keyword": "Exactly 2-4 words — the Yoast focus keyphrase in ${seoLang}",
-  "slug": "all-words-from-focus-keyword-in-slug-hyphens-only",
-  "meta_description": "120-155 chars, MUST contain the focus_keyword",
-  "og_title": "Facebook/WhatsApp ${seoLang} title",
+  "title": "${seoLang} main headline for the article",
+  "seo_title": "focus_keyword: brief context — max 60 chars",
+  "focus_keyword": "2-3 Marathi words that appear most in article",
+  "slug": "english-transliterated-slug-with-hyphens-only",
+  "meta_description": "130-150 chars in ${seoLang} containing focus_keyword",
+  "og_title": "${seoLang} social share title (60-80 chars)",
   "og_description": "${seoLang} social description (max 200 chars)",
-  "twitter_title": "Twitter/X ${seoLang} title",
-  "twitter_description": "Twitter/X ${seoLang} description (max 200 chars)",
+  "twitter_title": "${seoLang} Twitter title",
+  "twitter_description": "${seoLang} Twitter description (max 200 chars)",
   "excerpt": "2-3 sentence ${seoLang} WordPress excerpt",
   "summary": "2-sentence ${seoLang} summary",
-  "tags": "${tagCount} high-traffic news tags separated by commas",
-  "keywords": "8 SEO keywords separated by commas",
+  "tags": "${tagCount} ${seoLang} news tags separated by commas",
+  "keywords": "8 ${seoLang} SEO keywords separated by commas",
   "category": "Pick ONE from: ${catList}",
   "canonical_url": "${siteUrl}/",
-  "image_alt": "50-120 chars in ${seoLang} — MUST contain focus_keyword words"
+  "image_alt": "60-100 chars in ${seoLang} containing focus_keyword"
 }`;
 
     const seoText   = await askGroqSeoJson(phase2Prompt);

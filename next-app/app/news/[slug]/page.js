@@ -14,6 +14,44 @@ export const dynamic = 'force-dynamic';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
+/**
+ * Distribute images evenly between article sections by inserting <figure> blocks
+ * after </h2> anchor points (or </p> if no h2 found).
+ */
+function injectImagesIntoContent(html, images) {
+  if (!images?.length || !html) return html;
+
+  // Collect injection points after </h2> or </p>
+  const h2Regex = /<\/h2>/gi;
+  const anchors = [];
+  let m;
+  while ((m = h2Regex.exec(html)) !== null) anchors.push(m.index + m[0].length);
+
+  if (anchors.length === 0) {
+    const pRegex = /<\/p>/gi;
+    while ((m = pRegex.exec(html)) !== null) anchors.push(m.index + m[0].length);
+  }
+
+  if (anchors.length === 0) return html;
+
+  const step = Math.max(1, Math.floor(anchors.length / (images.length + 1)));
+  const insertions = images.map((img, i) => ({
+    pos: anchors[Math.min(step * (i + 1), anchors.length - 1)],
+    html: `<figure class="article-image my-6 rounded-xl overflow-hidden border border-border bg-card/60 shadow-sm">` +
+      `<img src="${img.url}" alt="${(img.altText || '').replace(/"/g, '&quot;')}" loading="lazy" style="width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;" />` +
+      (img.caption ? `<figcaption class="px-3 py-2 text-sm text-muted-foreground">${img.caption}</figcaption>` : '') +
+      `</figure>`,
+  }));
+
+  // Insert from end so earlier positions aren't shifted
+  insertions.sort((a, b) => b.pos - a.pos);
+  let result = html;
+  for (const { pos, html: block } of insertions) {
+    result = result.slice(0, pos) + block + result.slice(pos);
+  }
+  return result;
+}
+
 export async function generateMetadata({ params }) {
   const article = await fetchArticleBySlug(params.slug, { cache: 'no-store' });
   if (!article) {
@@ -39,11 +77,15 @@ export async function generateMetadata({ params }) {
     robots: {
       index: true,
       follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
       googleBot: {
         index: true,
         follow: true,
         'max-image-preview': 'large',
         'max-snippet': -1,
+        'max-video-preview': -1,
       },
     },
     openGraph: {
@@ -73,28 +115,62 @@ export default async function ArticlePage({ params }) {
   const heroImage = article.image || article.images?.find((img) => img.isFeatured)?.url || article.images?.[0]?.url;
   const featuredFromList = article.images?.find((img) => img.isFeatured) || article.images?.[0] || null;
   const inlineImages = (article.images || []).filter((img) => img?.url && img.url !== featuredFromList?.url);
-  const rawContent = String(article.content || '');
+  const rawContent = injectImagesIntoContent(String(article.content || ''), inlineImages);
   const ogImage = heroImage
     ? heroImage.startsWith('http')
       ? heroImage
       : `${siteUrl}${heroImage}`
     : undefined;
+  const wordCountEst = String(article.content || '').replace(/<[^>]+>/g, ' ').trim().split(/\s+/).filter(Boolean).length;
+  const readingMins = Math.max(1, Math.round(wordCountEst / 200));
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'NewsArticle',
     headline: article.title,
-    description: article.seoDescription,
-    image: ogImage ? [ogImage] : undefined,
+    description: article.seoDescription || article.description,
+    image: ogImage ? [{ '@type': 'ImageObject', url: ogImage, width: 1200, height: 630 }] : undefined,
     datePublished: article.publishedAt,
-    author: { '@type': 'Organization', name: 'नाशिक हेडलाईन्स' },
-    publisher: {
+    dateModified: article.updatedAt || article.publishedAt,
+    author: {
       '@type': 'Organization',
       name: 'नाशिक हेडलाईन्स',
-      logo: { '@type': 'ImageObject', url: `${siteUrl}/favicon.ico` },
+      url: siteUrl,
     },
-    mainEntityOfPage: { '@type': 'WebPage', '@id': `${siteUrl}/news/${article.slug}` },
-    articleSection: cat?.label || 'News',
-    keywords: article.keywords,
+    publisher: {
+      '@type': 'NewsMediaOrganization',
+      name: 'नाशिक हेडलाईन्स',
+      url: siteUrl,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${siteUrl}/logo.png`,
+        width: 600,
+        height: 60,
+      },
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `${siteUrl}/news/${article.slug}`,
+    },
+    articleSection: cat?.label || 'बातम्या',
+    keywords: article.keywords || (article.tags || []).join(', '),
+    wordCount: wordCountEst,
+    timeRequired: `PT${readingMins}M`,
+    inLanguage: 'mr',
+    isAccessibleForFree: true,
+    speakable: {
+      '@type': 'SpeakableSpecification',
+      cssSelector: ['h1', '.article-content h2', '.article-content p:first-of-type'],
+    },
+  };
+
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'मुख्यपान', item: siteUrl },
+      ...(cat ? [{ '@type': 'ListItem', position: 2, name: cat.label, item: `${siteUrl}/category/${cat.slug}` }] : []),
+      { '@type': 'ListItem', position: cat ? 3 : 2, name: article.title, item: `${siteUrl}/news/${article.slug}` },
+    ],
   };
 
   return (
@@ -103,6 +179,7 @@ export default async function ArticlePage({ params }) {
       <ViewTracker articleId={article.id} />
       <main className="container mx-auto px-4 py-8 max-w-3xl">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 
         <Link
           href="/"
@@ -152,29 +229,6 @@ export default async function ArticlePage({ params }) {
             className="article-content drop-cap"
             dangerouslySetInnerHTML={{ __html: rawContent }}
           />
-
-          {inlineImages.length > 0 && (
-            <div className="mt-6 space-y-4">
-              {inlineImages.map((img, idx) => (
-                <figure key={idx} className="rounded-xl overflow-hidden border border-border bg-card/60 shadow-sm">
-                  <div className="relative aspect-[16/9]">
-                    <Image
-                      src={img.url}
-                      alt={img.altText || article.title}
-                      fill
-                      className="object-cover object-center"
-                      sizes="(min-width: 1024px) 900px, 100vw"
-                    />
-                  </div>
-                  {img.caption && (
-                    <figcaption className="px-3 py-2 text-sm text-muted-foreground">
-                      {img.caption}
-                    </figcaption>
-                  )}
-                </figure>
-              ))}
-            </div>
-          )}
 
           {article.tags?.length > 0 && (
             <section className="mt-10 pt-6 border-t border-border">

@@ -109,6 +109,11 @@ class WordPressPublisher {
     const twDesc = (article.twitter_description || ogDesc).trim();
     const ogImage = article.og_image || article.featured_image_url || article.image_url || "";
 
+    // Estimate reading time: avg 200 Marathi words/minute
+    const wc = Number(article._word_count || 0) ||
+      String(article.content || "").replace(/<[^>]+>/g, " ").trim().split(/\s+/).filter(Boolean).length;
+    const readingMinutes = Math.max(1, Math.round(wc / 200));
+
     const meta = {
       "_yoast_wpseo_focuskw": focusKw,
       "_yoast_wpseo_title": seoTitle,
@@ -122,6 +127,7 @@ class WordPressPublisher {
       "_yoast_wpseo_twitter-image": ogImage,
       "_yoast_wpseo_meta-robots-noindex": "0",
       "_yoast_wpseo_meta-robots-nofollow": "0",
+      "_yoast_wpseo_estimated-reading-time-minutes": String(readingMinutes),
     };
 
     if (primaryMediaId) {
@@ -259,6 +265,20 @@ class WordPressPublisher {
     }
   }
 
+  /** Resolve a comma-separated string or array of category names → array of WP IDs. */
+  async resolveCategories(categoriesInput) {
+    if (!categoriesInput) return [];
+    const names = Array.isArray(categoriesInput)
+      ? categoriesInput
+      : String(categoriesInput).split(",").map((s) => s.trim()).filter(Boolean);
+    const ids = [];
+    for (const name of names.slice(0, 5)) {
+      const id = await this.resolveCategory(name);
+      if (id) ids.push(id);
+    }
+    return ids;
+  }
+
   async resolveTags(tagsInput) {
     if (!tagsInput) return [];
     const tagNames =
@@ -294,7 +314,7 @@ class WordPressPublisher {
    * Build WP REST payload.
    * Content comes pre-rendered — no conversion needed.
    */
-  buildWpPayload(article, mediaId, categoryId, tagIds) {
+  buildWpPayload(article, mediaId, categoryIds, tagIds) {
     const seoTitle = (article.seo_title || article.title || "").trim();
     const ogDesc = (article.og_description || article.meta_description || "").trim();
     const yoastMeta = this.buildYoastMeta(article, mediaId || null);
@@ -303,7 +323,12 @@ class WordPressPublisher {
     const content = String(article.content || "").trim();
     const excerpt = String(article.excerpt || article.summary || "").trim();
 
-    // Product rule: Navi Mumbai posts are ALWAYS saved as WordPress draft (never live publish).
+    // Normalise categoryIds: accept a single id, an array, or null
+    const categories = Array.isArray(categoryIds)
+      ? categoryIds
+      : categoryIds ? [categoryIds] : [];
+
+    // Product rule: posts are ALWAYS saved as WordPress draft (never live publish).
     return {
       title: seoTitle,
       slug: article.slug || "",
@@ -313,7 +338,7 @@ class WordPressPublisher {
       format: article.format || "standard",
       sticky: Boolean(article.sticky),
       featured_media: mediaId || 0,
-      categories: categoryId ? [categoryId] : [],
+      categories,
       tags: tagIds || [],
       meta: {
         ...yoastMeta,
@@ -437,9 +462,9 @@ class WordPressPublisher {
       article.content = injectImagesIntoHtml(article.content, uploadedImages);
     }
 
-    const categoryId = await this.resolveCategory(article.category_name || article.category || null);
+    const categoryIds = await this.resolveCategories(article.category_name || article.category || null);
     const tagIds = await this.resolveTags(article.tags);
-    const payload = this.buildWpPayload(article, primaryMediaId, categoryId, tagIds);
+    const payload = this.buildWpPayload(article, primaryMediaId, categoryIds, tagIds);
 
     // ── Create or update the post ────────────────────────────────────────
     let response;

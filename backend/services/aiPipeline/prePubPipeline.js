@@ -16,9 +16,9 @@
  *   Enhanced Article → WordPress Publisher
  */
 
-const { injectOutboundLinks }         = require("../seo/outboundLinks");
-const { generateSlug, ensureKeywordInSlug } = require("../seo/slugGenerator");
-const { scoreArticle }                = require("../seo/seoScoreEngine");
+const { injectOutboundLinks }                          = require("../seo/outboundLinks");
+const { generateSlug, ensureKeywordInSlug, transliterate } = require("../seo/slugGenerator");
+const { scoreArticle }                                 = require("../seo/seoScoreEngine");
 const {
   buildSeoPayload,
   resolvePrimaryKeyword,
@@ -185,6 +185,68 @@ function normalizeImageAlt(altText, focusKeyword, fallbackAlt = "") {
   return `${kw} — ${base}`.slice(0, 120);
 }
 
+// ── Keyphrase density helpers ─────────────────────────────────────────────────
+
+function countKwInHtml(html, kw) {
+  if (!kw) return 0;
+  const plain = String(html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").toLowerCase();
+  const normKw = String(kw).toLowerCase().replace(/[^\wऀ-ॿ\s]/g, "").trim();
+  if (!normKw) return 0;
+  const escaped = normKw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return (plain.match(new RegExp(`(?:^|\\s|\\W)${escaped}(?:\\s|\\W|$)`, "gi")) || []).length;
+}
+
+/**
+ * Inject the exact focus keyphrase into paragraph openings to reach target density.
+ * Targets 6+ occurrences in a 600-word article (1-3% Yoast range).
+ */
+function boostKeyphraseDensity(html, focusKw, isMarathi) {
+  const currentCount = countKwInHtml(html, focusKw);
+  const wc = wordCount(html);
+  const currentDensity = wc > 0 ? (currentCount / wc) * 100 : 0;
+  const TARGET = 6; // minimum occurrences for 1% density at 600 words
+
+  if (currentCount >= TARGET || currentDensity >= 1.0) return html; // already OK
+
+  const cityLabel = isMarathi ? "नाशिक" : "Nashik";
+  const siteLabel = isMarathi ? "नाशिक हेडलाईन्स" : "Nashik Headlines";
+
+  // Append a natural Marathi conclusion section with 3 keyphrase mentions
+  const conclusionHtml = isMarathi
+    ? `\n<h2>${focusKw} - महत्त्वाची माहिती</h2>\n` +
+      `<p>${focusKw} संदर्भातील ही बातमी ${cityLabel} आणि महाराष्ट्रातील नागरिकांसाठी अत्यंत महत्त्वाची आहे. ` +
+      `${focusKw} बाबतीत सरकार आणि संबंधित यंत्रणा योग्य ती कार्यवाही करत आहेत.</p>\n` +
+      `<p>${focusKw} विषयावरील अधिक ताज्या बातम्या, विश्लेषण आणि अपडेट्ससाठी ` +
+      `<a href="https://nashikheadlines.com">${siteLabel}</a> वाचत राहा.</p>`
+    : `\n<h2>${focusKw} — Summary</h2>\n` +
+      `<p>The latest on ${focusKw} continues to develop. Follow ${siteLabel} for verified updates on ${focusKw}.</p>`;
+
+  return html + conclusionHtml;
+}
+
+/**
+ * Ensure focus keyphrase is exactly 2-4 words.
+ * If too short, extend from keywords; if too long, trim.
+ */
+function fixKeyphraseLength(focusKw, article) {
+  const kw = String(focusKw || "").trim();
+  const words = kw.split(/\s+/).filter(Boolean);
+  if (words.length >= 2 && words.length <= 4) return kw;
+
+  if (words.length < 2) {
+    // Too short — try to append a second word from keywords/title
+    const extra = (article.keywords || article.title || "")
+      .replace(/<[^>]+>/g, " ")
+      .split(/[,\s]+/)
+      .map((w) => w.trim())
+      .filter((w) => w.length > 3 && !w.toLowerCase().includes(kw.toLowerCase()))[0] || "";
+    return extra ? `${kw} ${extra}`.slice(0, 50) : kw;
+  }
+
+  // Too long — trim to 4 words
+  return words.slice(0, 4).join(" ");
+}
+
 // ── Main pipeline ─────────────────────────────────────────────────────────────
 
 /**
@@ -205,13 +267,20 @@ async function runPrePublishPipeline(article) {
     pipelineLog.push({ step, msg, ts: Date.now() });
   };
 
-  log("start", `Article: "${(article.title || "").slice(0, 60)}" | kw: "${focusKw}" | lang: ${isMarathi ? "mr" : "en"}`);
+  // ── STEP 0: Validate keyphrase length (must be 2-4 words for Yoast) ────────
+  const validatedKw = fixKeyphraseLength(focusKw, article);
+  if (validatedKw !== focusKw) {
+    log("kw_fix", `Keyphrase adjusted: "${focusKw}" → "${validatedKw}"`);
+  }
+  const effectiveKw = validatedKw || focusKw;
+
+  log("start", `Article: "${(article.title || "").slice(0, 60)}" | kw: "${effectiveKw}" | lang: ${isMarathi ? "mr" : "en"}`);
 
   let content = String(article.content || "").trim();
 
   // ── STEP 1: Ensure keyword in first paragraph ────────────────────────────
-  if (focusKw) {
-    const updated = fixIntroContent(content, focusKw);
+  if (effectiveKw) {
+    const updated = fixIntroContent(content, effectiveKw);
     if (updated !== content) {
       content = updated;
       log("kw_intro", "Keyword injected into first paragraph ✅");
@@ -221,8 +290,8 @@ async function runPrePublishPipeline(article) {
   }
 
   // ── STEP 1b: Ensure keyword appears in a subheading ─────────────────────
-  if (focusKw) {
-    const updated = fixSubheadingContent(content, focusKw);
+  if (effectiveKw) {
+    const updated = fixSubheadingContent(content, effectiveKw);
     if (updated !== content) {
       content = updated;
       log("kw_heading", "Keyword injected into subheading ✅");
@@ -231,10 +300,24 @@ async function runPrePublishPipeline(article) {
     }
   }
 
+  // ── STEP 1c: Boost keyphrase density to ≥1% (Yoast requirement) ─────────
+  if (effectiveKw) {
+    const before = countKwInHtml(content, effectiveKw);
+    const wc0 = wordCount(content);
+    const densityBefore = wc0 > 0 ? (before / wc0) * 100 : 0;
+    if (densityBefore < 1.0) {
+      content = boostKeyphraseDensity(content, effectiveKw, isMarathi);
+      const after = countKwInHtml(content, effectiveKw);
+      log("density_boost", `Density ${densityBefore.toFixed(1)}% → boosted (${before}→${after} mentions)`);
+    } else {
+      log("density_ok", `Density ${densityBefore.toFixed(1)}% (${before} mentions) — OK ✅`);
+    }
+  }
+
   // ── STEP 2: Outbound Links ────────────────────────────────────────────────
   try {
     const before = content.length;
-    content = injectOutboundLinks(content, focusKw, { isMarathi });
+    content = injectOutboundLinks(content, effectiveKw, { isMarathi });
     log("outbound", content.length > before ? "Outbound links injected ✅" : "Outbound links already present");
   } catch (err) {
     log("outbound_fail", `Outbound link injection failed: ${err.message}`);
@@ -245,16 +328,22 @@ async function runPrePublishPipeline(article) {
   let slug = String(article.slug || "").trim();
   try {
     if (!slug) {
-      slug = generateSlug(focusKw, article.title || "");
+      slug = generateSlug(effectiveKw, article.title || "");
       log("slug", `Generated: "${slug}"`);
     } else {
-      // If slug contains Devanagari, regenerate it as clean Latin
       if (/[\u0900-\u097F]/.test(slug)) {
-        const cleaned = generateSlug("", slug);
-        log("slug", `Transliterated: "${slug.slice(0, 40)}..." → "${cleaned}"`);
+        // Slug has Devanagari — regenerate as Latin from keyphrase
+        const cleaned = generateSlug(effectiveKw, article.title || "");
+        log("slug", `Transliterated Devanagari slug → "${cleaned}"`);
         slug = cleaned;
       } else {
-        log("slug", `OK: "${slug}"`);
+        // Ensure Latin slug includes transliterated keyphrase words
+        try {
+          const kwLatin = /[\u0900-\u097F]/.test(effectiveKw) ? transliterate(effectiveKw) : effectiveKw;
+          const updated = ensureKeywordInSlug(slug, kwLatin);
+          if (updated !== slug) { log("slug", `Keyphrase added to slug → "${updated}"`); slug = updated; }
+          else log("slug", `OK: "${slug}"`);
+        } catch (_e) { log("slug", `OK: "${slug}"`); }
       }
     }
   } catch (err) {
@@ -264,7 +353,7 @@ async function runPrePublishPipeline(article) {
   // ── STEP 4: SEO Title Fix ─────────────────────────────────────────────────
   let seoTitle = String(article.seo_title || article.title || "").trim();
   try {
-    const fixed = fixSeoTitle(seoTitle, focusKw);
+    const fixed = fixSeoTitle(seoTitle, effectiveKw);
     if (fixed !== seoTitle) {
       log("seo_title", `Fixed: "${seoTitle}" → "${fixed}"`);
       seoTitle = fixed;
@@ -278,7 +367,7 @@ async function runPrePublishPipeline(article) {
   // ── STEP 5: Meta Description Fix ──────────────────────────────────────────
   let metaDesc = String(article.meta_description || "").trim();
   try {
-    const fixed   = fixMetaDescription(metaDesc, focusKw, article.title, isMarathi);
+    const fixed   = fixMetaDescription(metaDesc, effectiveKw, article.title, isMarathi);
     const wasFixed = fixed !== metaDesc;
     metaDesc = fixed;
     log("meta_desc", `${wasFixed ? "Fixed" : "OK"}: ${charCount(metaDesc)} chars`);
@@ -287,7 +376,7 @@ async function runPrePublishPipeline(article) {
   }
 
   // ── STEP 6: Image Alt Text ────────────────────────────────────────────────
-  const imageAlt = normalizeImageAlt(ensureImageAlt(article, isMarathi), focusKw, article.title || article.summary || "");
+  const imageAlt = normalizeImageAlt(ensureImageAlt(article, isMarathi), effectiveKw, article.title || article.summary || "");
   log("image_alt", `Alt text: "${imageAlt.slice(0, 60)}"`);
 
   // ── Assemble enhanced article ─────────────────────────────────────────────
@@ -299,7 +388,7 @@ async function runPrePublishPipeline(article) {
     meta_description:       metaDesc,
     featured_image_alt:     imageAlt,
     image_alt:              imageAlt,
-    focus_keyword:          focusKw,
+    focus_keyword:          effectiveKw,
     og_title:               article.og_title          || seoTitle,
     og_description:         article.og_description    || metaDesc,
     twitter_title:          article.twitter_title     || seoTitle,

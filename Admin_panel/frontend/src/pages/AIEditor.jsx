@@ -422,13 +422,27 @@ const AIEditor = () => {
         });
       }
 
-      // If 'both', trigger WP publish after DB save
+      // If 'both', mark Nashik as published + push directly to Navi Mumbai WP draft
       if (publishTarget === 'both' && status === 'published' && created?.id) {
+        // Update Nashik DB status + clear cache (same as nashik-only flow)
         try {
-          const wpResult = await newsroomService.publishArticleWithTarget(created.id, 'both');
-          toast.success('Published to Nashik + Navi Mumbai Headlines! 🚀');
+          await newsroomService.publishArticleWithTarget(created.id, 'nashik');
+        } catch (nashikErr) {
+          console.warn('[Both] Nashik status update failed:', nashikErr.message);
+        }
+
+        // Push to Navi Mumbai WordPress (same as navimumbai-only flow)
+        try {
+          const resolvedImages = await resolveImagesForPublish(images);
+          const featuredImage = resolvedImages.find((i) => i.isFeatured) || resolvedImages[0] || null;
+          const wpPayload = buildArticlePayload('draft', featuredImage, resolvedImages);
+          const wpResult = await newsroomService.publishDirectToWordPress(wpPayload);
+          toast.success(
+            `Published to Nashik + Navi Mumbai Headlines! 🚀${wpResult.url ? ` WP: ${wpResult.url}` : ''}`,
+            { duration: 8000 }
+          );
         } catch (wpErr) {
-          toast.success('Saved to Nashik DB but Navi Mumbai WP publish failed: ' + (wpErr?.response?.data?.error || wpErr.message));
+          toast.error('Saved to Nashik DB but Navi Mumbai WP draft failed: ' + (wpErr?.response?.data?.error || wpErr.message));
         }
       } else {
         toast.success(status === 'published' ? 'Article published to Nashik Headlines!' : 'Draft saved ✅');
@@ -1229,8 +1243,8 @@ const AIEditor = () => {
             <div className={`p-5 border-b ${
               seoScore === 0
                 ? 'bg-slate-500 border-slate-600'
-                : seoScore >= 80 ? 'bg-green-600 border-green-700'
-                : seoScore >= 50 ? 'bg-amber-500 border-amber-600'
+                : seoScore >= 90 ? 'bg-green-600 border-green-700'
+                : seoScore >= 70 ? 'bg-amber-500 border-amber-600'
                 : 'bg-red-500 border-red-600'
             }`}>
                <h3 className="font-bold text-white mb-1 flex items-center justify-between text-lg">
@@ -1243,8 +1257,8 @@ const AIEditor = () => {
               <p className="text-white/80 text-xs font-medium mb-3">
                 {seoScore === 0
                   ? '⚪ Enter a topic and generate an article to see your score.'
-                  : seoScore >= 80 ? '🟢 Excellent! Ready for Google Search.'
-                  : seoScore >= 50 ? '🟡 Needs slight improvements.'
+                  : seoScore >= 90 ? '🟢 Excellent! Yoast "Good" — Ready for Google.'
+                  : seoScore >= 70 ? '🟡 Almost there — fix red marks to hit 90.'
                   : '🔴 Fix the red marks below to rank higher.'}
               </p>
               {/* AI Auto-Fix SEO Button */}
