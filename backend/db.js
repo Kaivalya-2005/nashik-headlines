@@ -66,6 +66,14 @@ async function getPool() {
   if (!pool) {
     const config = await buildPoolConfig();
     pool = new Pool(config);
+
+    // ── Critical: handle idle client errors ──
+    // When Supabase/PgBouncer resets a TCP connection (idle timeout, server restart),
+    // pg emits 'error' on the pool. Without this handler, Node.js exits immediately.
+    pool.on("error", (err) => {
+      console.error("[PG Pool] Idle client error — reconnecting on next query:", err.message);
+      // Do NOT exit — the pool will create a fresh connection on next query.
+    });
   }
   return pool;
 }

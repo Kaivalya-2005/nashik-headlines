@@ -37,8 +37,33 @@ const rejectArticle = async (id) => {
     return response.data;
 };
 
-const publishArticle = async (id) => {
-    const response = await api.put(`/articles/${id}/publish`);
+const publishArticle = async (id, body = {}) => {
+    const response = await api.put(`/articles/${id}/publish`, body);
+    return response.data;
+};
+
+const scheduleArticle = async (id, body) => {
+    const response = await api.put(`/articles/${id}/schedule`, body);
+    return response.data;
+};
+
+const getPublishLog = async (id) => {
+    const response = await api.get(`/publish/log/${id}`);
+    return response.data;
+};
+
+const getPortals = async () => {
+    const response = await api.get('/portals');
+    return response.data;
+};
+
+const updatePortal = async (id, data) => {
+    const response = await api.put(`/portals/${id}`, data);
+    return response.data;
+};
+
+const testPortalConnection = async (portalId) => {
+    const response = await api.post('/portals/test', { portal_id: portalId });
     return response.data;
 };
 
@@ -65,7 +90,12 @@ const articleService = {
     approveArticle,
     rejectArticle,
     publishArticle,
-    uploadImages
+    scheduleArticle,
+    uploadImages,
+    getPublishLog,
+    getPortals,
+    updatePortal,
+    testPortalConnection,
 };
 
 export default articleService;

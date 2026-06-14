@@ -22,13 +22,18 @@ const parseCloudinaryUrl = () => {
   };
 };
 
-// Configure cloudinary
-const config = parseCloudinaryUrl();
-cloudinary.config({
-  cloud_name: config.cloud_name,
-  api_key: config.api_key,
-  api_secret: config.api_secret
-});
+let configured = false;
+
+function ensureConfigured() {
+  if (configured) return;
+  const config = parseCloudinaryUrl();
+  cloudinary.config({
+    cloud_name: config.cloud_name,
+    api_key: config.api_key,
+    api_secret: config.api_secret,
+  });
+  configured = true;
+}
 
 /**
  * Upload image to Cloudinary from file path
@@ -38,6 +43,7 @@ cloudinary.config({
  */
 const uploadImage = async (filePath, options = {}) => {
   try {
+    ensureConfigured();
     const result = await cloudinary.uploader.upload(filePath, {
       folder: 'nashik-headlines/articles',
       resource_type: 'auto',

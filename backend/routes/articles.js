@@ -5,9 +5,8 @@ const path = require("path");
 const multer = require("multer");
 const { buildSeoPayload, calculateSeoScore } = require("../services/seo");
 const { adminAuth } = require("../middleware/auth");
-const { improve } = require("../services/aiPipeline/improveAgent");
-const { categorize } = require("../services/aiPipeline/categoryAgent");
-const { generateSeo } = require("../services/aiPipeline/seoAgent");
+const { processAllInOne } = require("../services/aiPipeline/unifiedAgent");
+const { renderArticleHtml, countWords } = require("../services/content/htmlRenderer");
 const { checkQuality } = require("../services/aiPipeline/qualityAgent");
 const { cacheMiddleware, clearCache } = require("../middleware/cache");
 const { uploadImages } = require("../services/cloudinaryService");
@@ -180,6 +179,28 @@ router.post("/articles", async (req, res) => {
     images,
     source_id,
     source,
+    // Universal fields
+    publish_to,
+    language,
+    article_type,
+    priority,
+    city,
+    region,
+    author_name,
+    reporter_name,
+    byline,
+    focus_keyword,
+    og_title,
+    og_description,
+    og_image,
+    twitter_title,
+    twitter_description,
+    featured_image_url,
+    featured_image_alt,
+    featured_image_caption,
+    canonical_url,
+    meta_robots,
+    ai_generated,
   } = req.body;
 
   if (!title || !content) {
@@ -231,8 +252,14 @@ router.post("/articles", async (req, res) => {
 
         db.query(
           `INSERT INTO articles
-            (title, content, summary, category_id, status, seo_title, meta_description, slug, keywords, image_url, image_alt, tags, images, source_id, seo_score, quality_score, readability_score, ai_confidence)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            (title, content, summary, category_id, status, seo_title, meta_description, slug, keywords, image_url, image_alt, tags, images, source_id, seo_score, quality_score, readability_score, ai_confidence,
+             publish_to, language, article_type, priority, city, region, author_name, reporter_name, byline,
+             focus_keyword, og_title, og_description, og_image, twitter_title, twitter_description,
+             featured_image_url, featured_image_alt, featured_image_caption, canonical_url, meta_robots, ai_generated)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?, ?)`,
           [
             title,
             content,
@@ -251,7 +278,29 @@ router.post("/articles", async (req, res) => {
             seoData.seo_score,
             quality_score,
             qualityData.readability_score,
-            qualityData.ai_confidence
+            qualityData.ai_confidence,
+            // Universal fields
+            publish_to || "nashik",
+            language || "mr",
+            article_type || "news",
+            priority || "normal",
+            city || "nashik",
+            region || "maharashtra",
+            author_name || null,
+            reporter_name || null,
+            byline || null,
+            focus_keyword || seoData.keywords?.split(",")?.[0]?.trim() || null,
+            og_title || null,
+            og_description || null,
+            og_image || normalizedImageUrl || null,
+            twitter_title || null,
+            twitter_description || null,
+            featured_image_url || normalizedImageUrl || null,
+            featured_image_alt || seoData.image_alt || null,
+            featured_image_caption || null,
+            canonical_url || null,
+            meta_robots || "index,follow",
+            ai_generated ? true : false,
           ],
           (err, result) => {
             if (err) {
@@ -378,27 +427,38 @@ router.put("/articles/:id/approve", (req, res) => {
   );
 });
 
-// 🔹 PUBLISH ARTICLE (approved → published)
-router.put("/articles/:id/publish", (req, res) => {
-  db.query(
-    "UPDATE articles SET status='published', published_at=CURRENT_TIMESTAMP WHERE id=?",
-    [req.params.id],
-    (err) => {
-      if (err) {
-        console.error("Error publishing article:", err);
-        return res.status(500).json({ error: err.message });
-      }
-      clearCache().catch(console.error);
-      res.json({ success: true, message: "Published 🚀" });
-    }
-  );
+// 🔹 PUBLISH ARTICLE (approved → published) — delegates to publisher factory
+router.put("/articles/:id/publish", async (req, res) => {
+  try {
+    const { publishArticle } = require("../services/publishers/publisherFactory");
+    const rows = await db.query(
+      `SELECT a.*, c.name AS category_name, s.name AS source_name
+       FROM articles a
+       LEFT JOIN categories c ON a.category_id = c.id
+       LEFT JOIN sources    s ON a.source_id    = s.id
+       WHERE a.id = $1 LIMIT 1`,
+      [req.params.id]
+    );
+    const article = Array.isArray(rows) ? rows[0] : rows?.rows?.[0];
+    if (!article) return res.status(404).json({ error: "Article not found" });
+
+    // Allow overriding publish_to from body
+    if (req.body?.publish_to) article.publish_to = req.body.publish_to;
+
+    const results = await publishArticle(article);
+    clearCache().catch(console.error);
+    return res.json({ success: true, message: "Published 🚀", results });
+  } catch (err) {
+    console.error("Error publishing article:", err);
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 // Rate limiting state
 let activeImprovements = 0;
 const MAX_CONCURRENT_IMPROVEMENTS = 2;
 
-// 🔹 REGENERATE ARTICLE (Preview Only)
+// 🔹 REGENERATE ARTICLE (Preview Only) — single Groq call
 router.post("/articles/regenerate", adminAuth, async (req, res) => {
   if (activeImprovements >= MAX_CONCURRENT_IMPROVEMENTS) {
     return res.status(429).json({ error: "AI processing queue is busy, please try again." });
@@ -412,35 +472,32 @@ router.post("/articles/regenerate", adminAuth, async (req, res) => {
   activeImprovements++;
 
   try {
-    // 1. Run improveAgent
-    let improvedData;
-    try {
-      improvedData = await improve(title, content);
-    } catch (aiErr) {
-      return res.status(500).json({ error: `AI Improvement failed: ${aiErr.message}` });
-    }
+    // 1. Single AI call → structured JSON
+    const articleJson = await processAllInOne(title, content);
 
-    // 2. Run other agents on the new content
-    const categorized = await categorize(improvedData.improved_title, improvedData.improved_content);
-    const seoData = await generateSeo(improvedData.improved_title, improvedData.improved_content, categorized.category);
-    const qualityData = await checkQuality(improvedData.improved_title, improvedData.improved_content);
+    // 2. Render HTML from structured JSON
+    const renderedContent = renderArticleHtml(articleJson);
 
+    // 3. Quality check (pure JS)
+    const qualityData = await checkQuality(articleJson.title, renderedContent);
+    qualityData.ai_confidence = articleJson.ai_confidence || 75;
+
+    const seoScore = articleJson.seo_score || 70;
     const quality_score = Math.round(
       qualityData.ai_confidence * 0.50 +
       qualityData.readability_score * 0.30 +
-      seoData.seo_score * 0.20
+      seoScore * 0.20
     );
 
-    // 3. Return the regenerated data (do not save to DB)
     return res.json({
-      title: improvedData.improved_title,
-      content: improvedData.improved_content,
-      category: categorized.category,
-      seo_title: seoData.seo_title,
-      meta_description: seoData.meta_description,
-      keywords: seoData.keywords,
-      slug: seoData.slug,
-      seo_score: seoData.seo_score,
+      title: articleJson.title,
+      content: renderedContent,
+      category: articleJson.category,
+      seo_title: articleJson.seo_title,
+      meta_description: articleJson.meta_description,
+      keywords: articleJson.keywords,
+      slug: articleJson.slug,
+      seo_score: seoScore,
       quality_score,
       readability_score: qualityData.readability_score,
       ai_confidence: qualityData.ai_confidence
@@ -453,7 +510,7 @@ router.post("/articles/regenerate", adminAuth, async (req, res) => {
   }
 });
 
-// 🔹 IMPROVE ARTICLE (DB Update)
+// 🔹 IMPROVE ARTICLE (DB Update) — single Groq call
 router.post("/articles/:id/improve", adminAuth, async (req, res) => {
   if (activeImprovements >= MAX_CONCURRENT_IMPROVEMENTS) {
     return res.status(429).json({ error: "AI processing queue is busy, please try again." });
@@ -478,28 +535,21 @@ router.post("/articles/:id/improve", adminAuth, async (req, res) => {
 
     const oldArticle = results[0];
 
-    // 2. Run improveAgent
-    let improvedData;
-    try {
-      improvedData = await improve(oldArticle.title, oldArticle.content);
-    } catch (aiErr) {
-      return res.status(500).json({ error: `AI Improvement failed: ${aiErr.message}` });
-    }
+    // 2. Single AI call → structured JSON
+    const articleJson = await processAllInOne(oldArticle.title, oldArticle.content);
 
-    // 3. Check similarity
-    if (improvedData.isSimilar) {
-      return res.json({ message: "No significant improvement detected" });
-    }
+    // 3. Render HTML from structured JSON
+    const renderedContent = renderArticleHtml(articleJson);
 
-    // 4. Run other agents
-    const categorized = await categorize(improvedData.improved_title, improvedData.improved_content);
-    const seoData = await generateSeo(improvedData.improved_title, improvedData.improved_content, categorized.category);
-    const qualityData = await checkQuality(improvedData.improved_title, improvedData.improved_content);
+    // 4. Quality check (pure JS)
+    const qualityData = await checkQuality(articleJson.title, renderedContent);
+    qualityData.ai_confidence = articleJson.ai_confidence || 75;
 
+    const seoScore = articleJson.seo_score || 70;
     const quality_score = Math.round(
       qualityData.ai_confidence * 0.50 +
       qualityData.readability_score * 0.30 +
-      seoData.seo_score * 0.20
+      seoScore * 0.20
     );
 
     // 5. Save revision
@@ -526,7 +576,7 @@ router.post("/articles/:id/improve", adminAuth, async (req, res) => {
       );
     });
 
-    // 6. Update document
+    // 6. Update article
     await new Promise((resolve, reject) => {
       db.query(
         `UPDATE articles SET 
@@ -534,9 +584,9 @@ router.post("/articles/:id/improve", adminAuth, async (req, res) => {
           slug=?, seo_score=?, quality_score=?, readability_score=?, ai_confidence=?
          WHERE id=?`,
         [
-          improvedData.improved_title, improvedData.improved_content,
-          seoData.seo_title, seoData.meta_description, seoData.keywords,
-          seoData.slug, seoData.seo_score, quality_score,
+          articleJson.title, renderedContent,
+          articleJson.seo_title, articleJson.meta_description, articleJson.keywords,
+          articleJson.slug, seoScore, quality_score,
           qualityData.readability_score, qualityData.ai_confidence,
           articleId
         ],
@@ -547,7 +597,7 @@ router.post("/articles/:id/improve", adminAuth, async (req, res) => {
     // Log quality improved
     await new Promise((resolve) => {
       db.query("INSERT INTO logs (step, message, status) VALUES (?, ?, ?)",
-        ["article_quality_improved", `Article #${articleId} improved. Quality Score: ${quality_score}`, "info"],
+        ["article_quality_improved", `Article #${articleId} improved. Quality: ${quality_score}`, "info"],
         () => resolve()
       );
     });
@@ -558,7 +608,7 @@ router.post("/articles/:id/improve", adminAuth, async (req, res) => {
       success: true,
       message: "Article improved successfully",
       new_scores: {
-        seo_score: seoData.seo_score,
+        seo_score: seoScore,
         quality_score,
         readability_score: qualityData.readability_score,
         ai_confidence: qualityData.ai_confidence
@@ -591,6 +641,28 @@ router.put("/articles/:id", async (req, res) => {
     image_alt,
     images,
     seo,
+    // Universal fields
+    publish_to,
+    language,
+    article_type,
+    priority,
+    city,
+    region,
+    author_name,
+    reporter_name,
+    byline,
+    focus_keyword,
+    og_title,
+    og_description,
+    og_image,
+    twitter_title,
+    twitter_description,
+    featured_image_url,
+    featured_image_alt,
+    featured_image_caption,
+    canonical_url,
+    meta_robots,
+    ai_generated,
   } = req.body;
 
   if (!title || !content) {
@@ -647,7 +719,22 @@ router.put("/articles/:id", async (req, res) => {
       if (errCat) return res.status(500).json({ error: errCat.message });
 
       db.query(
-        "UPDATE articles SET title=?, content=?, summary=?, category_id=?, tags=?, seo_title=?, meta_description=?, slug=?, keywords=?, image_url=?, image_alt=?, images=?, seo_score=?, quality_score=?, readability_score=?, ai_confidence=? WHERE id=?",
+        `UPDATE articles SET
+          title=?, content=?, summary=?, category_id=?, tags=?,
+          seo_title=?, meta_description=?, slug=?, keywords=?, image_url=?, image_alt=?, images=?,
+          seo_score=?, quality_score=?, readability_score=?, ai_confidence=?,
+          publish_to=COALESCE(?,publish_to), language=COALESCE(?,language),
+          article_type=COALESCE(?,article_type), priority=COALESCE(?,priority),
+          city=COALESCE(?,city), region=COALESCE(?,region),
+          author_name=COALESCE(?,author_name), reporter_name=COALESCE(?,reporter_name), byline=COALESCE(?,byline),
+          focus_keyword=COALESCE(?,focus_keyword),
+          og_title=COALESCE(?,og_title), og_description=COALESCE(?,og_description), og_image=COALESCE(?,og_image),
+          twitter_title=COALESCE(?,twitter_title), twitter_description=COALESCE(?,twitter_description),
+          featured_image_url=COALESCE(?,featured_image_url), featured_image_alt=COALESCE(?,featured_image_alt),
+          featured_image_caption=COALESCE(?,featured_image_caption),
+          canonical_url=COALESCE(?,canonical_url), meta_robots=COALESCE(?,meta_robots),
+          ai_generated=COALESCE(?,ai_generated)
+         WHERE id=?`,
         [
           title,
           content,
@@ -665,6 +752,28 @@ router.put("/articles/:id", async (req, res) => {
           quality_score,
           qualityData.readability_score,
           qualityData.ai_confidence,
+          // Universal fields (COALESCE = keep existing if null sent)
+          publish_to || null,
+          language || null,
+          article_type || null,
+          priority || null,
+          city || null,
+          region || null,
+          author_name || null,
+          reporter_name || null,
+          byline || null,
+          focus_keyword || seoData.keywords?.split(",")?.[0]?.trim() || null,
+          og_title || null,
+          og_description || null,
+          og_image || normalizedImageUrl || null,
+          twitter_title || null,
+          twitter_description || null,
+          featured_image_url || normalizedImageUrl || null,
+          featured_image_alt || seoData.image_alt || null,
+          featured_image_caption || null,
+          canonical_url || null,
+          meta_robots || null,
+          ai_generated !== undefined ? ai_generated : null,
           req.params.id,
         ],
         (err) => {

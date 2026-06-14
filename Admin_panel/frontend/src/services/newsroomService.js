@@ -192,23 +192,85 @@ export const createArticle = async (data) => {
 
     const response = await api.post('/articles', {
       ...data,
-      title: data.title,
-      content: data.content,
-      summary: data.summary || '',
-      category: data.category || '',
-      status: data.status || 'draft',
-      seo_title: data.seo_title || '',
-      meta_description: data.meta_description || '',
-      slug: data.slug || '',
-      keywords: data.keywords || '',
-      image_alt: data.image_alt || featuredImage?.altText || '',
-      image_url: data.image_url || featuredImage?.url || '',
-      tags: data.tags || '',
-      images: payloadImages
+      title:                data.title,
+      content:              data.content,
+      summary:              data.summary || '',
+      excerpt:              data.excerpt || '',
+      category:             data.category || '',
+      status:               data.status || 'draft',
+      publish_to:           data.publish_to || 'nashik',
+      language:             data.language || 'mr',
+      format:               data.format || 'standard',
+      sticky:               data.sticky || false,
+      city:                 data.city || 'nashik',
+      region:               data.region || 'maharashtra',
+      author_name:          data.author_name || '',
+      byline:               data.byline || '',
+      focus_keyword:        data.focus_keyword || '',
+      seo_title:            data.seo_title || '',
+      meta_description:     data.meta_description || '',
+      slug:                 data.slug || '',
+      keywords:             data.keywords || '',
+      tags:                 data.tags || '',
+      image_alt:            data.image_alt || featuredImage?.altText || '',
+      image_url:            data.image_url || featuredImage?.url || '',
+      og_title:             data.og_title || '',
+      og_description:       data.og_description || '',
+      og_image:             data.og_image || featuredImage?.url || '',
+      twitter_title:        data.twitter_title || '',
+      twitter_description:  data.twitter_description || '',
+      featured_image_url:   data.featured_image_url || featuredImage?.url || '',
+      featured_image_alt:   data.featured_image_alt || featuredImage?.altText || '',
+      canonical_url:        data.canonical_url || '',
+      images:               payloadImages,
     });
     return response.data;
   } catch (error) {
     console.error('Failed to create article:', error);
+    throw error;
+  }
+};
+
+/**
+ * Upload images directly to Navi Mumbai WordPress media — no article DB row.
+ * @param {File[]} files
+ * @param {object[]} metaList - optional [{ altText, caption, isFeatured }]
+ */
+export const uploadPublishImages = async (files, metaList = []) => {
+  const formData = new FormData();
+  (files || []).forEach((file) => formData.append('images', file));
+  if (metaList.length) {
+    formData.append('meta', JSON.stringify(metaList));
+  }
+  const response = await api.post('/publish/upload-images', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data?.images || [];
+};
+
+/**
+ * Publish article DIRECTLY to Navi Mumbai WordPress — no DB record created.
+ * Used when publish_to = 'navimumbai' (Navi Mumbai only).
+ */
+export const publishDirectToWordPress = async (articleData) => {
+  try {
+    const response = await api.post('/publish/direct-to-wp', articleData);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to publish to WordPress:', error);
+    throw error;
+  }
+};
+
+/**
+ * Publish an existing DB article with a specific target override.
+ */
+export const publishArticleWithTarget = async (id, publishTo) => {
+  try {
+    const response = await api.post(`/publish/${id}`, { publish_to: publishTo });
+    return response.data;
+  } catch (error) {
+    console.error('Failed to publish article with target:', error);
     throw error;
   }
 };

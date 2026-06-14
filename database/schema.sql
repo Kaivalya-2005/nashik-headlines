@@ -1,5 +1,3 @@
--- Legacy filename: identical to schema.sql (Supabase backup)
-
 -- =============================================================================
 -- Nashik Headlines — PostgreSQL / Supabase full schema backup
 -- =============================================================================
@@ -208,6 +206,10 @@ CREATE TABLE IF NOT EXISTS publish_log (
   error       TEXT,
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- IMPORTANT: If live database has NOT NULL constraint on article_id, remove it:
+--   ALTER TABLE publish_log ALTER COLUMN article_id DROP NOT NULL;
+-- This allows direct-to-WordPress publishing without a local article record.
 
 -- Article revisions (edit history)
 CREATE TABLE IF NOT EXISTS article_revisions (

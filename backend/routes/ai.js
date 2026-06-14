@@ -3,9 +3,7 @@ const router = express.Router();
 const axios = require("axios");
 const db = require("../db");
 
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const { askGroq, askGroqFull, askGroqSeoJson, MODEL_FAST, MODEL_FULL } = require("../services/groqClient");
 
 const AI_EDITOR_FULL_ARTICLE_GUARDRAILS = `
 
@@ -41,27 +39,14 @@ CRITICAL OVERRIDES (MUST FOLLOW):
 - Return only valid JSON without markdown or explanation.
 `;
 
-async function askGroq(prompt, jsonFormat = false) {
-  try {
-    const payload = {
-      model: GROQ_MODEL,
-      messages: [{ role: "user", content: prompt }]
-    };
-    if (jsonFormat) {
-      payload.response_format = { type: "json_object" };
-    }
-
-    const response = await axios.post(GROQ_URL, payload, {
-      headers: {
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      }
-    });
-    return response.data.choices[0].message.content;
-  } catch (error) {
-    console.error("Groq AI Error:", error.response ? error.response.data : error.message);
-    throw new Error("Failed to communicate with Groq AI model");
-  }
+/** Count words in HTML/plain text (Yoast-style). */
+function countWordsFromHtml(html) {
+  return String(html || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean).length;
 }
 
 function extractJSON(text) {
@@ -101,7 +86,7 @@ router.post("/ai/generate-article", async (req, res) => {
 
   if (prompt) {
     // AIEditor.jsx flow
-    const isFieldPrompt = /"result"\s*:/i.test(String(prompt));
+    const isFieldPrompt = /\"result\"\s*:/i.test(String(prompt));
     fullPrompt = prompt
       .replace("[Write Topic Here]", topic || "General News")
       .replace("[Write Focus Keyphrase]", focusKeyword || topic || "News");
@@ -162,14 +147,235 @@ Format the response strictly as JSON with this structure:
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/ai/generate-full
+// Two-phase one-click generation:
+//   Phase 1: Generate article content only (text mode, ~1800 tokens output)
+//   Phase 2: Generate all SEO/meta fields from the article (text mode, ~900 tokens output)
+// This avoids the json_object token overflow error.
+// ─────────────────────────────────────────────────────────────────────────────
+router.post("/ai/generate-full", async (req, res) => {
+  const { topic, source_url, publish_to } = req.body;
+  if (!topic) return res.status(400).json({ error: "topic is required" });
+
+  const isNaviMumbai = publish_to === "navimumbai" || publish_to === "both";
+  const siteUrl      = isNaviMumbai ? "https://navimumbaiheadlines.com" : "https://nashikheadlines.com";
+  const internalBase = isNaviMumbai ? "navimumbaiheadlines.com"          : "nashikheadlines.com";
+  const srcUrl       = source_url || siteUrl;
+
+  // Truncate topic to max 600 chars to prevent prompt overflow
+  const topicShort = String(topic).trim().slice(0, 600);
+
+  console.log(
+    `[AI generate-full] portal=${publish_to || "nashik"} models fast=${MODEL_FAST} full=${MODEL_FULL} topic="${topicShort.slice(0, 80)}..."`
+  );
+
+  try {
+    // ── PHASE 1: Generate article content ────────────────────────────────────
+    let phase1Prompt;
+    if (isNaviMumbai) {
+      phase1Prompt = `तुम्ही navimumbaiheadlines.com साठी व्यावसायिक मराठी पत्रकार आहात.
+
+विषय: ${topicShort}
+स्रोत: ${srcUrl}
+
+YOAST SEO नियम — सर्व काटेकोरपणे पाळा:
+1. शब्द संख्या: किमान 600 मराठी शब्द. 500 पेक्षा कमी शब्द कधीही नको.
+2. KEYPHRASE IN INTRO: Focus keyphrase पहिल्याच <p> परिच्छेदात (पहिल्या 50 शब्दांत) असणे आवश्यक.
+3. KEYPHRASE IN SUBHEADINGS: किमान 2 H2/H3 subheadings मध्ये focus keyphrase चे शब्द असावेत.
+4. KEYPHRASE DENSITY: Focus keyphrase 8-12 वेळा वापरा (1-3% density).
+5. INTERNAL LINK: <a href="https://${internalBase}/related">येथे संबंधित बातमी वाचा</a>
+6. OUTBOUND LINK: <a href="${srcUrl}">अधिकृत माहितीसाठी येथे क्लिक करा</a>
+7. NO H1: <h1> टॅग लेखाच्या body मध्ये वापरू नका. फक्त <h2> आणि <h3> वापरा.
+8. HTML ONLY: H2/H3 फक्त HTML tags (<h2>, <h3>). Markdown (##) वापरू नका.
+9. पहिली ओळ: 👉 "नवी मुंबई : प्रतिनिधी"
+10. Transition words वापरा (तसेच, याशिवाय, परिणामी, दरम्यान, त्याचप्रमाणे).
+11. किमान 5 वेगळे <h2> उपशीर्षके आणि प्रत्येक खाली 2-3 <p> परिच्छेद.
+
+फक्त मराठी लेख लिहा (HTML only). JSON नको.`;
+
+    } else {
+      phase1Prompt = `You are a professional English journalist for nashikheadlines.com writing a Yoast SEO-optimized article.
+
+Topic: ${topicShort}
+Source: ${srcUrl}
+
+MANDATORY YOAST SEO RULES — ALL must be followed strictly:
+
+1. WORD COUNT: Write 600-700 words minimum. Do NOT stop before 600 words.
+2. KEYPHRASE IN INTRO: The focus keyphrase MUST appear in the very first <p> paragraph (within first 50 words).
+3. KEYPHRASE IN SUBHEADINGS: At least 2 of the H2/H3 subheadings MUST contain words from the focus keyphrase.
+4. KEYPHRASE DENSITY: Use the focus keyphrase 8-12 times across 600 words (1-3% density).
+5. INTERNAL LINK: Include exactly: <a href="https://${internalBase}/related">Read more on Nashik Headlines</a> — place it naturally in the text.
+6. OUTBOUND LINK: Include exactly: <a href="${srcUrl}">Official source</a> — place it in the text.
+7. NO H1 IN BODY: Do NOT use <h1> anywhere in the article body. Only use <h2> and <h3>.
+8. USE HTML TAGS: Use <h2>Heading</h2> and <h3>Sub</h3> format. Do NOT use markdown ## syntax.
+9. NASHIK MENTION: Mention Nashik, Maharashtra, or India in the opening paragraph.
+10. NEUTRAL TONE: Use journalistic, Google News SEO style, with verified facts.
+11. EACH SECTION: 2-3 paragraphs under each heading with full context and detail.
+
+Write ONLY the article HTML body content (no JSON, no markdown, no h1 tags).`;
+
+    }
+
+    let articleContent = await askGroqFull(phase1Prompt, 3200);
+
+    // Navi Mumbai: enforce Yoast minimum word count.
+    // MIN_WORDS is set to 250 (not 300) so borderline articles like 298 words
+    // don't waste an entire extra Groq call — the SEO phase will still pass Yoast.
+    if (isNaviMumbai) {
+      const MIN_WORDS = 250;
+      const TARGET_WORDS = 450;
+      let wordCount = countWordsFromHtml(articleContent);
+      console.log(`[AI generate-full] Marathi word count (pass 1): ${wordCount}`);
+
+      if (wordCount < MIN_WORDS) {
+        console.log(`[AI generate-full] Word count ${wordCount} < ${MIN_WORDS} — expanding...`);
+        const expandPrompt = `खालील मराठी बातमी लेख वाचा आणि त्याचा विस्तार करा.
+
+विषय: ${topicShort}
+
+सध्याचा लेख (${wordCount} शब्द — खूप लहान):
+${articleContent.slice(0, 2500)}
+
+नियम:
+- किमान ${TARGET_WORDS} मराठी शब्द.
+- सुरुवातीची ओळ 👉 "नवी मुंबई : प्रतिनिधी" ठेवा.
+- HTML structure ठेवा: किमान 4 <h2> आणि प्रत्येक खाली 2-3 <p>.
+- सर्व मूळ links ठेवा, नवीन माहिती जोडा.
+- फक्त पूर्ण विस्तारित HTML लेख परत द्या. JSON नको.`;
+
+        articleContent = await askGroqFull(expandPrompt, 2000);
+        wordCount = countWordsFromHtml(articleContent);
+        console.log(`[AI generate-full] Marathi word count (after expand): ${wordCount}`);
+
+        if (wordCount < MIN_WORDS) {
+          console.warn(`[AI generate-full] Article still short (${wordCount} words) after expand — continuing anyway`);
+        }
+      } else {
+        console.log(`[AI generate-full] Word count OK (${wordCount}) — skipping expand`);
+      }
+    }
+
+    // Small cooldown between Phase 1 and Phase 2 to spread TPM usage across the
+    // 60-second window — prevents back-to-back spikes on the same model bucket.
+    await new Promise((r) => setTimeout(r, 2000));
+
+    // ── PHASE 2: Generate all SEO/meta fields ────────────────────────────────
+    const seoLang = isNaviMumbai ? "Marathi" : "English";
+    const catList  = isNaviMumbai
+      ? "Maharashtra, Navi Mumbai, India, International, Entertainment, Sports, Politics, Business, Technology, Health, Education, Crime"
+      : "Nashik, Maharashtra, India, International, Entertainment, Sports, Politics, Business, Technology, Health, Education, Crime";
+    const tagCount = isNaviMumbai ? 16 : 12;
+
+    const phase2Prompt = `Based on the following ${seoLang} news article, generate SEO and social media metadata that ensures a Yoast SEO score of 90-100.
+
+ARTICLE CONTENT:
+${articleContent.slice(0, 1500)}
+
+CRITICAL YOAST SEO REQUIREMENTS FOR ALL FIELDS:
+1. "focus_keyword" MUST be 2-4 words (e.g., "Nashik road safety" not single words).
+2. "seo_title" MUST START WITH the exact focus_keyword (e.g., if focus_keyword is "Nashik road safety", title starts with "Nashik road safety:").
+3. "meta_description" MUST CONTAIN the focus_keyword or its synonym. Length: 120-155 chars exactly.
+4. "slug" MUST CONTAIN all words from the focus_keyword separated by hyphens (e.g., "nashik-road-safety-...").
+5. "image_alt" MUST CONTAIN at least half the words from the focus_keyword (e.g., "nashik road safety").
+6. All fields must be in ${seoLang}.
+
+Return ONLY a valid JSON object with these exact keys (no extra text, no markdown fences):
+{
+  "title": "Main headline (can start with focus_keyword)",
+  "seo_title": "MUST start with focus_keyword, max 60 chars",
+  "focus_keyword": "Exactly 2-4 words — the Yoast focus keyphrase in ${seoLang}",
+  "slug": "all-words-from-focus-keyword-in-slug-hyphens-only",
+  "meta_description": "120-155 chars, MUST contain the focus_keyword",
+  "og_title": "Facebook/WhatsApp ${seoLang} title",
+  "og_description": "${seoLang} social description (max 200 chars)",
+  "twitter_title": "Twitter/X ${seoLang} title",
+  "twitter_description": "Twitter/X ${seoLang} description (max 200 chars)",
+  "excerpt": "2-3 sentence ${seoLang} WordPress excerpt",
+  "summary": "2-sentence ${seoLang} summary",
+  "tags": "${tagCount} high-traffic news tags separated by commas",
+  "keywords": "8 SEO keywords separated by commas",
+  "category": "Pick ONE from: ${catList}",
+  "canonical_url": "${siteUrl}/",
+  "image_alt": "50-120 chars in ${seoLang} — MUST contain focus_keyword words"
+}`;
+
+    const seoText   = await askGroqSeoJson(phase2Prompt);
+    const seoParsed = extractJSON(seoText);
+
+    if (!seoParsed) {
+      // Phase 2 failed — return partial result with content + basic derived fields
+      console.warn("[AI generate-full] Phase 2 SEO parse failed, returning content only");
+      const fallbackTitle = articleContent.split("\n").find(l => l.trim()) || topicShort.slice(0, 80);
+      return res.json({
+        success: true,
+        partial: true,
+        data: {
+          title:       fallbackTitle,
+          content:     articleContent,
+          language:    isNaviMumbai ? "mr" : "en",
+          city:        isNaviMumbai ? "navi-mumbai" : "nashik",
+          region:      "maharashtra",
+          author_name: isNaviMumbai ? "नवी मुंबई हेडलाईन्स प्रतिनिधी" : "Nashik Headlines Reporter",
+          byline:      isNaviMumbai ? "प्रतिनिधी" : "Our Correspondent",
+          source_url:  srcUrl,
+          canonical_url: siteUrl + "/",
+        }
+      });
+    }
+
+    // Merge article content into SEO result
+    const result = {
+      title:               seoParsed.title       || topicShort.slice(0, 80),
+      seo_title:           seoParsed.seo_title   || seoParsed.title || topicShort.slice(0, 60),
+      slug:                seoParsed.slug        || topicShort.toLowerCase().slice(0, 60).replace(/[^a-z0-9\u0900-\u097f]+/gi, "-"),
+      meta_description:    seoParsed.meta_description  || "",
+      focus_keyword:       seoParsed.focus_keyword     || "",
+      canonical_url:       seoParsed.canonical_url     || siteUrl + "/",
+      og_title:            seoParsed.og_title          || seoParsed.title || "",
+      og_description:      seoParsed.og_description    || seoParsed.meta_description || "",
+      twitter_title:       seoParsed.twitter_title     || seoParsed.og_title || "",
+      twitter_description: seoParsed.twitter_description || seoParsed.og_description || "",
+      content:             articleContent,
+      excerpt:             seoParsed.excerpt    || seoParsed.summary || "",
+      summary:             seoParsed.summary    || "",
+      tags:                seoParsed.tags       || "",
+      keywords:            seoParsed.keywords   || "",
+      category:            seoParsed.category   || "",
+      source_url:          srcUrl,
+      author_name:         isNaviMumbai ? "नवी मुंबई हेडलाईन्स प्रतिनिधी" : "Nashik Headlines Reporter",
+      byline:              isNaviMumbai ? "प्रतिनिधी" : "Our Correspondent",
+      city:                isNaviMumbai ? "navi-mumbai" : "nashik",
+      region:              "maharashtra",
+      language:            isNaviMumbai ? "mr" : "en",
+      image_alt:           seoParsed.image_alt || "",
+    };
+
+    res.json({ success: true, data: result });
+  } catch (err) {
+    console.error("[AI generate-full] Error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+
 router.post("/ai/rewrite", async (req, res) => {
   const { id } = req.body;
   try {
     const article = await getArticleById(id);
     if (!article) return res.status(404).json({ message: "Article not found" });
 
-    const prompt = `Rewrite the following Marathi article to improve flow and readability while keeping the original meaning:
+    const prompt = `Rewrite the following Marathi article to improve flow and readability while strictly following SEO best practices. 
+MANDATORY RULES:
+1. Ensure the article is detailed and comprehensive (at least 600 words).
+2. The focus keyphrase of the article MUST appear in the FIRST sentence of the text.
+3. The focus keyphrase MUST appear 8-12 times throughout the text.
+4. Include clear headings (H2/H3) and ensure the focus keyphrase appears in at least two subheadings.
+5. Provide the output in clean HTML format.
 
+Original Article:
 ${article.content}`;
     const aiText = await askGroq(prompt);
 
@@ -208,9 +414,16 @@ router.post("/ai/generate-seo", async (req, res) => {
     const article = await getArticleById(id);
     if (!article) return res.status(404).json({ message: "Article not found" });
 
-    const prompt = `Analyze the following Marathi article and generate an SEO title (max 60 chars) and meta description (max 150 chars). 
+    const prompt = `Analyze the following Marathi article and generate highly optimized SEO metadata.
+MANDATORY SEO RULES (CRITICAL):
+1. Identify a 2-4 word "focus_keyword" for the article.
+2. "seo_title" MUST START EXACTLY with the focus_keyword (max 60 chars).
+3. "meta_description" MUST CONTAIN the focus_keyword.
+4. "meta_description" MUST BE STRICTLY between 120 and 155 characters in length.
+
 Respond in strictly valid JSON format:
 {
+  "focus_keyword": "...",
   "seo_title": "...",
   "meta_description": "..."
 }
@@ -223,8 +436,8 @@ ${article.content}`;
     
     if(!parsed) return res.status(500).json({ message: "AI returned invalid format." });
 
-    db.query("UPDATE articles SET seo_title = ?, meta_description = ? WHERE id = ?", 
-      [parsed.seo_title, parsed.meta_description, id], 
+    db.query("UPDATE articles SET seo_title = ?, meta_description = ?, focus_keyword = ? WHERE id = ?", 
+      [parsed.seo_title, parsed.meta_description, parsed.focus_keyword, id], 
       (err) => {
         if (err) return res.status(500).json({ message: "Failed to save SEO data." });
         res.json({ message: "SEO updated.", seoData: parsed });
@@ -261,7 +474,11 @@ router.post("/ai/generate-image-alt", async (req, res) => {
     const article = await getArticleById(id);
     if (!article) return res.status(404).json({ message: "Article not found" });
 
-    const prompt = `You are an SEO expert. Based on the following Marathi news article title and content, write a concise, descriptive image alt-text (50-120 characters) in Marathi that describes what the featured image of this article would likely show. The alt-text should naturally include the main topic/keywords.
+    const prompt = `You are an SEO expert. Based on the following Marathi news article title and content, write a concise, descriptive image alt-text in Marathi.
+MANDATORY RULES:
+1. Identify the main focus keyphrase (2-4 words) of the article.
+2. The alt-text MUST contain all the words from the focus keyphrase.
+3. Length MUST be 50-120 characters.
 
 Respond with ONLY the alt-text string, no explanation, no quotes.
 

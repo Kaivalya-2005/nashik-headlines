@@ -69,11 +69,22 @@ const EditArticle = () => {
     const [images, setImages] = useState([]);
     const [generatingAlt, setGeneratingAlt] = useState(null); // imageId being alt-generated
 
-    // Score state — updated on load and after AI regeneration
     const [seoScore, setSeoScore] = useState(null);
     const [qualityScore, setQualityScore] = useState(null);
     const [readabilityScore, setReadabilityScore] = useState(null);
     const [aiConfidence, setAiConfidence] = useState(null);
+
+    // Universal publish fields
+    const [publishTo, setPublishTo] = useState('nashik');
+    const [language, setLanguage] = useState('mr');
+    const [articleType, setArticleType] = useState('news');
+    const [priority, setPriority] = useState('normal');
+    const [city, setCity] = useState('nashik');
+    const [region, setRegion] = useState('maharashtra');
+    const [authorName, setAuthorName] = useState('');
+    const [reporterName, setReporterName] = useState('');
+    const [ogImage, setOgImage] = useState('');
+    const [canonicalUrl, setCanonicalUrl] = useState('');
 
     useEffect(() => {
         loadArticle();
@@ -118,6 +129,17 @@ const EditArticle = () => {
                 slug: data.slug || '',
                 imageAlt: data.image_alt || ''
             });
+            // Load universal fields
+            setPublishTo(data.publish_to || 'nashik');
+            setLanguage(data.language || 'mr');
+            setArticleType(data.article_type || 'news');
+            setPriority(data.priority || 'normal');
+            setCity(data.city || 'nashik');
+            setRegion(data.region || 'maharashtra');
+            setAuthorName(data.author_name || '');
+            setReporterName(data.reporter_name || '');
+            setOgImage(data.og_image || data.featured_image_url || data.image_url || '');
+            setCanonicalUrl(data.canonical_url || '');
             const parsedImages = parseImages(data.images);
             if (parsedImages.length > 0) {
                 setImages(parsedImages);
@@ -188,7 +210,6 @@ const EditArticle = () => {
                 summary,
                 content,
                 category,
-                // Send tags exactly as the user typed — backend stores as a comma-separated string
                 tags: tagsInput,
                 seo_title: seo.metaTitle || '',
                 meta_description: seo.metaDescription || '',
@@ -202,7 +223,20 @@ const EditArticle = () => {
                     caption: img.caption,
                     altText: img.altText,
                     isFeatured: img.isFeatured
-                }))
+                })),
+                // Universal fields
+                publish_to: publishTo,
+                language,
+                article_type: articleType,
+                priority,
+                city,
+                region,
+                author_name: authorName,
+                reporter_name: reporterName,
+                og_image: ogImage || featuredImage?.url || '',
+                canonical_url: canonicalUrl,
+                featured_image_url: featuredImage?.url || '',
+                featured_image_alt: featuredImage?.altText || seo.imageAlt || '',
             };
 
             const updated = await articleService.updateArticle(id, payload);
@@ -484,6 +518,130 @@ const EditArticle = () => {
                     />
                 </div>
 
+                {/* Publish Panel */}
+                <div className="pt-6 mt-2 space-y-5 border-t border-gray-200 dark:border-slate-800">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Publishing Settings</h3>
+
+                    {/* Row 1: language + article type + priority */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Language</label>
+                            <select value={language} onChange={e => setLanguage(e.target.value)}
+                                className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-md text-gray-800 dark:text-gray-100 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors">
+                                <option value="mr">मराठी (Marathi)</option>
+                                <option value="en">English</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Article Type</label>
+                            <select value={articleType} onChange={e => setArticleType(e.target.value)}
+                                className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-md text-gray-800 dark:text-gray-100 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors">
+                                <option value="news">News</option>
+                                <option value="breaking">Breaking News</option>
+                                <option value="feature">Feature</option>
+                                <option value="opinion">Opinion</option>
+                                <option value="sponsored">Sponsored</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Priority</label>
+                            <select value={priority} onChange={e => setPriority(e.target.value)}
+                                className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-md text-gray-800 dark:text-gray-100 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors">
+                                <option value="normal">Normal</option>
+                                <option value="high">High</option>
+                                <option value="breaking">🔴 Breaking</option>
+                                <option value="low">Low</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Row 2: city + region */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">City</label>
+                            <select value={city} onChange={e => setCity(e.target.value)}
+                                className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-md text-gray-800 dark:text-gray-100 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors">
+                                <option value="nashik">Nashik</option>
+                                <option value="navi-mumbai">Navi Mumbai</option>
+                                <option value="mumbai">Mumbai</option>
+                                <option value="pune">Pune</option>
+                                <option value="aurangabad">Aurangabad</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Region</label>
+                            <select value={region} onChange={e => setRegion(e.target.value)}
+                                className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-md text-gray-800 dark:text-gray-100 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors">
+                                <option value="maharashtra">Maharashtra</option>
+                                <option value="india">India</option>
+                                <option value="international">International</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Row 3: author + reporter */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Author Name</label>
+                            <input type="text" value={authorName} onChange={e => setAuthorName(e.target.value)}
+                                placeholder="e.g. Admin"
+                                className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-md text-gray-800 dark:text-gray-100 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Reporter / Correspondent</label>
+                            <input type="text" value={reporterName} onChange={e => setReporterName(e.target.value)}
+                                placeholder="e.g. Rahul Patil, Nashik"
+                                className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-md text-gray-800 dark:text-gray-100 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors" />
+                        </div>
+                    </div>
+
+                    {/* OG Image + Canonical */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">OG / Social Image URL</label>
+                            <input type="text" value={ogImage} onChange={e => setOgImage(e.target.value)}
+                                placeholder="https://res.cloudinary.com/..."
+                                className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-md text-gray-800 dark:text-gray-100 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Canonical URL</label>
+                            <input type="text" value={canonicalUrl} onChange={e => setCanonicalUrl(e.target.value)}
+                                placeholder="https://nashikheadlines.com/article/..."
+                                className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-md text-gray-800 dark:text-gray-100 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors" />
+                        </div>
+                    </div>
+
+                    {/* Publish Target */}
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Publish To</label>
+                        <div className="flex flex-wrap gap-3">
+                            {[
+                                { value: 'nashik',     label: '🟢 Nashik Headlines' },
+                                { value: 'navimumbai', label: '🔵 Navi Mumbai Headlines (WordPress)' },
+                                { value: 'both',       label: '🚀 Both Portals' },
+                            ].map(opt => (
+                                <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => setPublishTo(opt.value)}
+                                    className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                                        publishTo === opt.value
+                                            ? 'bg-indigo-600 text-white border-indigo-600'
+                                            : 'bg-white dark:bg-slate-900 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-slate-600 hover:border-indigo-400'
+                                    }`}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                        <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
+                            {publishTo === 'navimumbai' || publishTo === 'both'
+                                ? '⚠️ WordPress credentials must be configured in Portal Settings for Navi Mumbai publishing.'
+                                : 'Article will be published on Nashik Headlines website.'}
+                        </p>
+                    </div>
+                </div>
+
                 {/* SEO Panel */}
                 <div id="seo-panel" className="pt-6 mt-8 space-y-6">
                     <div className="flex justify-between items-center border-b border-gray-200 dark:border-slate-800 pb-2">
@@ -548,8 +706,25 @@ const EditArticle = () => {
                 )}
 
                 {article?.status !== 'published' && (
-                    <button type="button" onClick={() => handleAction(articleService.publishArticle, 'Article published')} disabled={processing} className="px-6 py-2.5 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded font-medium transition-colors flex items-center disabled:opacity-70 shadow-sm">
-                        <Rocket className="mr-2" size={18}/> Publish
+                    <button type="button"
+                        onClick={async () => {
+                            setProcessing(true);
+                            try {
+                                await import('../api/articleService').then(m =>
+                                    m.default.publishArticle(id, { publish_to: publishTo })
+                                );
+                                toast.success(`Published to ${publishTo === 'both' ? 'both portals' : publishTo} 🚀`);
+                                navigate('/articles');
+                            } catch (err) {
+                                toast.error(err.response?.data?.error || 'Publish failed');
+                            } finally {
+                                setProcessing(false);
+                            }
+                        }}
+                        disabled={processing}
+                        className="px-6 py-2.5 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded font-medium transition-colors flex items-center disabled:opacity-70 shadow-sm">
+                        <Rocket className="mr-2" size={18}/>
+                        Publish {publishTo === 'both' ? '→ Both' : publishTo === 'navimumbai' ? '→ WordPress' : '→ Nashik'}
                     </button>
                 )}
 
