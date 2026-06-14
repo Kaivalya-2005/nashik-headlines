@@ -8,13 +8,13 @@ const { askGroq, askGroqFull, askGroqSeoJson, MODEL_FAST, MODEL_FULL } = require
 const AI_EDITOR_FULL_ARTICLE_GUARDRAILS = `
 
 CRITICAL OVERRIDES (MUST FOLLOW):
-- Output language must be English only.
-- Article content must be at least 300 words.
-- Include markdown H2/H3 subheadings.
+- Output language must be Marathi only.
+- Article content must be at least 600 Marathi words.
+- Include HTML H2/H3 subheadings (use <h2> and <h3> tags, NOT markdown ##).
 - Include at least one internal link to nashikheadlines.com.
 - Include at least one external source link.
-- Mention Nashik, Maharashtra, or India.
-- Meta description must be between 100 and 160 characters.
+- Mention Nashik, Maharashtra, or India in the first paragraph.
+- Meta description must be between 120 and 155 characters.
 - Ensure focus keyphrase appears in title or seo title.
 - Return only valid JSON without markdown or explanation.
 
@@ -35,7 +35,7 @@ Return ONLY a JSON object with EXACTLY these keys and no extra keys:
 const AI_EDITOR_FIELD_GUARDRAILS = `
 
 CRITICAL OVERRIDES (MUST FOLLOW):
-- Output language must be English only.
+- Output language must be Marathi only.
 - Return only valid JSON without markdown or explanation.
 `;
 
@@ -158,10 +158,11 @@ router.post("/ai/generate-full", async (req, res) => {
   const { topic, source_url, publish_to } = req.body;
   if (!topic) return res.status(400).json({ error: "topic is required" });
 
-  const isNaviMumbai = publish_to === "navimumbai" || publish_to === "both";
-  const siteUrl      = isNaviMumbai ? "https://navimumbaiheadlines.com" : "https://nashikheadlines.com";
-  const internalBase = isNaviMumbai ? "navimumbaiheadlines.com"          : "nashikheadlines.com";
-  const srcUrl       = source_url || siteUrl;
+  const isNaviMumbaiOnly = publish_to === "navimumbai";
+  const isNaviMumbai     = isNaviMumbaiOnly; // kept for Phase 2 metadata compatibility
+  const siteUrl          = isNaviMumbaiOnly ? "https://navimumbaiheadlines.com" : "https://nashikheadlines.com";
+  const internalBase     = isNaviMumbaiOnly ? "navimumbaiheadlines.com" : "nashikheadlines.com";
+  const srcUrl           = source_url || siteUrl;
 
   // Truncate topic to max 600 chars to prevent prompt overflow
   const topicShort = String(topic).trim().slice(0, 600);
@@ -173,7 +174,7 @@ router.post("/ai/generate-full", async (req, res) => {
   try {
     // ── PHASE 1: Generate article content ────────────────────────────────────
     let phase1Prompt;
-    if (isNaviMumbai) {
+    if (isNaviMumbaiOnly) {
       phase1Prompt = `तुम्ही navimumbaiheadlines.com साठी व्यावसायिक मराठी पत्रकार आहात.
 
 विषय: ${topicShort}
@@ -184,7 +185,7 @@ YOAST SEO नियम — सर्व काटेकोरपणे पाळ
 2. KEYPHRASE IN INTRO: Focus keyphrase पहिल्याच <p> परिच्छेदात (पहिल्या 50 शब्दांत) असणे आवश्यक.
 3. KEYPHRASE IN SUBHEADINGS: किमान 2 H2/H3 subheadings मध्ये focus keyphrase चे शब्द असावेत.
 4. KEYPHRASE DENSITY: Focus keyphrase 8-12 वेळा वापरा (1-3% density).
-5. INTERNAL LINK: <a href="https://${internalBase}/related">येथे संबंधित बातमी वाचा</a>
+5. INTERNAL LINK: <a href="https://navimumbaiheadlines.com/related">येथे संबंधित बातमी वाचा</a>
 6. OUTBOUND LINK: <a href="${srcUrl}">अधिकृत माहितीसाठी येथे क्लिक करा</a>
 7. NO H1: <h1> टॅग लेखाच्या body मध्ये वापरू नका. फक्त <h2> आणि <h3> वापरा.
 8. HTML ONLY: H2/H3 फक्त HTML tags (<h2>, <h3>). Markdown (##) वापरू नका.
@@ -195,35 +196,35 @@ YOAST SEO नियम — सर्व काटेकोरपणे पाळ
 फक्त मराठी लेख लिहा (HTML only). JSON नको.`;
 
     } else {
-      phase1Prompt = `You are a professional English journalist for nashikheadlines.com writing a Yoast SEO-optimized article.
+      // Nashik or Both → Marathi Nashik article
+      phase1Prompt = `तुम्ही nashikheadlines.com साठी व्यावसायिक मराठी पत्रकार आहात.
 
-Topic: ${topicShort}
-Source: ${srcUrl}
+विषय: ${topicShort}
+स्रोत: ${srcUrl}
 
-MANDATORY YOAST SEO RULES — ALL must be followed strictly:
+YOAST SEO नियम — सर्व काटेकोरपणे पाळा:
+1. शब्द संख्या: किमान 600 मराठी शब्द. 500 पेक्षा कमी शब्द कधीही नको.
+2. KEYPHRASE IN INTRO: Focus keyphrase पहिल्याच <p> परिच्छेदात (पहिल्या 50 शब्दांत) असणे आवश्यक.
+3. KEYPHRASE IN SUBHEADINGS: किमान 2 H2/H3 subheadings मध्ये focus keyphrase चे शब्द असावेत.
+4. KEYPHRASE DENSITY: Focus keyphrase 8-12 वेळा वापरा (1-3% density).
+5. INTERNAL LINK: <a href="https://nashikheadlines.com/related">येथे संबंधित बातमी वाचा</a>
+6. OUTBOUND LINK: <a href="${srcUrl}">अधिकृत माहितीसाठी येथे क्लिक करा</a>
+7. NO H1: <h1> टॅग लेखाच्या body मध्ये वापरू नका. फक्त <h2> आणि <h3> वापरा.
+8. HTML ONLY: H2/H3 फक्त HTML tags (<h2>, <h3>). Markdown (##) वापरू नका.
+9. पहिली ओळ: 👉 "नाशिक : प्रतिनिधी"
+10. Transition words वापरा (तसेच, याशिवाय, परिणामी, दरम्यान, त्याचप्रमाणे).
+11. किमान 5 वेगळे <h2> उपशीर्षके आणि प्रत्येक खाली 2-3 <p> परिच्छेद.
+12. नाशिक, महाराष्ट्र किंवा भारताचा उल्लेख पहिल्या परिच्छेदात करा.
 
-1. WORD COUNT: Write 600-700 words minimum. Do NOT stop before 600 words.
-2. KEYPHRASE IN INTRO: The focus keyphrase MUST appear in the very first <p> paragraph (within first 50 words).
-3. KEYPHRASE IN SUBHEADINGS: At least 2 of the H2/H3 subheadings MUST contain words from the focus keyphrase.
-4. KEYPHRASE DENSITY: Use the focus keyphrase 8-12 times across 600 words (1-3% density).
-5. INTERNAL LINK: Include exactly: <a href="https://${internalBase}/related">Read more on Nashik Headlines</a> — place it naturally in the text.
-6. OUTBOUND LINK: Include exactly: <a href="${srcUrl}">Official source</a> — place it in the text.
-7. NO H1 IN BODY: Do NOT use <h1> anywhere in the article body. Only use <h2> and <h3>.
-8. USE HTML TAGS: Use <h2>Heading</h2> and <h3>Sub</h3> format. Do NOT use markdown ## syntax.
-9. NASHIK MENTION: Mention Nashik, Maharashtra, or India in the opening paragraph.
-10. NEUTRAL TONE: Use journalistic, Google News SEO style, with verified facts.
-11. EACH SECTION: 2-3 paragraphs under each heading with full context and detail.
-
-Write ONLY the article HTML body content (no JSON, no markdown, no h1 tags).`;
+फक्त मराठी लेख लिहा (HTML only). JSON नको.`;
 
     }
 
     let articleContent = await askGroqFull(phase1Prompt, 3200);
 
-    // Navi Mumbai: enforce Yoast minimum word count.
-    // MIN_WORDS is set to 250 (not 300) so borderline articles like 298 words
-    // don't waste an entire extra Groq call — the SEO phase will still pass Yoast.
-    if (isNaviMumbai) {
+    // All portals: enforce Yoast minimum word count for Marathi articles.
+    // MIN_WORDS is set to 250 so borderline articles don't waste an extra Groq call.
+    if (true) {
       const MIN_WORDS = 250;
       const TARGET_WORDS = 450;
       let wordCount = countWordsFromHtml(articleContent);
@@ -231,6 +232,7 @@ Write ONLY the article HTML body content (no JSON, no markdown, no h1 tags).`;
 
       if (wordCount < MIN_WORDS) {
         console.log(`[AI generate-full] Word count ${wordCount} < ${MIN_WORDS} — expanding...`);
+        const cityLabel = isNaviMumbaiOnly ? "नवी मुंबई" : "नाशिक";
         const expandPrompt = `खालील मराठी बातमी लेख वाचा आणि त्याचा विस्तार करा.
 
 विषय: ${topicShort}
@@ -240,7 +242,7 @@ ${articleContent.slice(0, 2500)}
 
 नियम:
 - किमान ${TARGET_WORDS} मराठी शब्द.
-- सुरुवातीची ओळ 👉 "नवी मुंबई : प्रतिनिधी" ठेवा.
+- सुरुवातीची ओळ 👉 "${cityLabel} : प्रतिनिधी" ठेवा.
 - HTML structure ठेवा: किमान 4 <h2> आणि प्रत्येक खाली 2-3 <p>.
 - सर्व मूळ links ठेवा, नवीन माहिती जोडा.
 - फक्त पूर्ण विस्तारित HTML लेख परत द्या. JSON नको.`;
@@ -262,11 +264,11 @@ ${articleContent.slice(0, 2500)}
     await new Promise((r) => setTimeout(r, 2000));
 
     // ── PHASE 2: Generate all SEO/meta fields ────────────────────────────────
-    const seoLang = isNaviMumbai ? "Marathi" : "English";
-    const catList  = isNaviMumbai
+    const seoLang = "Marathi"; // all portals use Marathi now
+    const catList  = isNaviMumbaiOnly
       ? "Maharashtra, Navi Mumbai, India, International, Entertainment, Sports, Politics, Business, Technology, Health, Education, Crime"
       : "Nashik, Maharashtra, India, International, Entertainment, Sports, Politics, Business, Technology, Health, Education, Crime";
-    const tagCount = isNaviMumbai ? 16 : 12;
+    const tagCount = 16; // 16 Marathi tags for all portals
 
     const phase2Prompt = `Based on the following ${seoLang} news article, generate SEO and social media metadata that ensures a Yoast SEO score of 90-100.
 
@@ -317,8 +319,8 @@ Return ONLY a valid JSON object with these exact keys (no extra text, no markdow
           language:    isNaviMumbai ? "mr" : "en",
           city:        isNaviMumbai ? "navi-mumbai" : "nashik",
           region:      "maharashtra",
-          author_name: isNaviMumbai ? "नवी मुंबई हेडलाईन्स प्रतिनिधी" : "Nashik Headlines Reporter",
-          byline:      isNaviMumbai ? "प्रतिनिधी" : "Our Correspondent",
+          author_name: isNaviMumbaiOnly ? "नवी मुंबई हेडलाईन्स प्रतिनिधी" : "नाशिक हेडलाईन्स प्रतिनिधी",
+          byline:      "प्रतिनिधी",
           source_url:  srcUrl,
           canonical_url: siteUrl + "/",
         }
@@ -344,11 +346,11 @@ Return ONLY a valid JSON object with these exact keys (no extra text, no markdow
       keywords:            seoParsed.keywords   || "",
       category:            seoParsed.category   || "",
       source_url:          srcUrl,
-      author_name:         isNaviMumbai ? "नवी मुंबई हेडलाईन्स प्रतिनिधी" : "Nashik Headlines Reporter",
-      byline:              isNaviMumbai ? "प्रतिनिधी" : "Our Correspondent",
-      city:                isNaviMumbai ? "navi-mumbai" : "nashik",
+      author_name:         isNaviMumbaiOnly ? "नवी मुंबई हेडलाईन्स प्रतिनिधी" : "नाशिक हेडलाईन्स प्रतिनिधी",
+      byline:              "प्रतिनिधी",
+      city:                isNaviMumbaiOnly ? "navi-mumbai" : "nashik",
       region:              "maharashtra",
-      language:            isNaviMumbai ? "mr" : "en",
+      language:            "mr",
       image_alt:           seoParsed.image_alt || "",
     };
 

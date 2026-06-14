@@ -10,14 +10,14 @@ export const revalidate = 300;
 
 export async function generateMetadata({ params }) {
   const cat = CATEGORIES.find((c) => c.slug === params.category);
-  const title = cat ? `${cat.label} News` : 'News';
-  const description = `Latest ${cat?.label?.toLowerCase() || 'news'} headlines.`;
+  const title = cat ? `${cat.label} बातम्या` : 'बातम्या';
+  const description = `${cat?.label || 'बातम्या'} या विषयावरील ताज्या बातम्या. नाशिक हेडलाईन्स.`;
   const canonical = `${siteUrl}/category/${params.category}`;
 
   return {
     title,
     description,
-    keywords: cat ? `${cat.label}, Nashik, headlines` : 'news, Nashik headlines',
+    keywords: cat ? `${cat.label}, नाशिक, headlines` : 'बातम्या, नाशिक हेडलाईन्स',
     alternates: { canonical },
     openGraph: {
       title,
@@ -56,10 +56,10 @@ export default async function CategoryPage({ params }) {
             </div>
           </div>
           <p className="text-body-lg text-muted-foreground max-w-lg">
-            Latest headlines and stories from {cat.label}. Stay updated with the news that matters.
+            {cat.label} विषयावरील ताज्या बातम्या व घडामोडी. नाशिक हेडलाईन्सवर अद्ययावत राहा.
           </p>
           <span className="inline-block mt-3 text-overline text-muted-foreground">
-            {articles.length} {articles.length === 1 ? 'article' : 'articles'} found
+            {articles.length} {articles.length === 1 ? 'लेख' : 'लेख'} सापडले
           </span>
         </div>
       </section>
@@ -70,9 +70,9 @@ export default async function CategoryPage({ params }) {
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-muted mb-5">
               <Newspaper size={28} className="text-muted-foreground" />
             </div>
-            <h2 className="font-headline font-bold text-title mb-2">No articles yet</h2>
+            <h2 className="font-headline font-bold text-title mb-2">अद्याप लेख नाहीत</h2>
             <p className="text-muted-foreground text-body-lg max-w-md mx-auto">
-              We don&apos;t have any articles in {cat.label} right now. Check back soon for the latest updates.
+              {cat.label} या विभागात सध्या कोणतेही लेख नाहीत. ताज्या अपडेटसाठी लवकरच परत या.
             </p>
           </div>
         ) : (

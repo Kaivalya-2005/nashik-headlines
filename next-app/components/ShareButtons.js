@@ -71,7 +71,7 @@ export default function ShareButtons({ title, slug, canonicalUrl }) {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-overline text-muted-foreground mr-1">Share</span>
+      <span className="text-overline text-muted-foreground mr-1">शेअर</span>
       {buttons.map((btn) => (
         <a
           key={btn.label}
@@ -95,7 +95,7 @@ export default function ShareButtons({ title, slug, canonicalUrl }) {
         }`}
       >
         {copied ? <Check size={14} /> : <Link2 size={14} />}
-        <span className="hidden sm:inline">{copied ? "Copied!" : "Copy"}</span>
+        <span className="hidden sm:inline">{copied ? "कॉपी झाले!" : "कॉपी"}</span>
       </button>
     </div>
   );

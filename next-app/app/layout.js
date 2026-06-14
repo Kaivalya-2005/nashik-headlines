@@ -11,16 +11,16 @@ const GA_ID = process.env.NEXT_PUBLIC_GA_ID || 'G-XXXXXXXXXX';
 export const metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'Nashik Headlines — Latest News from Nashik & Maharashtra',
-    template: '%s | Nashik Headlines',
+    default: 'नाशिक हेडलाईन्स — नाशिक व महाराष्ट्रातील ताज्या बातम्या',
+    template: '%s | नाशिक हेडलाईन्स',
   },
-  description: 'Get the latest breaking news, local stories, and in-depth coverage from Nashik, Maharashtra, India. Trusted source for Nashik headlines.',
+  description: 'नाशिक, महाराष्ट्र आणि भारतातील ताज्या बातम्या, स्थानिक घडामोडी आणि सखोल वृत्तांकन. नाशिक हेडलाईन्स — आपला विश्वासू बातम्यांचा स्रोत.',
   openGraph: {
-    title: 'Nashik Headlines',
-    description: 'Stay updated with the latest Nashik and Maharashtra news.',
+    title: 'नाशिक हेडलाईन्स',
+    description: 'नाशिक आणि महाराष्ट्रातील ताज्या बातम्यांसाठी नाशिक हेडलाईन्सशी जोडलेले राहा.',
     url: siteUrl,
-    siteName: 'Nashik Headlines',
-    locale: 'en_IN',
+    siteName: 'नाशिक हेडलाईन्स',
+    locale: 'mr_IN',
     type: 'website',
   },
   robots: {
@@ -51,7 +51,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="mr">
       <body className="min-h-screen flex flex-col bg-background text-foreground">
         <ThemeProvider>
           <Navbar />

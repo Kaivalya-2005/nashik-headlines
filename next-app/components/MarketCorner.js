@@ -25,7 +25,7 @@ export default function MarketCorner({ marketData = [] }) {
   return (
     <section className="p-4 border border-border bg-card">
       <div className="flex items-center justify-between mb-3 border-b border-border pb-2">
-        <h3 className="font-bold text-lg">Stock Market</h3>
+        <h3 className="font-bold text-lg">शेअर बाजार</h3>
         <span className="text-[10px] font-semibold text-accent uppercase tracking-wide">Live</span>
       </div>
 
@@ -41,7 +41,7 @@ export default function MarketCorner({ marketData = [] }) {
             />
           ))
         ) : (
-          <p className="text-sm text-muted-foreground">Market data currently unavailable.</p>
+          <p className="text-sm text-muted-foreground">बाजार माहिती सध्या उपलब्ध नाही.</p>
         )}
       </div>
     </section>

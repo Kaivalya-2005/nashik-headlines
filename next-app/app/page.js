@@ -47,17 +47,17 @@ async function fetchMarketSnapshot() {
 
 export async function generateMetadata({ searchParams }) {
   const q = searchParams?.q;
-  const title = q ? `Search results for "${q}" | Nashik Headlines` : 'Latest News from Nashik & Maharashtra';
+  const title = q ? `"${q}" साठी शोध निकाल | नाशिक हेडलाईन्स` : 'नाशिक व महाराष्ट्रातील ताज्या बातम्या';
   const description = q
-    ? `Search results for ${q} on Nashik Headlines.`
-    : 'Get the latest news headlines from Nashik, Shirdi, Dhule, Malegaon, Igatpuri and all of Maharashtra.';
+    ? `नाशिक हेडलाईन्सवर ${q} साठी शोध निकाल.`
+    : 'नाशिक, शिर्डी, धुळे, मालेगाव, इगतपुरी आणि संपूर्ण महाराष्ट्रातील ताज्या बातम्या वाचा.';
 
   const canonical = q ? `${siteUrl}/?q=${encodeURIComponent(q)}` : siteUrl;
 
   return {
     title,
     description,
-    keywords: 'Nashik news, Maharashtra news, Nashik headlines, breaking news Nashik',
+    keywords: 'नाशिक बातम्या, महाराष्ट्र बातम्या, नाशिक हेडलाईन्स, ब्रेकिंग न्यूज नाशिक',
     alternates: { canonical },
     openGraph: {
       title,
@@ -92,11 +92,11 @@ export default async function Home({ searchParams }) {
   const orgJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'NewsMediaOrganization',
-    name: 'Nashik Headlines',
+    name: 'नाशिक हेडलाईन्स',
     url: siteUrl,
     logo: `${siteUrl}/logo.jpeg`,
     sameAs: [],
-    description: 'Your trusted source for breaking news from Nashik, Maharashtra.',
+    description: 'नाशिक, महाराष्ट्रातील ब्रेकिंग न्यूजसाठी आपला विश्वासू स्रोत.',
   };
 
   return (
@@ -111,9 +111,12 @@ export default async function Home({ searchParams }) {
         <div className="max-w-[1450px] mx-auto px-3 md:px-4">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
             <section className="lg:col-span-8 border border-border bg-card p-3 md:p-4">
-              <div className="flex items-end justify-between mb-4 border-b border-border pb-3">
-                <h2 className="font-headline text-2xl md:text-3xl font-bold">Latest News</h2>
-                <span className="text-sm text-muted-foreground font-medium">{sorted.length} stories</span>
+              <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-1 h-7 bg-accent rounded-full" />
+                  <h2 className="font-headline text-2xl md:text-3xl font-bold">ताज्या बातम्या</h2>
+                </div>
+                <span className="text-sm text-muted-foreground font-medium">{sorted.length} बातम्या</span>
               </div>
 
               {featured ? <ArticleCard article={featured} variant="featured" /> : null}
@@ -125,7 +128,7 @@ export default async function Home({ searchParams }) {
                   ))}
                 </div>
               ) : !featured ? (
-                <p className="text-base text-muted-foreground py-8">No news available right now.</p>
+                <p className="text-base text-muted-foreground py-8">सध्या बातम्या उपलब्ध नाहीत.</p>
               ) : null}
             </section>
 

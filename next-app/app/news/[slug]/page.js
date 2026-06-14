@@ -17,7 +17,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 export async function generateMetadata({ params }) {
   const article = await fetchArticleBySlug(params.slug, { cache: 'no-store' });
   if (!article) {
-    return { title: 'Article Not Found' };
+    return { title: 'लेख सापडला नाही' };
   }
 
   const title = article.seoTitle || article.title;
@@ -73,37 +73,7 @@ export default async function ArticlePage({ params }) {
   const heroImage = article.image || article.images?.find((img) => img.isFeatured)?.url || article.images?.[0]?.url;
   const featuredFromList = article.images?.find((img) => img.isFeatured) || article.images?.[0] || null;
   const inlineImages = (article.images || []).filter((img) => img?.url && img.url !== featuredFromList?.url);
-  const contentBlocks = String(article.content || '')
-    .split(/\n\n+/)
-    .map((block) => block.trim())
-    .filter(Boolean);
-  const inlineImageByBlock = (() => {
-    const blockToImage = new Map();
-    const totalBlocks = contentBlocks.length;
-    const totalInline = inlineImages.length;
-    if (!totalBlocks || !totalInline) return blockToImage;
-
-    const used = new Set();
-
-    for (let idx = 0; idx < totalInline; idx++) {
-      let afterBlock = Math.min(
-        totalBlocks - 1,
-        Math.max(0, Math.floor(((idx + 1) * totalBlocks) / (totalInline + 1)) - 1)
-      );
-
-      while (used.has(afterBlock) && afterBlock < totalBlocks - 1) {
-        afterBlock += 1;
-      }
-      while (used.has(afterBlock) && afterBlock > 0) {
-        afterBlock -= 1;
-      }
-
-      used.add(afterBlock);
-      blockToImage.set(afterBlock, inlineImages[idx]);
-    }
-
-    return blockToImage;
-  })();
+  const rawContent = String(article.content || '');
   const ogImage = heroImage
     ? heroImage.startsWith('http')
       ? heroImage
@@ -116,10 +86,10 @@ export default async function ArticlePage({ params }) {
     description: article.seoDescription,
     image: ogImage ? [ogImage] : undefined,
     datePublished: article.publishedAt,
-    author: { '@type': 'Organization', name: 'Nashik Headlines' },
+    author: { '@type': 'Organization', name: 'नाशिक हेडलाईन्स' },
     publisher: {
       '@type': 'Organization',
-      name: 'Nashik Headlines',
+      name: 'नाशिक हेडलाईन्स',
       logo: { '@type': 'ImageObject', url: `${siteUrl}/favicon.ico` },
     },
     mainEntityOfPage: { '@type': 'WebPage', '@id': `${siteUrl}/news/${article.slug}` },
@@ -139,7 +109,7 @@ export default async function ArticlePage({ params }) {
           className="inline-flex items-center gap-1.5 text-caption text-muted-foreground hover:text-foreground transition-colors mb-8 group"
         >
           <ArrowLeft size={14} className="transition-transform duration-200 group-hover:-translate-x-0.5" />
-          Back to headlines
+          मुख्यपानावर परत
         </Link>
 
         <article className="animate-fade-in-up">
@@ -152,11 +122,11 @@ export default async function ArticlePage({ params }) {
           <div className="glass-card p-4 mb-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center flex-wrap gap-4 text-caption text-muted-foreground">
-                <span className="font-semibold text-foreground/70">Nashik Headlines</span>
+                <span className="font-semibold text-foreground/70">नाशिक हेडलाईन्स</span>
                 <span>{formatDate(article.publishedAt)}</span>
                 <div className="flex items-center gap-1">
                   <Clock size={13} />
-                  <span>{article.readTime} min read</span>
+                  <span>{article.readTime} मिनिट वाचन</span>
                 </div>
               </div>
               <ShareButtons title={article.title} slug={article.slug} canonicalUrl={`${siteUrl}/news/${article.slug}`} />
@@ -178,65 +148,37 @@ export default async function ArticlePage({ params }) {
             </figure>
           )}
 
-          <div className="max-w-none space-y-5 text-body-lg leading-[1.8] text-foreground/85 drop-cap">
-            {contentBlocks.map((block, idx) => {
-              const h3Match = block.match(/^###\s+(.+)/);
-              const h2Match = block.match(/^##\s+(.+)/);
-              const h1Match = block.match(/^#\s+(.+)/);
-              const headingLineMatch = block.match(/^#{1,3}\s+.+/);
-              const bodyText = headingLineMatch
-                ? block.replace(/^#{1,3}\s+.+\n?/, '').trim()
-                : block;
+          <div
+            className="article-content drop-cap"
+            dangerouslySetInnerHTML={{ __html: rawContent }}
+          />
 
-              const inlineImage = inlineImageByBlock.get(idx) || null;
-
-              return (
-                <div key={`block-${idx}`} className="space-y-5">
-                  {h1Match ? (
-                    <>
-                      <h2 className="font-headline font-bold text-title">{h1Match[1]}</h2>
-                      {bodyText && <p>{bodyText}</p>}
-                    </>
-                  ) : h2Match ? (
-                    <>
-                      <h2 className="font-headline font-bold text-title">{h2Match[1]}</h2>
-                      {bodyText && <p>{bodyText}</p>}
-                    </>
-                  ) : h3Match ? (
-                    <>
-                      <h3 className="font-headline font-bold text-xl">{h3Match[1]}</h3>
-                      {bodyText && <p>{bodyText}</p>}
-                    </>
-                  ) : (
-                    <p>{block}</p>
+          {inlineImages.length > 0 && (
+            <div className="mt-6 space-y-4">
+              {inlineImages.map((img, idx) => (
+                <figure key={idx} className="rounded-xl overflow-hidden border border-border bg-card/60 shadow-sm">
+                  <div className="relative aspect-[16/9]">
+                    <Image
+                      src={img.url}
+                      alt={img.altText || article.title}
+                      fill
+                      className="object-cover object-center"
+                      sizes="(min-width: 1024px) 900px, 100vw"
+                    />
+                  </div>
+                  {img.caption && (
+                    <figcaption className="px-3 py-2 text-sm text-muted-foreground">
+                      {img.caption}
+                    </figcaption>
                   )}
-
-                  {inlineImage && (
-                    <figure className="rounded-xl overflow-hidden border border-border bg-card/60 shadow-sm my-1">
-                      <div className="relative aspect-[16/10] md:aspect-[16/9]">
-                        <Image
-                          src={inlineImage.url}
-                          alt={inlineImage.altText || article.title}
-                          fill
-                          className="object-cover object-center"
-                          sizes="(min-width: 1024px) 900px, 100vw"
-                        />
-                      </div>
-                      {inlineImage.caption && (
-                        <figcaption className="px-3 py-2 text-sm text-muted-foreground">
-                          {inlineImage.caption}
-                        </figcaption>
-                      )}
-                    </figure>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                </figure>
+              ))}
+            </div>
+          )}
 
           {article.tags?.length > 0 && (
             <section className="mt-10 pt-6 border-t border-border">
-              <h2 className="font-headline font-bold text-title mb-4">Tags</h2>
+              <h2 className="font-headline font-bold text-title mb-4">टॅग्स</h2>
               <div className="flex flex-wrap gap-2">
                 {article.tags.map((tag) => (
                   <span
@@ -253,7 +195,7 @@ export default async function ArticlePage({ params }) {
 
         {related.length > 0 && (
           <section className="mt-16 pt-10 border-t border-border">
-            <h2 className="font-headline font-bold text-title section-accent pb-2 mb-6">Related Articles</h2>
+            <h2 className="font-headline font-bold text-title section-accent pb-2 mb-6">संबंधित बातम्या</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 stagger-children">
               {related.map((rel) => (
                 <ArticleCard key={rel.slug} article={rel} />

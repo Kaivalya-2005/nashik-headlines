@@ -5,16 +5,17 @@ import Script from "next/script";
 import { ChevronDown } from "lucide-react";
 
 /* ─── Language config ─────────────────────────────────────────────────────── */
+// Page is in Marathi — first option restores original, rest translate TO that language
 const LANGUAGES = [
-  { code: "en", label: "English",    short: "EN" },
-  { code: "hi", label: "हिंदी",      short: "HI" },
-  { code: "mr", label: "मराठी",      short: "MR" },
-  { code: "ta", label: "தமிழ்",      short: "TA" },
-  { code: "te", label: "తెలుగు",     short: "TE" },
-  { code: "kn", label: "ಕನ್ನಡ",      short: "KN" },
-  { code: "ml", label: "മലയാളം",    short: "ML" },
-  { code: "gu", label: "ગુજરાતી",   short: "GU" },
-  { code: "bn", label: "বাংলা",     short: "BN" },
+  { code: "mr", label: "मराठी (मूळ)", short: "MR" },
+  { code: "en", label: "English",     short: "EN" },
+  { code: "hi", label: "हिंदी",       short: "HI" },
+  { code: "ta", label: "தமிழ்",       short: "TA" },
+  { code: "te", label: "తెలుగు",      short: "TE" },
+  { code: "kn", label: "ಕನ್ನಡ",       short: "KN" },
+  { code: "ml", label: "മലയാളം",     short: "ML" },
+  { code: "gu", label: "ગુજરાતી",    short: "GU" },
+  { code: "bn", label: "বাংলা",      short: "BN" },
 ];
 
 /* ─── Official Google Translate SVG icon ──────────────────────────────────── */
@@ -70,8 +71,8 @@ export default function GoogleTranslate() {
   /* Runs only on the client — prevents SSR hydration mismatch */
   useEffect(() => {
     /* Set initial language from cookie if available */
-    const match = document.cookie.match(/googtrans=\/?en\/([a-z]{2})/);
-    if (match && match[1]) {
+    const match = document.cookie.match(/googtrans=\/?(?:mr|en)\/([a-z]{2})/);
+    if (match && match[1] && match[1] !== "mr") {
       const initLang = LANGUAGES.find((l) => l.code === match[1]);
       if (initLang) setSelected(initLang);
     }
@@ -81,8 +82,8 @@ export default function GoogleTranslate() {
       try {
         new window.google.translate.TranslateElement(
           {
-            pageLanguage: "en",
-            includedLanguages: "en,hi,mr,ta,te,kn,ml,gu,bn",
+            pageLanguage: "mr",
+            includedLanguages: "en,hi,ta,te,kn,ml,gu,bn",
             layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
             autoDisplay: false,
           },
@@ -157,8 +158,8 @@ export default function GoogleTranslate() {
     setSelected(lang);
     setOpen(false);
 
-    // For English, clear googtrans cookie and reload to restore original
-    if (lang.code === "en") {
+    // For Marathi (original language), clear googtrans cookie and reload
+    if (lang.code === "mr") {
       document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
       document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; domain=${window.location.hostname}; path=/`;
       window.location.reload();

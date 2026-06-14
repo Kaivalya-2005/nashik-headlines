@@ -29,9 +29,9 @@ export default function ArticleCard({ article, variant = 'default' }) {
             <div className="flex items-center gap-2 mb-2">
               {cat && <span className={`category-badge ${cat.colorClass}`}>{cat.label}</span>}
               {article.isBreaking && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-500 text-white text-[11px] font-bold uppercase">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-500 text-white text-[11px] font-bold">
                   <span className="w-1.5 h-1.5 bg-white animate-pulse" />
-                  Breaking
+                  ब्रेकिंग
                 </span>
               )}
             </div>
@@ -39,11 +39,11 @@ export default function ArticleCard({ article, variant = 'default' }) {
             <p className="text-muted-foreground text-base leading-relaxed line-clamp-3 mb-3">{article.description}</p>
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <div className="flex items-center gap-2">
-                <span className="font-semibold">Nashik Headlines</span>
+                <span className="font-semibold">नाशिक हेडलाईन्स</span>
                 <span>·</span>
                 <span>{timeAgo(article.publishedAt)}</span>
               </div>
-              <span>{article.readTime} min read</span>
+              <span>{article.readTime} मिनिट वाचन</span>
             </div>
           </div>
         </Link>
@@ -63,7 +63,7 @@ export default function ArticleCard({ article, variant = 'default' }) {
             <p className="text-muted-foreground text-sm leading-relaxed line-clamp-2 mb-2">{article.description}</p>
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <div className="flex items-center gap-1">
-                <span className="font-medium">Nashik Headlines</span>
+                <span className="font-medium">नाशिक हेडलाईन्स</span>
                 <span>·</span>
                 <span>{timeAgo(article.publishedAt)}</span>
               </div>

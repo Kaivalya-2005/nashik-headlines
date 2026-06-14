@@ -15,7 +15,7 @@ function LiveDate() {
   useEffect(() => {
     const update = () => {
       setDateStr(
-        new Date().toLocaleDateString('en-IN', {
+        new Date().toLocaleDateString('mr-IN', {
           weekday: 'short',
           day: 'numeric',
           month: 'short',
@@ -74,6 +74,8 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border">
+      {/* Professional red top accent bar */}
+      <div className="h-1 bg-accent w-full" />
       <div className="max-w-[1450px] mx-auto">
         <div className="flex items-center justify-between h-16 px-3 md:px-4">
           <Link href="/" className="flex items-center gap-2 group">
@@ -81,7 +83,7 @@ export default function Navbar() {
               <Image src="/logo.jpeg" alt="Nashik Headlines" fill sizes="44px" className="object-contain" priority />
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-lg leading-tight">Nashik Headlines</span>
+              <span className="font-bold text-lg leading-tight">नाशिक हेडलाईन्स</span>
               <LiveDate />
             </div>
           </Link>
@@ -113,7 +115,7 @@ export default function Navbar() {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search Nashik news..."
+                placeholder="नाशिकच्या बातम्या शोधा..."
                 autoFocus
                 className="w-full h-10 pl-10 pr-3 bg-secondary text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-1 focus:ring-ring transition-shadow"
               />
@@ -124,7 +126,7 @@ export default function Navbar() {
 
         <nav className="hidden md:flex items-center justify-between gap-4 px-3 md:px-4 border-t border-border/50">
           <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-            <NavLink href="/" active={isActive('/')} label="Home" />
+            <NavLink href="/" active={isActive('/')} label="मुख्यपान" />
             {LOCATION_CATEGORIES.map((cat) => (
               <NavLink
                 key={cat.slug}
@@ -157,7 +159,7 @@ export default function Navbar() {
                   aria-expanded={moreOpen}
                   aria-haspopup="menu"
                 >
-                  More
+                  आणखी
                   <ChevronDown size={14} className={`transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {moreOpen ? (
@@ -193,7 +195,7 @@ export default function Navbar() {
                   isActive('/') ? 'bg-primary text-primary-foreground font-medium' : 'hover:bg-secondary'
                 }`}
               >
-                All News
+                सर्व बातम्या
               </Link>
               <Link
                 href="/wordle"
@@ -204,10 +206,10 @@ export default function Navbar() {
                     : 'hover:bg-secondary text-foreground border-border/60'
                 }`}
               >
-                🎮 Play Wordle
+                🎮 वर्डल खेळा
               </Link>
 
-              <p className="px-3 pt-3 pb-1 text-xs text-muted-foreground font-semibold">PLACES</p>
+              <p className="px-3 pt-3 pb-1 text-xs text-muted-foreground font-semibold">ठिकाणे</p>
               {LOCATION_CATEGORIES.map((cat) => (
                 <Link
                   key={cat.slug}
@@ -223,7 +225,7 @@ export default function Navbar() {
 
               <div className="my-1 border-t border-border/50" />
 
-              <p className="px-3 pt-2 pb-1 text-xs text-muted-foreground font-semibold">TOPICS</p>
+              <p className="px-3 pt-2 pb-1 text-xs text-muted-foreground font-semibold">विषय</p>
               {TOPIC_CATEGORIES.map((cat) => (
                 <Link
                   key={cat.slug}
@@ -268,12 +270,12 @@ function WordleQuickLink({ active }) {
           ? 'border-accent text-foreground bg-secondary'
           : 'border-transparent text-foreground hover:bg-secondary'
       }`}
-      aria-label="Open Wordle"
-      title="Play Wordle"
+      aria-label="वर्डल खेळा"
+      title="वर्डल खेळा"
     >
       <span aria-hidden>🎮</span>
-      <span>Wordle</span>
-      <span className="text-[10px] text-accent uppercase tracking-wide">Play</span>
+      <span>वर्डल</span>
+      <span className="text-[10px] text-accent uppercase tracking-wide">खेळा</span>
     </Link>
   );
 }

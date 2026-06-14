@@ -10,9 +10,12 @@ export default function TrendingSection({ articles = [] }) {
   return (
     <section className="bg-card border border-border">
       {/* Header */}
-      <div className="p-4 border-b border-border/50">
-        <h2 className="font-bold text-xl">Trending</h2>
-        <p className="text-sm text-muted-foreground mt-1">Most read right now</p>
+      <div className="p-4 border-b border-border/50 flex items-center gap-3">
+        <div className="w-1 h-6 bg-accent rounded-full flex-shrink-0" />
+        <div>
+          <h2 className="font-bold text-xl">ट्रेंडिंग</h2>
+          <p className="text-sm text-muted-foreground">सध्या सर्वाधिक वाचलेल्या</p>
+        </div>
       </div>
 
       <div className="p-0">

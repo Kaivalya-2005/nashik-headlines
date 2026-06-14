@@ -16,9 +16,9 @@ export default function NotFound() {
         <SearchX size={24} className="text-muted-foreground" />
       </div>
 
-      <h1 className="font-headline font-bold text-title-lg mb-3">Page Not Found</h1>
+      <h1 className="font-headline font-bold text-title-lg mb-3">पान सापडले नाही</h1>
       <p className="text-muted-foreground text-body-lg max-w-md mx-auto mb-8">
-        The page you&apos;re looking for doesn&apos;t exist or has been moved. Let&apos;s get you back to the latest headlines.
+        तुम्ही शोधत असलेले पान अस्तित्वात नाही किंवा हलवण्यात आले आहे. मुख्यपानावर परत या.
       </p>
 
       <Link
@@ -26,7 +26,7 @@ export default function NotFound() {
         className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 group"
       >
         <Home size={16} />
-        Back to homepage
+        मुख्यपानावर परत
       </Link>
     </main>
   );

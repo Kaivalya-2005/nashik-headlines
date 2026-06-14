@@ -14,18 +14,18 @@ export default function Footer() {
           <div className="lg:col-span-1">
             <div className="flex items-center gap-3 mb-4">
               <div className="relative h-10 w-10 rounded-lg overflow-hidden border border-border bg-white shadow-sm">
-                <Image src="/logo.jpeg" alt="Nashik Headlines" fill sizes="40px" className="object-cover" />
+                <Image src="/logo.jpeg" alt="नाशिक हेडलाईन्स" fill sizes="40px" className="object-cover" />
               </div>
-              <span className="font-headline font-bold text-lg">Nashik Headlines</span>
+              <span className="font-headline font-bold text-lg">नाशिक हेडलाईन्स</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-              Your trusted source for the latest news from Nashik, Maharashtra, and beyond. Stay informed with breaking news, local stories, and in-depth coverage.
+              नाशिक, महाराष्ट्र आणि संपूर्ण देशातील ताज्या बातम्यांसाठी आपला विश्वासू स्रोत. ब्रेकिंग न्यूज, स्थानिक बातम्या आणि सखोल वृत्तांकनासाठी नाशिक हेडलाईन्सशी जोडलेले राहा.
             </p>
           </div>
 
           {/* Locations column */}
           <div>
-            <h3 className="font-headline font-semibold text-sm mb-4 section-accent pb-2">Locations</h3>
+            <h3 className="font-headline font-semibold text-sm mb-4 section-accent pb-2">ठिकाणे</h3>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               {LOCATION_CATEGORIES.map((cat) => (
                 <Link
@@ -41,7 +41,7 @@ export default function Footer() {
 
           {/* Topics column */}
           <div>
-            <h3 className="font-headline font-semibold text-sm mb-4 section-accent pb-2">Topics</h3>
+            <h3 className="font-headline font-semibold text-sm mb-4 section-accent pb-2">विषय</h3>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               {TOPIC_CATEGORIES.map((cat) => (
                 <Link
@@ -57,16 +57,16 @@ export default function Footer() {
 
           {/* Connect column */}
           <div>
-            <h3 className="font-headline font-semibold text-sm mb-4 section-accent pb-2">Connect</h3>
+            <h3 className="font-headline font-semibold text-sm mb-4 section-accent pb-2">संपर्क</h3>
             <div className="space-y-2.5">
               <Link href="/" className="block text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">
-                Home
+                मुख्यपान
               </Link>
               <Link href="/category/nashik" className="block text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">
-                Latest from Nashik
+                नाशिकच्या ताज्या बातम्या
               </Link>
               <p className="text-sm text-muted-foreground pt-2">
-                Got a story tip?<br />
+                बातमी पाठवायची आहे?<br />
                 <span className="text-foreground/70 font-medium">nashikheadlines@gmail.com</span>
               </p>
             </div>
@@ -76,10 +76,10 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="mt-10 pt-6 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-overline text-muted-foreground">
-            © {new Date().getFullYear()} Nashik Headlines. All rights reserved.
+            © {new Date().getFullYear()} नाशिक हेडलाईन्स. सर्व हक्क राखीव.
           </p>
           <div className="flex items-center gap-4 text-overline text-muted-foreground">
-            <span>Live • Local • Fast</span>
+            <span>थेट • स्थानिक • वेगवान</span>
           </div>
         </div>
       </div>

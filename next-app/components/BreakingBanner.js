@@ -10,7 +10,7 @@ export default function BreakingBanner({ articles = [] }) {
       <div className="max-w-[1450px] mx-auto flex items-center h-11 px-3 md:px-4">
         <div className="flex items-center gap-2 flex-shrink-0 z-10">
           <div className="pulse-dot" />
-          <span className="text-sm text-white font-bold tracking-widest">BREAKING</span>
+          <span className="text-sm text-white font-bold tracking-widest">ब्रेकिंग</span>
         </div>
         <div className="h-6 w-px bg-white/20 flex-shrink-0 mx-3" />
         <div className="overflow-hidden flex-1">
