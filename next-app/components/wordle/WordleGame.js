@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import WordleGrid from "./WordleGrid";
 import WordleKeyboard from "./WordleKeyboard";
 import WordleToast from "./WordleToast";
-import { Share2, HelpCircle, X, Globe } from "lucide-react";
+import { Share2, HelpCircle, X } from "lucide-react";
 
 const WORD_LENGTH = 5;
 const MAX_GUESSES = 6;
@@ -20,15 +20,6 @@ const MOTIVATIONS_EN = [
   "Flex that vocabulary! You've got this. 💪",
   "Think smart, guess smart. You can do it! 🌟",
 ];
-const MOTIVATIONS_MR = [
-  "शब्दांची ताकद वाढवा, एक शब्द एक वेळी! 📚",
-  "दररोज एक नवीन शब्द शिका! 🧠",
-  "तुमची मराठी भाषा समृद्ध करा! 🌟",
-  "अंदाज करा, शिका, वाढा! 💪",
-  "मराठी शब्द खेळा, ज्ञान वाढवा! 🎯",
-  "योग्य शब्द शोधा — तुम्ही करू शकता! ⚡",
-  "भाषेची गोडी जपा, खेळत राहा! 🌍",
-];
 
 /* ─── Helpers ──────────────────────────────────────────────────────────────── */
 function splitWord(word) { return [...word]; }
@@ -43,31 +34,19 @@ function evaluateGuess(guess, answer) {
   return result;
 }
 
-function buildShareText(evaluations, lang, date, won) {
-  const messages = {
-    en: {
-      1: "I'm on FIRE! Guessed it in just 1 try!",
-      2: "Amazing! Got it in 2 tries!",
-      3: "Great job! Solved in 3 tries!",
-      4: "Nice! Nailed it in 4 tries!",
-      5: "Got it! Took me 5 tries!",
-      6: "Phew! Made it in 6 tries!",
-      lost: "Better luck next time! I couldn't solve it today."
-    },
-    mr: {
-      1: "वाह! फक्त 1 प्रयत्नात सोडवले!",
-      2: "शानदार! 2 प्रयत्नात!",
-      3: "छान! 3 प्रयत्नात!",
-      4: "बरोबर! 4 प्रयत्नात!",
-      5: "मिळाले! 5 प्रयत्नात!",
-      6: "अरे! 6 प्रयत्नात पूर्ण केले!",
-      lost: "पुढच्या वेळी! आज सोडवू शकलो नाही."
-    }
+function buildShareText(evaluations, won) {
+  const msgMap = {
+    1: "I'm on FIRE! Guessed it in just 1 try!",
+    2: "Amazing! Got it in 2 tries!",
+    3: "Great job! Solved in 3 tries!",
+    4: "Nice! Nailed it in 4 tries!",
+    5: "Got it! Took me 5 tries!",
+    6: "Phew! Made it in 6 tries!",
+    lost: "Better luck next time! I couldn't solve it today."
   };
-  
-  const msgMap = lang === "mr" ? messages.mr : messages.en;
+
   const mainMsg = won ? msgMap[evaluations.length] || msgMap[6] : msgMap.lost;
-  const tryMsg = lang === "mr" ? "तुम्हीही हा चॅलेंज घ्या!" : "You should try this challenge too!";
+  const tryMsg = "You should try this challenge too!";
   
   return `${mainMsg}\n${tryMsg}\n\nPlay at: nashikheadlines.com/wordle`;
 }
@@ -105,67 +84,54 @@ function MiniTile({ letter, state }) {
   );
 }
 
-function HowToPlayModal({ lang, onClose }) {
-  const isM = lang === "mr";
+function HowToPlayModal({ onClose }) {
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4" onClick={onClose}>
-      <div className="bg-card border border-border rounded-2xl shadow-elevated w-full max-w-xs animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-3">
-          <h2 className="font-headline font-bold text-lg">{isM ? "हे कसे खेळावे?" : "How To Play"}</h2>
-          <button onClick={onClose} className="p-1 rounded-xl hover:bg-secondary transition-colors"><X size={16} /></button>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-md px-3 py-3" onClick={onClose}>
+      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+          <div>
+            <h2 className="font-headline font-bold text-lg">🎮 How To Play</h2>
+            <p className="text-[11px] text-muted-foreground">For your first game</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-secondary transition-colors flex-shrink-0"><X size={18} /></button>
         </div>
 
-        <div className="px-5 pb-5 space-y-4">
-          <p className="text-sm text-muted-foreground leading-snug">
-            {isM
-              ? "५-अक्षरी शब्द ओळखा. तुमच्याकडे ६ प्रयत्न आहेत. प्रत्येक अंदाजानंतर चौकोन रंग बदलतो."
-              : "Guess the 5-letter word in 6 tries. After each guess, the tile colours reveal your progress."}
+        <div className="px-4 pb-4 space-y-3">
+          <p className="text-sm text-foreground leading-snug">
+            🎯 Guess the 5-letter word in 6 tries.
           </p>
 
-          {/* Example 1 — correct */}
-          <div>
-            <div className="flex gap-1.5 mb-1">
-              {(isM ? ["व","ि","च","ा","र"] : ["F","O","R","G","E"]).map((l, i) => (
-                <MiniTile key={i} letter={l} state={i === 0 ? "correct" : "absent"} />
-              ))}
+          <div className="space-y-2">
+            <div className="rounded-xl border border-border bg-secondary/40 p-2.5">
+              <div className="flex gap-1.5 mb-1.5">
+                {["F","O","R","G","E"].map((l, i) => (
+                  <MiniTile key={i} letter={l} state={i === 0 ? "correct" : "absent"} />
+                ))}
+              </div>
+              <p className="text-[11px] text-foreground">Green = correct spot</p>
             </div>
-            <p className="text-xs font-semibold" style={{ color: "hsl(var(--wordle-green))" }}>
-              {isM ? `"व" बरोबर जागी आहे ✅` : `"F" is in the correct spot ✅`}
-            </p>
-          </div>
 
-          {/* Example 2 — present */}
-          <div>
-            <div className="flex gap-1.5 mb-1">
-              {(isM ? ["म","ु","ल","ग","ा"] : ["P","I","L","L","S"]).map((l, i) => (
-                <MiniTile key={i} letter={l} state={i === 2 ? "present" : "absent"} />
-              ))}
+            <div className="rounded-xl border border-border bg-secondary/40 p-2.5">
+              <div className="flex gap-1.5 mb-1.5">
+                {["P","I","L","L","S"].map((l, i) => (
+                  <MiniTile key={i} letter={l} state={i === 2 ? "present" : "absent"} />
+                ))}
+              </div>
+              <p className="text-[11px] text-foreground">Yellow = in the word</p>
             </div>
-            <p className="text-xs font-semibold" style={{ color: "hsl(var(--wordle-yellow))" }}>
-              {isM ? `"ल" शब्दात आहे, पण चुकीच्या जागी 🟡` : `"L" is in the word, but wrong spot 🟡`}
-            </p>
-          </div>
 
-          {/* Example 3 — absent */}
-          <div>
-            <div className="flex gap-1.5 mb-1">
-              {(isM ? ["ब","ा","ज","ा","र"] : ["B","R","A","I","N"]).map((l, i) => (
-                <MiniTile key={i} letter={l} state="absent" />
-              ))}
+            <div className="rounded-xl border border-border bg-secondary/40 p-2.5">
+              <div className="flex gap-1.5 mb-1.5">
+                {["B","R","A","I","N"].map((l, i) => (
+                  <MiniTile key={i} letter={l} state="absent" />
+                ))}
+              </div>
+              <p className="text-[11px] text-foreground">Gray = not in the word</p>
             </div>
-            <p className="text-xs font-semibold text-muted-foreground">
-              {isM ? `सर्व अक्षरे शब्दात नाहीत ❌` : `None of these letters are in the word ❌`}
-            </p>
-          </div>
-
-          <div className="border-t border-border pt-3 text-xs text-muted-foreground space-y-1">
-            <p>🕛 {isM ? "दररोज मध्यरात्री नवीन शब्द येतो" : "A new word appears every day at midnight"}</p>
-            <p>💡 {isM ? "मराठी आणि इंग्रजी दोन्ही मोड उपलब्ध आहेत" : "Play in English or switch to Marathi mode"}</p>
           </div>
 
           <button onClick={onClose} className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity active:scale-95">
-            {isM ? "खेळूया! 🎮" : "Let's Play! 🎮"}
+            Let's Play!
           </button>
         </div>
       </div>
@@ -174,18 +140,17 @@ function HowToPlayModal({ lang, onClose }) {
 }
 
 /* ─── Result / Share Modal ─────────────────────────────────────────────────── */
-function ResultModal({ won, evaluations, lang, date, answer, onClose }) {
+function ResultModal({ won, evaluations, date, answer, onClose }) {
   const [copied, setCopied] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
-  const isM = lang === "mr";
 
   const attemptsUsed = evaluations.length;
   const attemptsScore = won ? `${attemptsUsed}/${MAX_GUESSES}` : `X/${MAX_GUESSES}`;
   const points = won ? (MAX_GUESSES - attemptsUsed + 1) * 10 : 0;
   const winMessages = ["Genius! 🧠", "Brilliant! 🎉", "Impressive! 🌟", "Splendid! 👏", "Great! 🏆", "Phew! 😅"];
-  const winMsg = won ? (isM ? "शाब्बास! 🎉" : winMessages[Math.min(evaluations.length - 1, 5)]) : (isM ? "पुढच्या वेळी! 💪" : "Better luck tomorrow! 💪");
+  const winMsg = won ? winMessages[Math.min(evaluations.length - 1, 5)] : "Better luck tomorrow! 💪";
   
-  const shareText = buildShareText(evaluations, lang, date, won);
+  const shareText = buildShareText(evaluations, won);
 
   const handleShare = async (platform) => {
     try {
@@ -203,7 +168,7 @@ function ResultModal({ won, evaluations, lang, date, answer, onClose }) {
       } else if (platform === "facebook") {
         window.open(`https://www.facebook.com/sharer/sharer.php?u=nashikheadlines.com/wordle`, "_blank");
       } else if (platform === "email") {
-        const subject = encodeURIComponent(isM ? "मराठी शब्द खेळ" : "Nashik Wordle");
+        const subject = encodeURIComponent("Nashik Wordle");
         const body = encodeURIComponent(shareText);
         window.open(`mailto:?subject=${subject}&body=${body}`);
       }
@@ -222,8 +187,8 @@ function ResultModal({ won, evaluations, lang, date, answer, onClose }) {
           <p className="text-3xl font-headline font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-emerald-500 mb-1">{winMsg}</p>
           <p className="text-sm text-muted-foreground">
             {won
-              ? (isM ? `तुम्ही ${attemptsScore} मध्ये ओळखले` : `You guessed it in ${attemptsScore}`)
-              : (isM ? `तुम्ही ${MAX_GUESSES} प्रयत्न वापरले` : `You used all ${MAX_GUESSES} tries`)
+              ? `You guessed it in ${attemptsScore}`
+              : `You used all ${MAX_GUESSES} tries`
             }
           </p>
         </div>
@@ -232,22 +197,18 @@ function ResultModal({ won, evaluations, lang, date, answer, onClose }) {
         <div className="px-6 pt-6 pb-6 space-y-4 relative">
           {/* Score Card */}
           <div className="bg-secondary/60 rounded-2xl p-4 text-center border border-border/50">
-            <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-2">
-              {isM ? "आज का स्कोर" : "Today's Score"}
-            </p>
+            <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-2">Today's Score</p>
             <p className="text-3xl font-mono font-bold text-primary">{points}</p>
             {won && (
               <p className="text-xs text-muted-foreground mt-1">
-                {isM ? `${attemptsUsed} प्रयत्न • जास्त गुण` : `${attemptsUsed} attempts • higher points for fewer tries`}
+                {attemptsUsed} attempts • higher points for fewer tries
               </p>
             )}
           </div>
 
           {!won && answer && (
             <div className="bg-card rounded-2xl p-4 text-center border border-border">
-              <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-2">
-                {isM ? "योग्य शब्द" : "Correct Word"}
-              </p>
+              <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-2">Correct Word</p>
               <p className="text-3xl font-mono font-bold text-foreground tracking-[0.22em]">{answer}</p>
             </div>
           )}
@@ -259,7 +220,7 @@ function ResultModal({ won, evaluations, lang, date, answer, onClose }) {
               className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-primary to-primary/90 text-primary-foreground font-bold text-base flex items-center justify-center gap-2 hover:shadow-lg transition-all active:scale-95"
             >
               <Share2 size={18} />
-              {copied ? (isM ? "कॉपी केल! ✓" : "Copied! ✓") : (isM ? "शेअर करा 🚀" : "Share 🚀")}
+              {copied ? "Copied! ✓" : "Share 🚀"}
             </button>
 
             {/* Share Menu - positioned above button */}
@@ -270,7 +231,7 @@ function ResultModal({ won, evaluations, lang, date, answer, onClose }) {
                   className="w-full px-4 py-3 text-left hover:bg-secondary transition-colors flex items-center gap-3 border-b border-border/50"
                 >
                   <span className="text-lg">📋</span>
-                  <span className="font-semibold text-sm">{isM ? "कॉपी करा" : "Copy to Clipboard"}</span>
+                  <span className="font-semibold text-sm">Copy to Clipboard</span>
                 </button>
                 <button
                   onClick={() => handleShare("whatsapp")}
@@ -298,7 +259,7 @@ function ResultModal({ won, evaluations, lang, date, answer, onClose }) {
                   className="w-full px-4 py-3 text-left hover:bg-secondary transition-colors flex items-center gap-3"
                 >
                   <span className="text-lg">✉️</span>
-                  <span className="font-semibold text-sm">{isM ? "ईमेल" : "Email"}</span>
+                  <span className="font-semibold text-sm">Email</span>
                 </button>
               </div>
             )}
@@ -309,7 +270,7 @@ function ResultModal({ won, evaluations, lang, date, answer, onClose }) {
             onClick={onClose}
             className="w-full py-2.5 rounded-xl bg-secondary/50 text-foreground font-semibold text-sm hover:bg-secondary transition-colors"
           >
-            {isM ? "बंद करा" : "Close"}
+            Close
           </button>
         </div>
       </div>
@@ -319,7 +280,6 @@ function ResultModal({ won, evaluations, lang, date, answer, onClose }) {
 
 /* ─── Main Game Component ──────────────────────────────────────────────────── */
 export default function WordleGame() {
-  const [lang, setLang] = useState("en");
   const [answer, setAnswer] = useState(null);
   const [date, setDate] = useState("");
   const [loading, setLoading] = useState(true);
@@ -338,19 +298,17 @@ export default function WordleGame() {
   const [toast, setToast] = useState(null);
   const [letterStates, setLetterStates] = useState({});
 
-  const motivation = (lang === "mr" ? MOTIVATIONS_MR : MOTIVATIONS_EN)[
-    Math.floor(Date.now() / 86400000) % 7
-  ];
+  const motivation = MOTIVATIONS_EN[Math.floor(Date.now() / 86400000) % 7];
 
   const showToast = useCallback((msg, duration = 2000) => {
     setToast(msg);
     setTimeout(() => setToast(null), duration);
   }, []);
 
-  const fetchWord = useCallback(async (language) => {
+  const fetchWord = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const res = await fetch(`/api/wordle/today?lang=${language}`);
+      const res = await fetch(`/api/wordle/today`);
       if (!res.ok) throw new Error("Failed");
       const data = await res.json();
       setAnswer(data.word); setDate(data.date);
@@ -358,9 +316,9 @@ export default function WordleGame() {
     finally { setLoading(false); }
   }, []);
 
-  const loadState = useCallback((language) => {
+  const loadState = useCallback(() => {
     try {
-      const raw = localStorage.getItem(getTodayKey(language));
+      const raw = localStorage.getItem(getTodayKey("en"));
       if (raw) {
         const s = JSON.parse(raw);
         setGuesses(s.guesses || []); setEvaluations(s.evaluations || []);
@@ -371,16 +329,16 @@ export default function WordleGame() {
     return { loaded: false, status: "playing" };
   }, []);
 
-  const saveState = useCallback((language, gs, evals, status, ls) => {
-    try { localStorage.setItem(getTodayKey(language), JSON.stringify({ guesses: gs, evaluations: evals, status, letterStates: ls })); } catch {}
+  const saveState = useCallback((gs, evals, status, ls) => {
+    try { localStorage.setItem(getTodayKey("en"), JSON.stringify({ guesses: gs, evaluations: evals, status, letterStates: ls })); } catch {}
   }, []);
 
-  // On mount & lang change
+  // On mount
   useEffect(() => {
     setCurrentInput([]); setInvalidRow(false); setToast(null); setShowResult(false);
-    const { loaded, status } = loadState(lang);
+    const { loaded, status } = loadState();
     if (!loaded) { setGuesses([]); setEvaluations([]); setGameStatus("playing"); setLetterStates({}); }
-    fetchWord(lang);
+    fetchWord();
 
     // Show help modal on first tab open (session-based, not permanent)
     if (!sessionStorage.getItem(HELP_SEEN_SESSION_KEY)) {
@@ -392,12 +350,12 @@ export default function WordleGame() {
     if (loaded && (status === "won" || status === "lost")) {
       setTimeout(() => setShowResult(true), 800);
     }
-  }, [lang, fetchWord, loadState]);
+  }, [fetchWord, loadState]);
 
   const submitGuess = useCallback(() => {
     if (!answer) return;
     if (currentInput.length !== WORD_LENGTH) {
-      showToast(lang === "mr" ? "५ अक्षरे टाका" : "Not enough letters");
+      showToast("Not enough letters");
       setInvalidRow(true); setTimeout(() => setInvalidRow(false), 600);
       return;
     }
@@ -415,25 +373,24 @@ export default function WordleGame() {
 
     setGuesses(newGuesses); setEvaluations(newEvals); setCurrentInput([]);
     setGameStatus(newStatus); setLetterStates(newLS);
-    saveState(lang, newGuesses, newEvals, newStatus, newLS);
+    saveState("en", newGuesses, newEvals, newStatus, newLS);
 
     if (newStatus === "won" || newStatus === "lost") {
       // Brief toast then open result modal
       const msg = newStatus === "won"
         ? ["Genius! 🧠","Brilliant! 🎉","Impressive! 🌟","Splendid! 👏","Great! 🏆","Phew! 😅"][Math.min(newGuesses.length-1,5)]
-        : (lang === "mr" ? `उत्तर: ${answer}` : `The word was: ${answer}`);
+        : `The word was: ${answer}`;
       showToast(msg, 1500);
       setTimeout(() => setShowResult(true), 1800);
     }
-  }, [answer, currentInput, guesses, evaluations, letterStates, lang, showToast, saveState]);
+  }, [answer, currentInput, guesses, evaluations, letterStates, showToast, saveState]);
 
   const handleKey = useCallback((key) => {
     if (gameStatus !== "playing" || !answer) return;
     if (key === "ENTER" || key === "Enter") { submitGuess(); return; }
     if (key === "BACKSPACE" || key === "Backspace") { setCurrentInput((p) => p.slice(0,-1)); return; }
-    if (lang === "en") { if (/^[A-Za-z]$/.test(key) && currentInput.length < WORD_LENGTH) setCurrentInput((p) => [...p, key.toUpperCase()]); }
-    else { if (currentInput.length < WORD_LENGTH) setCurrentInput((p) => [...p, key]); }
-  }, [gameStatus, answer, currentInput, lang, submitGuess]);
+    if (/^[A-Za-z]$/.test(key) && currentInput.length < WORD_LENGTH) setCurrentInput((p) => [...p, key.toUpperCase()]);
+  }, [gameStatus, answer, currentInput, submitGuess]);
 
   useEffect(() => {
     const fn = (e) => {
@@ -451,54 +408,54 @@ export default function WordleGame() {
         return;
       }
 
-      if (lang === "en") {
-        handleKey(e.key);
-      }
+      handleKey(e.key);
     };
 
     window.addEventListener("keydown", fn);
     return () => window.removeEventListener("keydown", fn);
-  }, [lang, handleKey]);
+  }, [handleKey]);
 
   return (
     <>
       {/* ── Full-screen game container ─────────────────────────────────── */}
-      <div className="flex flex-col h-[calc(100dvh-4rem)] overflow-hidden">
+      {/* wordle-container: responsive height set in globals.css
+           65px on mobile (no category nav), 106px on desktop */}
+      <div className="wordle-container bg-background">
 
-        {/* ── Header ──────────────────────────────────────────────────── */}
-        <div className="flex-shrink-0 border-b border-border">
-          <div className="flex items-center justify-between px-4 py-2.5">
-            {/* Left: Title + Help */}
-            <div className="flex items-center gap-1.5">
-              <h1 className="font-headline font-bold text-xl tracking-tight">
-                {lang === "mr" ? "शब्द खेळ" : "Wordle"}
+        {/* ── Header ──────────────────────────────────────────────── */}
+        <div className="flex-shrink-0 border-b border-border bg-card/95 backdrop-blur-sm z-10" style={{ height: 48 }}>
+          <div className="relative flex items-center justify-between gap-2 px-3 sm:px-4 h-full">
+            <div className="flex items-center gap-1.5 min-w-0 flex-shrink-0">
+              <h1 className="font-headline font-bold text-base sm:text-lg tracking-tight whitespace-nowrap">
+                Wordle
               </h1>
               <button
                 onClick={() => setShowHelp(true)}
-                className="p-1 rounded-full hover:bg-secondary transition-colors"
+                className="p-1 rounded-full hover:bg-secondary transition-colors flex-shrink-0"
                 aria-label="How to play"
+                title="How to play"
               >
                 <HelpCircle size={15} className="text-muted-foreground" />
               </button>
             </div>
 
-            {/* Right: date + lang toggle */}
-            <div className="flex items-center gap-2">
-              {date && <span className="text-[11px] text-muted-foreground hidden sm:block">{date}</span>}
+            <p className="pointer-events-none absolute left-1/2 top-1/2 hidden max-w-[50%] -translate-x-1/2 -translate-y-1/2 truncate text-center text-xs text-muted-foreground italic leading-tight sm:block">
+              {motivation}
+            </p>
+
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {date && <span className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">{date}</span>}
               <button
-                onClick={() => setLang((l) => l === "en" ? "mr" : "en")}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-border bg-secondary/50 hover:bg-secondary text-xs font-semibold transition-all"
+                onClick={() => {}}
+                className="flex items-center gap-1 px-2 py-1 rounded-full border border-border bg-secondary/60 hover:bg-secondary text-[10px] sm:text-xs font-bold transition-all active:scale-95"
+                title="English only"
               >
-                <Globe size={11} className="text-muted-foreground" />
-                {lang === "en" ? "मराठी" : "English"}
+                <Globe size={11} className="text-muted-foreground flex-shrink-0" />
+                <span className="hidden sm:inline">English</span>
+                <span className="sm:hidden">EN</span>
               </button>
             </div>
           </div>
-
-          {/* Motivational line */}
-          <p className="text-[11px] text-center text-muted-foreground italic pb-2 px-4 leading-tight">
-            {motivation}
-          </p>
         </div>
 
         {/* ── Toast ─────────────────────────────────────────────────── */}
@@ -516,63 +473,63 @@ export default function WordleGame() {
           </div>
         )}
 
-        {/* ── Game ──────────────────────────────────────────────────── */}
+        {/* ── Game ── grid + keyboard in centred column */}
         {!loading && !error && answer && (
-          <>
-            {/* Grid — vertically centered in remaining space */}
-            <div className="flex-1 min-h-0 flex items-center justify-center">
+          <div className="wordle-game-col">
+
+            {/* Grid — fills remaining vertical space, centred */}
+            <div className="flex-1 min-h-0 flex items-center justify-center overflow-hidden py-2 sm:py-3">
               <WordleGrid
                 guesses={guesses}
                 evaluations={evaluations}
                 currentInput={currentInput}
                 currentRow={guesses.length}
                 invalidRow={invalidRow}
-                lang={lang}
+                lang="en"
                 wordLength={WORD_LENGTH}
                 maxGuesses={MAX_GUESSES}
               />
             </div>
 
-            {/* View Result button when game is over but modal is closed */}
+            {/* View Result button */}
             {gameStatus !== "playing" && !showResult && (
-              <div className="flex-shrink-0 flex justify-center pb-2">
+              <div className="flex-shrink-0 flex justify-center py-1">
                 <button
                   onClick={() => setShowResult(true)}
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-bold text-sm flex items-center gap-2 hover:shadow-lg hover:scale-105 transition-all active:scale-95 border border-primary/30 shadow-md"
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-bold text-sm flex items-center gap-2 hover:shadow-lg hover:scale-105 transition-all active:scale-95 border border-primary/30 shadow-md"
                 >
-                  <Share2 size={16} />
-                  {lang === "mr" ? "🎉 निकाल पहा" : "🎉 View Result"}
+                  <Share2 size={15} />
+                  🎉 View Result
                 </button>
               </div>
             )}
 
-            {/* Keyboard — pinned at bottom */}
-            <div className="flex-shrink-0 border-t border-border/40">
+            {/* Keyboard — always visible at bottom of column */}
+            <div className="flex-shrink-0 border-t border-border/40 bg-card/90 py-1.5 sm:py-2.5">
               <WordleKeyboard
                 letterStates={letterStates}
                 onKey={handleKey}
-                lang={lang}
+                lang="en"
                 disabled={gameStatus !== "playing"}
               />
             </div>
-          </>
+          </div>
         )}
       </div>
 
       {/* ── Modals ────────────────────────────────────────────────────── */}
-      {showHelp && (
-        <HowToPlayModal lang={lang} onClose={() => setShowHelp(false)} />
-      )}
+      {showHelp && <HowToPlayModal onClose={() => setShowHelp(false)} />}
       {showResult && (
         <ResultModal
           won={gameStatus === "won"}
           evaluations={evaluations}
-          lang={lang}
           date={date}
           answer={answer}
           onClose={() => setShowResult(false)}
         />
       )}
+
+      {/* no fixed keyboard — keyboard is rendered in-page above */}
     </>
   );
 }

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import ENGLISH_WORDS from "@/lib/wordle/english_words";
-import MARATHI_WORDS from "@/lib/wordle/marathi_words";
+import ENGLISH_WORDS from "@/lib/wordle/english_words_shuffled";
 
 export const revalidate = 3600;
 
@@ -21,9 +20,7 @@ function getTodayIndex(wordList) {
 }
 
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const lang = searchParams.get("lang") === "mr" ? "mr" : "en";
-  const wordList = lang === "mr" ? MARATHI_WORDS : ENGLISH_WORDS;
+  const wordList = ENGLISH_WORDS;
 
   if (!wordList || wordList.length === 0) {
     return NextResponse.json({ error: "Word list is empty" }, { status: 500 });
@@ -37,7 +34,7 @@ export async function GET(request) {
     {
       date,
       word,
-      lang,
+      lang: "en",
       wordCount: wordList.length,
     },
     {

@@ -405,6 +405,55 @@
   --wordle-gray:   200 4% 38%;
 }
 
+/* Wordle game container — fills viewport minus the sticky navbar.
+   Mobile: navbar = 1px accent + 64px bar = 65px (no category row on mobile)
+   Desktop (md+): navbar = 65px + ~41px category nav row = 106px */
+.wordle-container {
+  height: calc(100svh - 65px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+@media (min-width: 768px) {
+  .wordle-container {
+    height: calc(100svh - 106px);
+  }
+}
+
+/* Centred game column — the grid and keyboard both sit inside this */
+.wordle-game-col {
+  flex: 1 1 0%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: 100%;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+/* Marathi keyboard needs a bit more width for 11-key rows */
+.wordle-game-col-mr {
+  max-width: 620px;
+}
+
+/* ── Keyboard key heights ── */
+.wordle-key {
+  height: 44px;   /* mobile default */
+}
+.wordle-key-action {
+  height: 44px;
+  font-size: 12px;
+}
+@media (min-width: 640px) {
+  .wordle-key        { height: 52px; }
+  .wordle-key-action { height: 52px; font-size: 13px; }
+}
+@media (min-width: 768px) {
+  .wordle-key        { height: 58px; }
+  .wordle-key-action { height: 58px; font-size: 14px; }
+}
+
 @keyframes wordleFlip {
   0%   { transform: rotateX(0deg);    }
   45%  { transform: rotateX(-90deg);  }

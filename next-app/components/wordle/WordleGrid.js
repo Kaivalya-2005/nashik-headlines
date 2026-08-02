@@ -7,37 +7,45 @@ function splitWord(word) {
 }
 
 const STATE_STYLES = {
-  correct: { bg: "hsl(var(--wordle-green))", border: "hsl(var(--wordle-green))", text: "#fff" },
-  present: { bg: "hsl(var(--wordle-yellow))", border: "hsl(var(--wordle-yellow))", text: "#fff" },
-  absent:  { bg: "hsl(var(--wordle-gray))",  border: "hsl(var(--wordle-gray))",  text: "#fff" },
-  empty:   { bg: "transparent", border: "hsl(var(--border))", text: "hsl(var(--foreground))" },
-  active:  { bg: "transparent", border: "hsl(var(--primary))", text: "hsl(var(--foreground))" },
+  correct: { bg: "hsl(var(--wordle-green))", border: "hsl(var(--wordle-green))", text: "#fff", borderWidth: "2px" },
+  present: { bg: "hsl(var(--wordle-yellow))", border: "hsl(var(--wordle-yellow))", text: "#fff", borderWidth: "2px" },
+  absent:  { bg: "hsl(var(--wordle-gray))",  border: "hsl(var(--wordle-gray))",  text: "#fff", borderWidth: "2px" },
+  // empty and active use the SAME border colour so backspace causes zero visual change
+  empty:   { bg: "transparent", border: "hsl(var(--border))", text: "hsl(var(--foreground))", borderWidth: "2px" },
+  active:  { bg: "transparent", border: "hsl(var(--border))", text: "hsl(var(--foreground))", borderWidth: "2px" },
 };
 
-// Tile — clamped square that looks great at any screen size
-// clamp(40px, 11vw, 56px): 375px→41px | 414px→46px | 768px→56px (capped)
-function Tile({ letter, state, delay = 0 }) {
+// Each tile side = (available height - keyboard ~160px - header ~48px - gaps ~30px) / 6 rows
+// On a 700px screen: (700 - 65 - 48 - 160 - 30) / 6 ≈ 66px max
+// clamp: min 42px, preferred 5.5svh, max 62px
+function Tile({ letter, state, delay = 0, isPop = false }) {
   const isRevealed = ["correct", "present", "absent"].includes(state);
   const s = STATE_STYLES[state] || STATE_STYLES.empty;
 
   return (
     <div
       style={{
-        width: "clamp(40px, 11vw, 56px)",
-        height: "clamp(40px, 11vw, 56px)",
+        // Tile size: clamp so 6 rows + 4-row Marathi keyboard all fit at ~768px
+        // 4.8svh @ 768px = 36.8px → min 40px; @ 1080px = 51.8px; max 56px
+        width:  "clamp(40px, 4.8svh, 56px)",
+        height: "clamp(40px, 4.8svh, 56px)",
         backgroundColor: s.bg,
         borderColor: s.border,
         color: s.text,
-        border: "2px solid",
-        animation: isRevealed ? `wordleFlip 0.5s ease-in-out ${delay}ms both` : undefined,
+        border: `${s.borderWidth} solid`,
+        boxShadow: "none",
+        animation: isRevealed
+          ? `wordleFlip 0.5s ease-in-out ${delay}ms both`
+          : isPop ? `wordlePop 0.1s ease-in-out both` : undefined,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        borderRadius: "6px",
-        fontWeight: 700,
-        fontSize: "clamp(14px, 3.5vw, 20px)",
+        borderRadius: "4px",
+        fontWeight: 800,
+        fontSize: "clamp(16px, 2.6svh, 26px)",
         userSelect: "none",
         flexShrink: 0,
+        margin: "0",
       }}
     >
       {letter}
@@ -68,11 +76,13 @@ function Row({ chars, evaluations, isInvalid, isCurrentRow, currentInput, wordLe
       letter = currentInput[i] || "";
       state = letter ? "active" : "empty";
     }
-    tiles.push(<Tile key={i} letter={letter} state={state} delay={evaluations ? i * 80 : 0} />);
+    // isPop: true only for the tile that just got a letter (the last typed tile)
+    const isPop = isCurrentRow && i === currentInput.length - 1 && !!letter;
+    tiles.push(<Tile key={i} letter={letter} state={state} delay={evaluations ? i * 80 : 0} isPop={isPop} />);
   }
 
   return (
-    <div ref={rowRef} style={{ display: "flex", gap: "6px" }}>
+    <div ref={rowRef} style={{ display: "flex", gap: "clamp(4px, 0.5svh, 5px)", justifyContent: "center" }}>
       {tiles}
     </div>
   );
@@ -106,7 +116,10 @@ export default function WordleGrid({
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }} aria-label="Wordle grid">
+    <div
+      style={{ display: "flex", flexDirection: "column", gap: "clamp(4px, 0.8svh, 8px)", alignItems: "center", padding: "4px 0" }}
+      aria-label="Wordle grid"
+    >
       {rows}
     </div>
   );

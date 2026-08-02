@@ -6,67 +6,63 @@ const EN_ROWS = [
   ["ENTER","Z","X","C","V","B","N","M","BACKSPACE"],
 ];
 
-const MR_ROWS = [
-  ["क","ख","ग","घ","च","छ","ज","झ","ट"],
-  ["ड","त","थ","द","ध","न","प","फ","ब"],
-  ["भ","म","य","र","ल","व","श","स","ह"],
-  ["ा","ि","ी","ु","ू","े","ै","ो","ौ"],
-  ["ENTER","अ","इ","उ","ए","ओ","ं","ः","BACKSPACE"],
-];
-
-const STATE_CLS = {
-  correct: "bg-[hsl(var(--wordle-green))] text-white border-transparent",
-  present: "bg-[hsl(var(--wordle-yellow))] text-white border-transparent",
-  absent:  "bg-[hsl(var(--wordle-gray))] text-white border-transparent",
-  default: "bg-secondary text-foreground border-border hover:bg-muted active:bg-muted",
+// Background/text for each letter state
+const STATE_STYLE = {
+  correct: { background: "hsl(var(--wordle-green))", color: "#fff" },
+  present: { background: "hsl(var(--wordle-yellow))", color: "#fff" },
+  absent:  { background: "hsl(var(--wordle-gray))",  color: "#fff" },
+  default: { background: "hsl(var(--muted))",        color: "hsl(var(--foreground))" },
 };
 
-function Key({ label, state, onClick, isMarathi }) {
+function Key({ label, state, onClick }) {
   const isAction = label === "ENTER" || label === "BACKSPACE";
-  const display = label === "BACKSPACE" ? "⌫" : label === "ENTER" ? "↵" : label;
-  const cls = isAction ? STATE_CLS.default : (STATE_CLS[state] || STATE_CLS.default);
+  const display  = label === "BACKSPACE" ? "⌫" : label;
+  const style    = isAction ? STATE_STYLE.default : (STATE_STYLE[state] || STATE_STYLE.default);
 
   return (
     <button
       type="button"
-      onMouseDown={(e) => { e.preventDefault(); onClick(label); }}
-      className={`
-        border rounded font-semibold select-none cursor-pointer
-        transition-colors duration-100 active:scale-90
-        flex items-center justify-center
-        ${isMarathi ? "h-9 text-[13px]" : "h-10 text-sm"}
-        ${isAction ? "px-2 flex-shrink-0 text-xs" : "flex-1 min-w-0"}
-        ${cls}
-      `}
+      onPointerDown={(e) => { e.preventDefault(); onClick(label); }}
       aria-label={label}
+      // wordle-key / wordle-key-action supply responsive HEIGHT via globals.css
+      // flex-[N] controls relative WIDTH within the row
+      className={[
+        isAction ? "wordle-key-action" : "wordle-key",
+        isAction ? "flex-[1.65]" : "flex-1",
+        "flex items-center justify-center rounded-[4px] font-bold select-none",
+        "cursor-pointer transition-colors duration-75 active:scale-95",
+        "text-[13px] sm:text-[15px] leading-none",
+      ].join(" ")}
+      style={{ ...style, border: "none", outline: "none" }}
     >
-      {display}
+      <span aria-hidden>{display}</span>
     </button>
   );
 }
 
 export default function WordleKeyboard({ letterStates, onKey, lang, disabled }) {
-  const rows = lang === "mr" ? MR_ROWS : EN_ROWS;
-  const isMarathi = lang === "mr";
+  const rows = EN_ROWS;
 
   return (
+    // The keyboard fills whatever column width its parent gives it
     <div
-      className={`px-2 py-2 flex flex-col gap-1.5 ${disabled ? "opacity-50 pointer-events-none" : ""}`}
+      className={`w-full px-2 sm:px-3 ${disabled ? "opacity-60 pointer-events-none" : ""}`}
       aria-label="Virtual keyboard"
     >
-      {rows.map((row, ri) => (
-        <div key={ri} className="flex gap-1 w-full max-w-[500px] mx-auto">
-          {row.map((key) => (
-            <Key
-              key={key}
-              label={key}
-              state={letterStates[key] || "default"}
-              onClick={onKey}
-              isMarathi={isMarathi}
-            />
-          ))}
-        </div>
-      ))}
+      <div className="flex flex-col gap-[5px] sm:gap-[6px]">
+        {rows.map((row, ri) => (
+          <div key={ri} className="flex gap-[5px] sm:gap-[6px] w-full">
+            {row.map((key) => (
+              <Key
+                key={key}
+                label={key}
+                state={letterStates[key] || "default"}
+                onClick={onKey}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

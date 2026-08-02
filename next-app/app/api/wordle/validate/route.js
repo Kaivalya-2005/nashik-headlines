@@ -1,21 +1,18 @@
 import { NextResponse } from "next/server";
-import ENGLISH_WORDS from "@/lib/wordle/english_words";
-import MARATHI_WORDS from "@/lib/wordle/marathi_words";
+import ENGLISH_WORDS from "@/lib/wordle/english_words_shuffled";
 
 export async function POST(request) {
   const body = await request.json();
-  const { word, lang } = body || {};
+  const { word } = body || {};
 
   if (!word) {
     return NextResponse.json({ error: "word is required" }, { status: 400 });
   }
 
-  const language = lang === "mr" ? "mr" : "en";
-  const wordList = language === "mr" ? MARATHI_WORDS : ENGLISH_WORDS;
   const normalised = typeof word === "string" ? word.toUpperCase().trim() : "";
-  const valid = wordList.includes(normalised) || wordList.includes(String(word).trim());
+  const valid = ENGLISH_WORDS.includes(normalised) || ENGLISH_WORDS.includes(String(word).trim());
 
-  return NextResponse.json({ valid, lang: language }, {
+  return NextResponse.json({ valid, lang: "en" }, {
     headers: {
       "Cache-Control": "public, max-age=60, s-maxage=3600, stale-while-revalidate=86400",
     },
