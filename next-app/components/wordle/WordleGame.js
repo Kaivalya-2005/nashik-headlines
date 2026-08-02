@@ -5,6 +5,7 @@ import WordleGrid from "./WordleGrid";
 import WordleKeyboard from "./WordleKeyboard";
 import WordleToast from "./WordleToast";
 import { Share2, HelpCircle, X } from "lucide-react";
+import { Globe } from "lucide-react";
 
 const WORD_LENGTH = 5;
 const MAX_GUESSES = 6;
