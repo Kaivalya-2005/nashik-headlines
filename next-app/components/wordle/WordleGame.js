@@ -5,7 +5,6 @@ import WordleGrid from "./WordleGrid";
 import WordleKeyboard from "./WordleKeyboard";
 import WordleToast from "./WordleToast";
 import { Share2, HelpCircle, X } from "lucide-react";
-import { Globe } from "lucide-react";
 
 const WORD_LENGTH = 5;
 const MAX_GUESSES = 6;
@@ -374,7 +373,7 @@ export default function WordleGame() {
 
     setGuesses(newGuesses); setEvaluations(newEvals); setCurrentInput([]);
     setGameStatus(newStatus); setLetterStates(newLS);
-    saveState("en", newGuesses, newEvals, newStatus, newLS);
+    saveState(newGuesses, newEvals, newStatus, newLS);
 
     if (newStatus === "won" || newStatus === "lost") {
       // Brief toast then open result modal
@@ -446,15 +445,6 @@ export default function WordleGame() {
 
             <div className="flex items-center gap-2 flex-shrink-0">
               {date && <span className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">{date}</span>}
-              <button
-                onClick={() => {}}
-                className="flex items-center gap-1 px-2 py-1 rounded-full border border-border bg-secondary/60 hover:bg-secondary text-[10px] sm:text-xs font-bold transition-all active:scale-95"
-                title="English only"
-              >
-                <Globe size={11} className="text-muted-foreground flex-shrink-0" />
-                <span className="hidden sm:inline">English</span>
-                <span className="sm:hidden">EN</span>
-              </button>
             </div>
           </div>
         </div>

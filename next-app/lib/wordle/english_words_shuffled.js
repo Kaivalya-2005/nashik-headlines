@@ -20,18 +20,30 @@ const EXTRA_ENGLISH = [
   "YOKEL","YUMMY"
 ];
 
-function shuffleArray(arr) {
+// Deterministic seeded PRNG (mulberry32) — same order on every server start
+function seededRandom(seed) {
+  let s = seed >>> 0;
+  return function () {
+    s += 0x6d2b79f5;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) >>> 0;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffleArray(arr, seed = 42) {
   const a = arr.slice();
+  const rand = seededRandom(seed);
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rand() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
 }
 
-// create pool, dedupe (keep first occurrence), then shuffle
+// create pool, dedupe (keep first occurrence), then deterministically shuffle
 const pool = ENGLISH_WORDS.concat(EXTRA_ENGLISH);
 const deduped = Array.from(new Set(pool));
-const SHUFFLED = shuffleArray(deduped);
+const SHUFFLED = shuffleArray(deduped, 42);
 
 export default SHUFFLED;
