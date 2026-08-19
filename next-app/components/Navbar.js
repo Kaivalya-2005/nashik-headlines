@@ -89,6 +89,13 @@ export default function Navbar() {
           </Link>
 
           <div className="flex items-center gap-1">
+            <div className="hidden md:flex items-center gap-2 mr-2 px-3 py-1.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              </span>
+              <span className="text-[11px] font-semibold uppercase tracking-wide">Live</span>
+            </div>
             <button
               onClick={() => setSearchOpen((v) => !v)}
               className="p-2 hover:bg-secondary transition-colors"
@@ -123,6 +130,16 @@ export default function Navbar() {
             </form>
           </div>
         )}
+
+        <div className="md:hidden px-3 pb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            </span>
+            <span className="text-[11px] font-semibold uppercase tracking-wide">Live</span>
+          </div>
+        </div>
 
         <nav className="hidden md:flex items-center justify-between gap-4 px-3 md:px-4 border-t border-border/50">
           <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">

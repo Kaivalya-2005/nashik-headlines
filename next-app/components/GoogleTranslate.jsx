@@ -71,8 +71,8 @@ export default function GoogleTranslate() {
   /* Runs only on the client — prevents SSR hydration mismatch */
   useEffect(() => {
     /* Set initial language from cookie if available */
-    const match = document.cookie.match(/googtrans=\/?(?:mr|en)\/([a-z]{2})/);
-    if (match && match[1] && match[1] !== "mr") {
+    const match = document.cookie.match(/googtrans=\/mr\/([a-z]{2})/);
+    if (match && match[1] && match[1] !== 'mr') {
       const initLang = LANGUAGES.find((l) => l.code === match[1]);
       if (initLang) setSelected(initLang);
     }
@@ -158,6 +158,12 @@ export default function GoogleTranslate() {
     setSelected(lang);
     setOpen(false);
 
+    const setTranslateCookie = (value) => {
+      const pathCookie = `googtrans=${value}; path=/`;
+      document.cookie = pathCookie;
+      document.cookie = `${pathCookie}; domain=${window.location.hostname}`;
+    };
+
     // For Marathi (original language), clear googtrans cookie and reload
     if (lang.code === "mr") {
       document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
@@ -172,6 +178,7 @@ export default function GoogleTranslate() {
       if (select) {
         select.value = lang.code;
         select.dispatchEvent(new Event("change", { bubbles: true }));
+        setTranslateCookie(`/mr/${lang.code}`);
         return;
       }
       if (attemptsLeft > 0) {
@@ -179,9 +186,8 @@ export default function GoogleTranslate() {
         setTimeout(() => trySelect(attemptsLeft - 1), 200);
       } else {
         // Fallback: set googtrans cookie and reload
-        const val = `/en/${lang.code}`;
-        document.cookie = `googtrans=${val}; path=/`;
-        document.cookie = `googtrans=${val}; domain=${window.location.hostname}; path=/`;
+        const val = `/mr/${lang.code}`;
+        setTranslateCookie(val);
         window.location.reload();
       }
     };

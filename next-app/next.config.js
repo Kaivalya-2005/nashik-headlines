@@ -4,7 +4,6 @@ const backendApiUrl = (process.env.BACKEND_API_URL || 'http://localhost:5000').r
 
 const nextConfig = {
   images: {
-    domains: ['res.cloudinary.com'],
     remotePatterns: [
       { protocol: 'https', hostname: 'res.cloudinary.com' },
       { protocol: 'https', hostname: 'images.unsplash.com' },

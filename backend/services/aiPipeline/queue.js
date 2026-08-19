@@ -62,16 +62,15 @@ async function resolveSourceId(sourceName) {
 }
 
 async function ensureUniqueSlug(slug) {
-  let candidate = slug;
-  let attempt = 0;
+  const base = String(slug || "article").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "") || "article";
+  let candidate = base;
+  let suffix = 2;
+
   while (true) {
     const rows = await dbQuery("SELECT id FROM articles WHERE slug = ? LIMIT 1", [candidate]);
     if (rows.length === 0) return candidate;
-    attempt++;
-    candidate = `${slug}-${Date.now().toString(36)}`;
-    if (attempt > 5) break;
+    candidate = `${base}-${suffix++}`;
   }
-  return candidate;
 }
 
 async function saveArticle(processed) {

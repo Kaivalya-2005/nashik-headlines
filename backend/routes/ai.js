@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const axios = require("axios");
 const db = require("../db");
+const { generateSlug } = require("../services/seo/slugGenerator");
 
 const { askGroq, askGroqFull, askGroqSeoJson, MODEL_FAST, MODEL_FULL } = require("../services/groqClient");
 
@@ -78,6 +79,26 @@ const getArticleById = (id) => {
   });
 };
 
+const queryAsync = (sql, params = []) =>
+  new Promise((resolve, reject) => {
+    db.query(sql, params, (err, results) => {
+      if (err) return reject(err);
+      resolve(results);
+    });
+  });
+
+async function ensureUniqueSlug(baseSlug) {
+  const cleanBase = generateSlug(baseSlug || "article", "article") || "article";
+  let candidate = cleanBase;
+  let suffix = 2;
+
+  while (true) {
+    const rows = await queryAsync("SELECT id FROM articles WHERE slug = ? LIMIT 1", [candidate]);
+    if (!rows || rows.length === 0) return candidate;
+    candidate = `${cleanBase}-${suffix++}`;
+  }
+}
+
 router.post("/ai/generate-article", async (req, res) => {
   const { prompt, topic, focusKeyword, category, tone, length } = req.body;
 
@@ -118,13 +139,15 @@ Format the response strictly as JSON with this structure:
         return res.status(500).json({ message: "Failed to parse AI output." });
       }
 
+      const safeSlug = await ensureUniqueSlug(parsed.slug || topic);
+
       const insertQuery = `
         INSERT INTO articles (title, slug, content, summary, seo_title, meta_description, status)
         VALUES (?, ?, ?, ?, ?, ?, 'draft')
       `;
       db.query(insertQuery, [
         parsed.title || topic,
-        parsed.slug || topic.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        safeSlug,
         parsed.content || '',
         parsed.summary || '',
         parsed.seo_title || parsed.title,

@@ -125,6 +125,29 @@ function withSeoMetrics(article) {
   };
 }
 
+const queryAsync = (sql, params = []) =>
+  new Promise((resolve, reject) => {
+    db.query(sql, params, (err, results) => {
+      if (err) return reject(err);
+      resolve(results);
+    });
+  });
+
+async function ensureUniqueArticleSlug(baseSlug, excludeId = null) {
+  const cleanBase = String(baseSlug || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "") || "article";
+  let candidate = cleanBase;
+  let suffix = 2;
+
+  while (true) {
+    const rows = excludeId
+      ? await queryAsync("SELECT id FROM articles WHERE slug = ? AND id <> ? LIMIT 1", [candidate, excludeId])
+      : await queryAsync("SELECT id FROM articles WHERE slug = ? LIMIT 1", [candidate]);
+
+    if (!rows || rows.length === 0) return candidate;
+    candidate = `${cleanBase}-${suffix++}`;
+  }
+}
+
 // 🔹 HELPER: GET CATEGORY ID BY SLUG/NAME
 function getCategoryId(categoryValue, callback) {
   if (!categoryValue) return callback(null, null);
@@ -227,6 +250,8 @@ router.post("/articles", async (req, res) => {
   const normalizedImageUrl = sanitizeMediaUrl(image_url) || featuredImage?.url || "";
 
   try {
+    seoData.slug = await ensureUniqueArticleSlug(seoData.slug);
+
     let qualityData;
     try {
       qualityData = await checkQuality(title, content);
@@ -698,6 +723,8 @@ router.put("/articles/:id", async (req, res) => {
   const normalizedImageUrl = sanitizeMediaUrl(image_url) || featuredImage?.url || "";
 
   try {
+    seoData.slug = await ensureUniqueArticleSlug(seoData.slug, req.params.id);
+
     let qualityData;
     try {
       qualityData = await checkQuality(title, content);

@@ -53,7 +53,8 @@ function injectImagesIntoContent(html, images) {
 }
 
 export async function generateMetadata({ params }) {
-  const article = await fetchArticleBySlug(params.slug, { cache: 'no-store' });
+  const resolvedParams = await params;
+  const article = await fetchArticleBySlug(resolvedParams.slug, { cache: 'no-store' });
   if (!article) {
     return { title: 'लेख सापडला नाही' };
   }
@@ -107,7 +108,8 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function ArticlePage({ params }) {
-  const article = await fetchArticleBySlug(params.slug, { cache: 'no-store' });
+  const resolvedParams = await params;
+  const article = await fetchArticleBySlug(resolvedParams.slug, { cache: 'no-store' });
   if (!article) notFound();
 
   const related = await fetchRelatedArticles(article);
