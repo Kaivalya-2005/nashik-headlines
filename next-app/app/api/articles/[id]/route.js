@@ -18,7 +18,8 @@ export async function GET(_request, { params }) {
   const backendBase = resolveBackendBase();
 
   try {
-    const idOrSlug = params?.id;
+    const resolvedParams = await params;
+    const idOrSlug = resolvedParams?.id;
     if (!idOrSlug) {
       return NextResponse.json({ error: 'Article id is required' }, { status: 400 });
     }
@@ -95,7 +96,8 @@ export async function GET(_request, { params }) {
 
     if (backendBase) {
       try {
-        const idOrSlug = params?.id;
+        const resolvedParams = await params;
+        const idOrSlug = resolvedParams?.id;
         const backendRes = await fetch(`${backendBase}/api/articles/${idOrSlug}`, { cache: 'no-store' });
         if (backendRes.ok) {
           const data = await backendRes.json();

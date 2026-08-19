@@ -170,7 +170,8 @@ export default async function Home({ searchParams }) {
   const websiteJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: 'Nashik Headlines',
+    name: 'नाशिक हेडलाईन्स',
+    alternateName: 'Nashik Headlines',
     url: siteUrl,
     potentialAction: {
       '@type': 'SearchAction',
@@ -183,8 +184,15 @@ export default async function Home({ searchParams }) {
     '@context': 'https://schema.org',
     '@type': 'NewsMediaOrganization',
     name: 'नाशिक हेडलाईन्स',
+    alternateName: ['Nashik Headlines', 'NashikHeadlines'],
     url: siteUrl,
-    logo: `${siteUrl}/logo.jpeg`,
+    logo: {
+      '@type': 'ImageObject',
+      url: `${siteUrl}/icon-512.png`,
+      width: 512,
+      height: 512,
+    },
+    image: `${siteUrl}/icon-512.png`,
     sameAs: [],
     description: 'नाशिक, महाराष्ट्रातील ब्रेकिंग न्यूजसाठी आपला विश्वासू स्रोत.',
   };

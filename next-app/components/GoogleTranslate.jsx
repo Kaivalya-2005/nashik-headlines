@@ -18,7 +18,55 @@ const LANGUAGES = [
   { code: "bn", label: "বাংলা",      short: "BN" },
 ];
 
-/* ─── Official Google Translate SVG icon ──────────────────────────────────── */
+/* Helper to clear all googtrans cookies across all domain variations */
+const clearAllGoogtransCookies = () => {
+  if (typeof window === "undefined") return;
+  const hostname = window.location.hostname;
+  const parts = hostname.split(".");
+  const pastDate = "Thu, 01 Jan 1970 00:00:00 UTC";
+
+  const paths = ["/", ""];
+  const domains = ["", hostname, `.${hostname}`];
+
+  // Include root domain and parent domain variations
+  for (let i = 0; i < parts.length; i++) {
+    const sub = parts.slice(i).join(".");
+    if (sub) {
+      domains.push(sub);
+      domains.push(`.${sub}`);
+    }
+  }
+
+  paths.forEach((p) => {
+    domains.forEach((d) => {
+      const dAttr = d ? `; domain=${d}` : "";
+      const pAttr = p ? `; path=${p}` : "";
+      document.cookie = `googtrans=; expires=${pastDate}${pAttr}${dAttr}`;
+      document.cookie = `googtrans=; expires=${pastDate}${pAttr}`;
+    });
+  });
+};
+
+/* Helper to set new googtrans cookie */
+const setGoogtransCookie = (targetCode) => {
+  clearAllGoogtransCookies();
+  if (targetCode === "mr") return;
+
+  const value = `/mr/${targetCode}`;
+  const hostname = window.location.hostname;
+  const parts = hostname.split(".");
+
+  // 1. Set on default path /
+  document.cookie = `googtrans=${value}; path=/`;
+
+  // 2. Set on domain level for apex domain and hostname
+  if (parts.length >= 2) {
+    const rootDomain = "." + parts.slice(-2).join(".");
+    document.cookie = `googtrans=${value}; path=/; domain=${rootDomain}`;
+  }
+  document.cookie = `googtrans=${value}; path=/; domain=${hostname}`;
+};
+
 function GTIcon({ size = 18 }) {
   return (
     <svg
@@ -28,11 +76,10 @@ function GTIcon({ size = 18 }) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
-      className="flex-shrink-0"
+      className="flex-shrink-0 notranslate"
+      translate="no"
     >
-      {/* Blue background pill */}
       <rect width="24" height="24" rx="5" fill="#4285F4" />
-      {/* White "translate" glyph — simplified Google Translate logo shape */}
       <text
         x="5"
         y="15"
@@ -54,30 +101,26 @@ function GTIcon({ size = 18 }) {
       >
         あ
       </text>
-      {/* small arrow between the two glyphs */}
-      <path d="M11 12 L13 10" stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M11 12 L13 10" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
   );
 }
 
-/* ─── Main component ──────────────────────────────────────────────────────── */
 export default function GoogleTranslate() {
-  const [mounted, setMounted]       = useState(false);
-  const [open, setOpen]             = useState(false);
-  const [selected, setSelected]     = useState(LANGUAGES[0]);
-  const [gtReady, setGtReady]       = useState(false);
-  const dropdownRef                 = useRef(null);
+  const [mounted, setMounted]   = useState(false);
+  const [open, setOpen]         = useState(false);
+  const [selected, setSelected] = useState(LANGUAGES[0]);
+  const dropdownRef             = useRef(null);
 
-  /* Runs only on the client — prevents SSR hydration mismatch */
   useEffect(() => {
-    /* Set initial language from cookie if available */
-    const match = document.cookie.match(/googtrans=\/mr\/([a-z]{2})/);
-    if (match && match[1] && match[1] !== 'mr') {
-      const initLang = LANGUAGES.find((l) => l.code === match[1]);
+    // Read active language from cookie on mount
+    const match = document.cookie.match(/googtrans=\/(?:[a-zA-Z]{2}|auto)\/([a-zA-Z]{2})/i);
+    if (match && match[1]) {
+      const code = match[1].toLowerCase();
+      const initLang = LANGUAGES.find((l) => l.code === code);
       if (initLang) setSelected(initLang);
     }
 
-    /* Expose callback BEFORE the script loads */
     window.googleTranslateElementInit = () => {
       try {
         new window.google.translate.TranslateElement(
@@ -89,30 +132,31 @@ export default function GoogleTranslate() {
           },
           "google_translate_element"
         );
-        setGtReady(true);
       } catch (_) {}
     };
 
-    /* ── Nuclear banner suppression ────────────────────────────────────────
-       Google injects the banner AFTER hydration and applies body.style.top
-       as a non-important inline style. Strategy:
-       1. Inject a <style> tag — stylesheet !important beats inline (no !important)
-       2. setInterval every 100 ms for 8 s — removes the iframe from the DOM
-          entirely before Google can paint it
-       3. MutationObserver — catches any re-injection afterwards              */
+    // Clean style injection targeting ONLY Google Translate frames (NO global .skiptranslate hiding!)
+    const styleId = "gt-banner-suppress";
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement("style");
+      style.id = styleId;
+      style.textContent = `
+        #goog-te-banner-frame,
+        .goog-te-banner-frame,
+        .goog-te-balloon-frame,
+        #goog-gt-tt,
+        .goog-te-spinner-pos {
+          display: none !important;
+          visibility: hidden !important;
+        }
+        body {
+          top: 0px !important;
+          position: static !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
 
-    // 1. Inject sticky CSS into <head>
-    const style = document.createElement("style");
-    style.id = "gt-suppress";
-    style.textContent = `
-      #goog-te-banner-frame,
-      .goog-te-banner-frame,
-      .skiptranslate { display: none !important; }
-      body { top: 0 !important; }
-    `;
-    document.head.appendChild(style);
-
-    // 2. Aggressive polling for the first 8 s (covers slow connections)
     const killBanner = () => {
       const banner =
         document.getElementById("goog-te-banner-frame") ||
@@ -123,10 +167,8 @@ export default function GoogleTranslate() {
       }
     };
 
-    const poll = setInterval(killBanner, 100);
-    const stopPoll = setTimeout(() => clearInterval(poll), 8000);
-
-    // 3. MutationObserver for after polling stops
+    const poll = setInterval(killBanner, 150);
+    const stopPoll = setTimeout(() => clearInterval(poll), 6000);
     const observer = new MutationObserver(killBanner);
     observer.observe(document.body, { childList: true, subtree: false });
 
@@ -137,11 +179,9 @@ export default function GoogleTranslate() {
       clearInterval(poll);
       clearTimeout(stopPoll);
       observer.disconnect();
-      document.getElementById("gt-suppress")?.remove();
     };
   }, []);
 
-  /* Close dropdown on outside click */
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
@@ -153,57 +193,39 @@ export default function GoogleTranslate() {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  /* Programmatically drive Google Translate's hidden <select> */
   const switchLanguage = (lang) => {
     setSelected(lang);
     setOpen(false);
 
-    const setTranslateCookie = (value) => {
-      const pathCookie = `googtrans=${value}; path=/`;
-      document.cookie = pathCookie;
-      document.cookie = `${pathCookie}; domain=${window.location.hostname}`;
-    };
-
-    // For Marathi (original language), clear googtrans cookie and reload
     if (lang.code === "mr") {
-      document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
-      document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; domain=${window.location.hostname}; path=/`;
+      clearAllGoogtransCookies();
       window.location.reload();
       return;
     }
 
-    // Try to use the hidden GT select element (no page reload needed)
-    const trySelect = (attemptsLeft) => {
-      const select = document.querySelector("#google_translate_element select");
-      if (select) {
-        select.value = lang.code;
-        select.dispatchEvent(new Event("change", { bubbles: true }));
-        setTranslateCookie(`/mr/${lang.code}`);
-        return;
-      }
-      if (attemptsLeft > 0) {
-        // GT widget not ready yet — retry after a short wait
-        setTimeout(() => trySelect(attemptsLeft - 1), 200);
-      } else {
-        // Fallback: set googtrans cookie and reload
-        const val = `/mr/${lang.code}`;
-        setTranslateCookie(val);
-        window.location.reload();
-      }
-    };
+    setGoogtransCookie(lang.code);
 
-    trySelect(10); // up to ~2 s of retries
+    const select = document.querySelector("#google_translate_element select");
+    if (select) {
+      select.value = lang.code;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      select.dispatchEvent(new Event("input", { bubbles: true }));
+      if (typeof select.onchange === "function") {
+        try { select.onchange(); } catch (_) {}
+      }
+    }
+
+    setTimeout(() => {
+      window.location.reload();
+    }, 150);
   };
 
-  /* Nothing rendered on the server */
   if (!mounted) return null;
 
   return (
     <>
-      {/* Hidden Google Translate widget — only needed for initialization */}
-      <div id="google_translate_element" className="gt-hidden-widget" />
+      <div id="google_translate_element" className="gt-hidden-widget notranslate" translate="no" />
 
-      {/* ── Custom UI ─────────────────────────────────────────────────── */}
       <div ref={dropdownRef} className="gt-root notranslate" translate="no">
         <button
           onClick={() => setOpen((v) => !v)}
@@ -216,12 +238,10 @@ export default function GoogleTranslate() {
         >
           <GTIcon size={18} />
 
-          {/* Desktop: full label */}
           <span className="gt-label-full notranslate" translate="no">
             {selected.label}
           </span>
 
-          {/* Tablet: short code */}
           <span className="gt-label-short notranslate" translate="no">
             {selected.short}
           </span>
@@ -252,8 +272,6 @@ export default function GoogleTranslate() {
         )}
       </div>
 
-
-      {/* Lazy-load Google Translate script */}
       <Script
         src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"
         strategy="afterInteractive"

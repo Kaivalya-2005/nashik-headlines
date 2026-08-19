@@ -3,7 +3,8 @@ import { dbQuery } from '@/lib/server/db';
 
 export async function POST(_request, { params }) {
   try {
-    const articleId = Number(params?.id);
+    const resolvedParams = await params;
+    const articleId = Number(resolvedParams?.id);
     if (!Number.isInteger(articleId)) {
       return NextResponse.json({ error: 'Valid article id is required' }, { status: 400 });
     }

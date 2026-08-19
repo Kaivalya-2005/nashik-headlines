@@ -1,0 +1,43 @@
+export default function manifest() {
+  return {
+    name: 'नाशिक हेडलाईन्स — नाशिक व महाराष्ट्रातील ताज्या बातम्या',
+    short_name: 'नाशिक हेडलाईन्स',
+    description: 'नाशिक, महाराष्ट्र आणि भारतातील ताज्या बातम्या, स्थानिक घडामोडी आणि सखोल वृत्तांकन.',
+    start_url: '/',
+    display: 'standalone',
+    background_color: '#0f2b6b',
+    theme_color: '#0f2b6b',
+    icons: [
+      {
+        src: '/icon-48.png',
+        sizes: '48x48',
+        type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: '/icon-96.png',
+        sizes: '96x96',
+        type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: '/icon-144.png',
+        sizes: '144x144',
+        type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: '/icon-192.png',
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'any maskable',
+      },
+      {
+        src: '/icon-512.png',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'any maskable',
+      },
+    ],
+  };
+}

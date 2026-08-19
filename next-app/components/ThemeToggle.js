@@ -1,16 +1,36 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 
 export default function ThemeToggle() {
+  const [mounted, setMounted] = useState(false);
   const { theme, toggleTheme } = useTheme();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <button
+        className="p-2.5 rounded-lg hover:bg-secondary transition-all duration-300 group notranslate"
+        translate="no"
+        aria-label="Toggle theme"
+      >
+        <div className="relative w-[18px] h-[18px]" />
+      </button>
+    );
+  }
+
   const isDark = theme === "dark";
 
   return (
     <button
       onClick={toggleTheme}
-      className="p-2.5 rounded-lg hover:bg-secondary transition-all duration-300 group"
+      className="p-2.5 rounded-lg hover:bg-secondary transition-all duration-300 group notranslate"
+      translate="no"
       aria-label="Toggle theme"
     >
       <div className="relative w-[18px] h-[18px]">

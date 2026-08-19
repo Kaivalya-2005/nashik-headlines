@@ -9,10 +9,12 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 export const revalidate = 300;
 
 export async function generateMetadata({ params }) {
-  const cat = CATEGORIES.find((c) => c.slug === params.category);
+  const resolvedParams = await params;
+  const categorySlug = resolvedParams?.category;
+  const cat = CATEGORIES.find((c) => c.slug === categorySlug);
   const title = cat ? `${cat.label} बातम्या` : 'बातम्या';
   const description = `${cat?.label || 'बातम्या'} या विषयावरील ताज्या बातम्या. नाशिक हेडलाईन्स.`;
-  const canonical = `${siteUrl}/category/${params.category}`;
+  const canonical = `${siteUrl}/category/${categorySlug}`;
 
   return {
     title,
@@ -29,8 +31,10 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function CategoryPage({ params }) {
-  const articles = await fetchArticlesByCategory(params.category);
-  const cat = CATEGORIES.find((c) => c.slug === params.category);
+  const resolvedParams = await params;
+  const categorySlug = resolvedParams?.category;
+  const articles = await fetchArticlesByCategory(categorySlug);
+  const cat = CATEGORIES.find((c) => c.slug === categorySlug);
 
   if (!cat) {
     notFound();
