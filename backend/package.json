@@ -1,16 +1,22 @@
 {
-  "name": "backend",
+  "name": "nashik-headlines-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Express API and content-processing backend for Nashik Headlines",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "echo \"No automated tests configured yet\" && exit 0",
     "cleanup:images": "node cleanup_invalid_images.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "news",
+    "nashik",
+    "express",
+    "ai",
+    "content-publishing"
+  ],
+  "author": "Kaivalya Deshpande",
   "license": "ISC",
   "dependencies": {
     "axios": "^1.13.6",
